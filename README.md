@@ -1,4 +1,4 @@
-# transforming_networks_to_sparse_basis
+# Transforming networks to sparse basis
 
 First, set the parameters in `main.py`. Then, execute in this order:
 - `extract_intermediate_features.py`: extract intermediate features of a specific layer of the model

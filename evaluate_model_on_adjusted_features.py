@@ -2,7 +2,7 @@ import torch
 
 from sae import SparseAutoencoder
 from main import sae_weights_file_path, expansion_factor, layer_name
-from aux import print_result
+from auxiliary_functions import print_result
 from data import input_data
 from model import model, weights
 

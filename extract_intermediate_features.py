@@ -5,7 +5,7 @@ import h5py
 from main import layer_name, activations_folder_path, activations_file_path
 from model import model, weights
 from data import input_data
-from aux import print_result
+from auxiliary_functions import print_result
 
 '''
 Extract intermediate features of a specific layer and store them.

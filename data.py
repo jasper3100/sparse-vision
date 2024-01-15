@@ -1,6 +1,6 @@
 import torch
 import torchvision
-from datasets import load_dataset
+#from datasets import load_dataset
 
 from main import dataset_name
 from model import weights
@@ -24,10 +24,12 @@ if dataset_name == 'img':
     input_data = preprocess(img).unsqueeze(0)
     #print(input_data.shape) # print input dimension of model
 
-#if dataset_name == 'tiny_imagenet':
-def example_usage():
-    tiny_imagenet = load_dataset('Maysee/tiny-imagenet', split='train')
-    print(tiny_imagenet[0])
+'''
+if dataset_name == 'tiny_imagenet':
+    def example_usage():
+        tiny_imagenet = load_dataset('Maysee/tiny-imagenet', split='train')
+        print(tiny_imagenet[0])
 
-if __name__ == '__main__':
-    example_usage()
+    if __name__ == '__main__':
+        example_usage()
+'''

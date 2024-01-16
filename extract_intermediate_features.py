@@ -2,7 +2,7 @@ import torch
 import os
 import h5py
 
-from main import layer_name, activations_folder_path, activations_file_path
+from main import layer_name, activations_folder_path, activations_file_path, original_model_output_folder_path, original_model_output_file_path
 from model import model, weights
 from data import input_data
 from auxiliary_functions import print_result
@@ -29,18 +29,22 @@ if __name__ == "__main__":
 
     # Forward pass through the model
     with torch.no_grad():
-        model(input_data)
+        output = model(input_data)
         # Once we perform the forward pass, the hook will store the activations 
         # in the dictionary, which is called 'intermediate_activations'
         print('Classification results before modification:')
-        print_result(model, input_data, weights)
+        print_result(output, weights)
 
     # access the intermediate feature maps
     activation = intermediate_activations[layer_name][0] # we do [0], because the tensor that we want is inside of a list
 
     # Ensure the folder exists; create it if it doesn't
     os.makedirs(activations_folder_path, exist_ok=True)
-    
     # Store intermediate_activations to an HDF5 file
     with h5py.File(activations_file_path, 'w') as h5_file:
         h5_file.create_dataset('data', data=activation.numpy())
+
+    # Store model output to an HDF5 file
+    os.makedirs(original_model_output_folder_path, exist_ok=True)
+    with h5py.File(original_model_output_file_path, 'w') as h5_file:
+        h5_file.create_dataset('data', data=output.numpy())

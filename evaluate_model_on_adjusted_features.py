@@ -1,7 +1,9 @@
 import torch
+import h5py
+import os
 
 from sae import SparseAutoencoder
-from main import sae_weights_file_path, expansion_factor, layer_name
+from main import sae_weights_file_path, expansion_factor, layer_name, adjusted_model_output_file_path, adjusted_model_output_folder_path
 from auxiliary_functions import print_result
 from data import input_data
 from model import model, weights
@@ -35,6 +37,12 @@ if __name__ == "__main__":
     with torch.no_grad():
         # model(input_data)
         print('Classification results after modification:')
-        print_result(model, input_data, weights)
+        output = model(input_data)
+        print_result(output, weights)
         # Once we perform the forward pass, the hook will adjust the output of the chosen layer
         # and continue with the forward pass
+    
+    # Store model output to an HDF5 file
+    os.makedirs(adjusted_model_output_folder_path, exist_ok=True)
+    with h5py.File(adjusted_model_output_file_path, 'w') as h5_file:
+        h5_file.create_dataset('data', data=output.numpy())

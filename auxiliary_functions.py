@@ -11,10 +11,10 @@ Auxiliary functions:
 - print all layer names
 '''
 
+
+
 # Print result of a batch of samples
-def print_result(model, input, weights):
-    # Forward pass through the model
-    predictions = model(input)
+def print_result(predictions, weights):
     # Iterate over each sample in the batch
     for i in range(predictions.size(0)):
         prediction = predictions[i].softmax(0)
@@ -23,13 +23,17 @@ def print_result(model, input, weights):
         category_name = weights.meta["categories"][class_id]
         print(f"Sample {i + 1}: {category_name}: {100 * score:.1f}%")
 
+
+
 # Print result of a single sample
-def print_result_sample(model, input, weights):
-    prediction = model(input).squeeze(0).softmax(0)
+def print_result_sample(output, weights):
+    prediction = output.squeeze(0).softmax(0)
     class_id = prediction.argmax().item()
     score = prediction[class_id].item()
     category_name = weights.meta["categories"][class_id]
     print(f"{category_name}: {100 * score:.1f}%")
+
+
 
 # Print names of all layers of the model
 '''

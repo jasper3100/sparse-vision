@@ -35,12 +35,9 @@ if __name__ == "__main__":
 
     # Forward pass through the model
     with torch.no_grad():
-        # model(input_data)
-        print('Classification results after modification:')
-        output = model(input_data)
-        print_result(output, weights)
-        # Once we perform the forward pass, the hook will adjust the output of the chosen layer
-        # and continue with the forward pass
+        model(input_data)
+        # During the forward pass, the hook will adjust the output 
+        # of the chosen layer and continue with the forward pass
     
     # Store model output to an HDF5 file
     os.makedirs(adjusted_model_output_folder_path, exist_ok=True)

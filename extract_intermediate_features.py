@@ -29,11 +29,9 @@ if __name__ == "__main__":
 
     # Forward pass through the model
     with torch.no_grad():
-        output = model(input_data)
+        model(input_data)
         # Once we perform the forward pass, the hook will store the activations 
         # in the dictionary, which is called 'intermediate_activations'
-        print('Classification results before modification:')
-        print_result(output, weights)
 
     # access the intermediate feature maps
     activation = intermediate_activations[layer_name][0] # we do [0], because the tensor that we want is inside of a list

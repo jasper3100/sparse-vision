@@ -1,8 +1,9 @@
 import torch.nn.functional as F
 import torch
 import h5py
+import os
 
-from main import original_model_output_file_path, adjusted_model_output_file_path
+from main import original_model_output_file_path, adjusted_model_output_file_path, activations_folder_path
 from model import weights
 
 '''
@@ -13,13 +14,13 @@ Contents of this file:
 - percentage of samples with same classification as before
 '''
 
-def load_output(original_model_output_file_path, adjusted_model_output_file_path):
-    # Load the original model's output
-    with h5py.File(original_model_output_file_path, 'r') as h5_file:
+def load_feature_map(original_activation_file_path, adjusted_activation_file_path):
+    # Load the original model's feature map
+    with h5py.File(original_activation_file_path, 'r') as h5_file:
         original_output = torch.from_numpy(h5_file['data'][:])
 
-    # Load the modified model's output
-    with h5py.File(adjusted_model_output_file_path, 'r') as h5_file:
+    # Load the modified model's feature map
+    with h5py.File(adjusted_activation_file_path, 'r') as h5_file:
         adjusted_output = torch.from_numpy(h5_file['data'][:])
     
     return original_output, adjusted_output
@@ -64,9 +65,27 @@ def percentage_same_classification(original_output, adjusted_output):
 
 
 
+def intermediate_feature_maps_similarity():
+    '''
+    Calculate the similarity between the intermediate feature maps of the original and adjusted model
+    We only need to compare the feature maps after the first SAE, because before that they are
+    identical.
+    '''
+    return 1
+
+file_path = os.path.join(activations_folder_path, 'model.fc_intermediate_activations.h5') 
+with h5py.File(file_path, 'r') as h5_file:
+    original_output_2 = torch.from_numpy(h5_file['data'][:])
+
+
 original_output, adjusted_output = load_output(original_model_output_file_path, adjusted_model_output_file_path)
 ce = ce(original_output, adjusted_output)
 percentage_same_classification = percentage_same_classification(original_output, adjusted_output)
 print(f"Cross-entropy between original model's output and modified model's output: {ce:.4f}")
 print(f"Percentage of samples with same classification (between original and modified model): {percentage_same_classification:.1f}%")
 print_classifications(original_output, adjusted_output, weights)
+
+# check if original_output and original_output_2 are the same
+print(original_output == original_output_2)
+print(original_output[0])
+print(original_output_2[0])

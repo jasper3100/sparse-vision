@@ -45,6 +45,7 @@ def modify_output(name, modification):
 
 # Register the hook to the desired layer along with the modification function
 model.fc1.register_forward_hook(modify_output('fc1', modify_layer_output))
+# or more generally: exec(f"{layer_name}.register_forward_hook(modify_output('{layer_name}', modify_layer_output))")
 
 input_data = torch.randn(1, 3)
 

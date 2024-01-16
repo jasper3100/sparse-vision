@@ -26,14 +26,6 @@ expansion_factor = 2 # specifies by how much the number of channels in the SAE s
 directory_path = r'C:\Users\Jasper\Downloads\Master thesis\Code'
 
 # Do not edit below this line
-activations_folder_path = os.path.join(directory_path, 'intermediate_feature_maps', model_name, dataset_name)
-activations_file_path = os.path.join(activations_folder_path, f'{layer_name}_intermediate_activations.json')
-
+original_activations_folder_path = os.path.join(directory_path, 'original_feature_maps', model_name, dataset_name)
 sae_weights_folder_path = os.path.join(directory_path, 'trained_sae_weights', model_name, dataset_name)
-sae_weights_file_path = os.path.join(sae_weights_folder_path, f'{layer_name}_trained_sae_weights.pth')
-
-original_model_output_folder_path = os.path.join(directory_path, 'original_model_output', model_name, dataset_name)
-original_model_output_file_path = os.path.join(original_model_output_folder_path, 'original_model_output.json')
-
-adjusted_model_output_folder_path = os.path.join(directory_path, 'adjusted_model_output', model_name, dataset_name)
-adjusted_model_output_file_path = os.path.join(adjusted_model_output_folder_path, 'adjusted_model_output.json')
+adjusted_activations_folder_path = os.path.join(directory_path, 'adjusted_feature_maps', model_name, dataset_name)

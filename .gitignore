@@ -1,4 +1,5 @@
-adjusted_feature_maps/
-trained_sae_weights/
-__pycache__/
-original_feature_maps/
+$ cat .gitignore
+adjusted_feature_maps*
+trained_sae_weights*
+__pycache__*
+original_feature_maps*

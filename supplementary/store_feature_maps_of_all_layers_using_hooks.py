@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import re
 
-from auxiliary_functions import get_names_of_all_layers
+from auxiliary_functions import get_names_of_all_layers, get_main_modules_and_names
 
 # Load the pre-trained model
 weights = ResNet50_Weights.IMAGENET1K_V2
@@ -38,20 +38,13 @@ modified_module_names = get_names_of_all_layers(model)
 If we only care about higher level modules of a model we can use the following
 code snippet to get names and the modules themselves as well.
 F.e. modules of ResNet50 are: conv1, bn1, relu, maxpool, layer1, layer2, layer3, layer4, avgpool, fc
-
-def summarize_model(model):
-    names = []
-    modules = []
-    for name, module in model.named_children():
-        names.append(name)
-        modules.append(module)
-    return names, modules
-
-names, modules = summarize_model(model)
+'''
+#'''
+names, _ = get_main_modules_and_names(model)
 # Add "model." to the beginning of each name
 names = [f"model.{name}" for name in names]
 print(names)
-'''
+#'''
 
 # attach the hooks
 for name in modified_module_names:

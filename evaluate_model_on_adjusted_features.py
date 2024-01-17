@@ -6,7 +6,7 @@ from sae import SparseAutoencoder
 from main import sae_weights_folder_path, expansion_factor, layer_name, adjusted_activations_folder_path
 from data import input_data
 from model import model
-from auxiliary_functions import get_names_of_all_layers, store_feature_maps
+from auxiliary_functions import names_of_main_modules_and_specified_layer, store_feature_maps
 
 '''
 Evaluate model on adjusted features. In particular, we use hooks to pass the output of 
@@ -38,12 +38,11 @@ if __name__ == "__main__":
             activations[name] = []
         activations[name].append(output)
 
-    modified_layer_names = get_names_of_all_layers(model)
-    # Get layer names from the specified layer onwards
-    trunc_layer_names = modified_layer_names[modified_layer_names.index(layer_name):]
+    # get the names of the main modules of the model and include layer_name
+    module_names = names_of_main_modules_and_specified_layer(model, layer_name)
 
     # attach the hooks 
-    for name in trunc_layer_names:
+    for name in module_names:
         exec(f"{name}.register_forward_hook(lambda module, inp, out, name=name: hook(module, inp, out, name))")
         
     # Forward pass through the model
@@ -54,6 +53,6 @@ if __name__ == "__main__":
     
     # Save the activations
     store_feature_maps(
-        trunc_layer_names, 
+        module_names, 
         activations, 
         adjusted_activations_folder_path)

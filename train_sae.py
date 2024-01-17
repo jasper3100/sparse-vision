@@ -10,7 +10,7 @@ from main import original_activations_folder_path, layer_name, sae_weights_folde
 if __name__ == "__main__":
 
     # Load the intermediate feature maps, which are the training data for the SAE
-    activations_file_path = os.path.join(original_activations_folder_path, f'{layer_name}_original_intermediate_activations.h5')
+    activations_file_path = os.path.join(original_activations_folder_path, f'{layer_name}_activations.h5')
     with h5py.File(activations_file_path, 'r') as h5_file:
         data = h5_file['data'][:]
 
@@ -43,3 +43,4 @@ if __name__ == "__main__":
 
     sae_weights_file_path = os.path.join(sae_weights_folder_path, f'{layer_name}_trained_sae_weights.pth')
     torch.save(sae.state_dict(), sae_weights_file_path)
+    print("Successfully stored trained SAE weights in", sae_weights_file_path)

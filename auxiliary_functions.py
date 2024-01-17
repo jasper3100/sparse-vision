@@ -11,6 +11,7 @@ Auxiliary functions:
     - a batch of samples
     - a single sample
 - print all layer names
+- get main modules and names of model
 - store activations/feature maps
 '''
 
@@ -69,6 +70,26 @@ def get_names_of_all_layers(model):
 
 
 
+def get_main_modules_and_names(model):
+    names = []
+    modules = []
+    for name, module in model.named_children():
+        names.append(name)
+        modules.append(module)
+    return names, modules
+
+def names_of_main_modules_and_specified_layer(model, layer_name):
+    # get the names of the main modules of the model
+    module_names, _ = get_main_modules_and_names(model)
+    # Add "model." to the beginning of each name
+    module_names = [f"model.{name}" for name in module_names]
+    # append layer_name to module_names
+    module_names.append(layer_name)
+    return module_names
+    
+
+
+
 def store_feature_maps(layer_names, activations, folder_path):
     # store the intermediate feature maps
     for name in layer_names:
@@ -82,3 +103,5 @@ def store_feature_maps(layer_names, activations, folder_path):
         # Store activations to an HDF5 file
         with h5py.File(activations_file_path, 'w') as h5_file:
             h5_file.create_dataset('data', data=activation.numpy())
+
+    print("Successfully stored features in", folder_path)

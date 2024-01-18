@@ -4,6 +4,7 @@ First, set the parameters in `main.py`. Then, execute in this order:
 - `extract_intermediate_features.py`: extract intermediate features of a specific layer of the model
 - `train_sae.py`: train sparse autoencoder 
 - `evaluate_model_on_adjusted_features.py`: output of intermediate layer --> autoencoder --> into model
+- `evaluation_metrics.py`: evaluate whether the adjusted model is close to the original model
 
 If the autoencoder is already trained, then one can of course run `evaluate_model_on_adjusted_features.py` without running the other files.
 
@@ -18,3 +19,4 @@ Contents of this repository:
 - `extract_intermediate_features.py`: extract intermediate features of a specific layer of the model
 - `train_sae.py`: train sparse autoencoder 
 - `evaluate_model_on_adjusted_features.py`: output of intermediate layer --> autoencoder --> into model
+- `evaluation_metrics.py`: evaluate whether the adjusted model is close to the original model

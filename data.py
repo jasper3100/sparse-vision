@@ -1,9 +1,11 @@
 import torch
 import torchvision
-#from datasets import load_dataset
+import os
+from torch.utils.data import DataLoader
 
 from main import dataset_name
 from model import weights
+from tiny_imagenet import TinyImageNetDataset
 
 '''
 Define input data for the model.
@@ -24,12 +26,16 @@ if dataset_name == 'img':
     input_data = preprocess(img).unsqueeze(0)
     #print(input_data.shape) # print input dimension of model
 
-'''
 if dataset_name == 'tiny_imagenet':
-    def example_usage():
-        tiny_imagenet = load_dataset('Maysee/tiny-imagenet', split='train')
-        print(tiny_imagenet[0])
+    root_dir = 'datasets/tiny-imagenet-200'
 
-    if __name__ == '__main__':
-        example_usage()
-'''
+    # if root_dir does not exist, download the dataset
+    if not os.path.exists(root_dir):
+        download=True
+    else:
+        download=False
+
+    train_dataset = TinyImageNetDataset(root_dir, mode='train', preload=False, download=download)
+
+    batch_size = 32
+    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)

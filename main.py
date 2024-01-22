@@ -3,7 +3,8 @@ import argparse
 
 from activations_handler import ActivationsHandler
 from train_pipeline import TrainingPipeline
-from model_evaluator import ModelEvaluator
+from evaluate_modified_model import ModifiedModelEvaluator
+from evaluate_model import ModelEvaluator
 
 # I can run main.py as in the line below (or if I leave the arguments empty, it will use the default values)
 # python main.py --store_activations --train_sae --modify_and_store_activations --model_name resnet18 --dataset_name cifar10 --layer_name model.layer2[0].conv1 --expansion_factor 3 --directory_path C:\Users\Jasper\Downloads\Master thesis\Code

@@ -1,7 +1,6 @@
 import imageio
 import numpy as np
 import os
-import torch
 import urllib.request
 import zipfile
 
@@ -233,8 +232,52 @@ class TinyImageNetDataset(Dataset):
       # I ADDED THE BELOW LINE TO GET THE SHAPE (channel, width, height) instead of (width, height, channel)
       img = np.transpose(img, (2, 0, 1))
       lbl = None if self.mode == 'test' else s[self.label_idx]
+    # I ADDED THE BELOW LINE
+    # convert data type from uint8 to float32 for the model to work
+    img = np.float32(img)
+    # Alternatively when iterating through the batches of the dataloader, one can do:
+    # img = img.to(torch.float32)
     sample = {'image': img, 'label': lbl}
 
     if self.transform:
       sample = self.transform(sample)
     return sample
+
+# The below code was moved to other scripts, but is just provided for reference here
+# and to test the data loading in one script if necessary
+
+'''
+root_dir = 'datasets/tiny-imagenet-200'
+train_dataset = TinyImageNetDataset(root_dir, mode='train', preload=False, download=False) # Download=True only if dataset not yet downloaded
+
+from torch.utils.data import DataLoader
+from model import model
+
+batch_size = 32
+train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+
+for batch in train_dataloader:
+    inputs, labels = batch['image'], batch['label']
+    
+    outputs = model(inputs)
+
+    print(outputs.shape)
+    print(labels.shape)
+    #print(labels)
+    break
+'''
+
+'''
+for epoch in range(num_epochs):
+    for batch in dataloader:
+        inputs, labels = batch['image'], batch['label']
+
+        # Forward pass
+        outputs = model(inputs)
+        loss = criterion(outputs, labels)
+
+        # Backward pass and optimization
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+'''

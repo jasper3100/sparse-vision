@@ -1,7 +1,7 @@
 import torch.nn as nn
 
 class SparseAutoencoder(nn.Module):
-    def __init__(self, input_tensor, expansion_factor):
+    def __init__(self, img_size, expansion_factor):
         '''
         Autoencoder used to expand a given intermediate feature map of a model.
         The autoencoder encourages sparsity in this augmented representation and is thus
@@ -11,8 +11,8 @@ class SparseAutoencoder(nn.Module):
 
         Parameters
         ----------
-        input_tensor: torch.Tensor
-            The input tensor of the autoencoder.
+        img_size : tuple
+            Size of the input image, i.e., (channels, height, width).
         expansion_factor : int
             Factor by which the number of channels is expanded in the encoder.
         '''
@@ -24,7 +24,8 @@ class SparseAutoencoder(nn.Module):
         # the number of channels corresponds to the third last dimension of the input tensor
         # This is invariant to whether there is a batch dimension or not:
         # [batch, channels, height, width] or [channels, height, width]
-        in_channels = input_tensor.size(-3)
+        #in_channels = input_tensor.size(-3)
+        in_channels = img_size[0]
         self.encoder = nn.Sequential(
             nn.Conv2d(in_channels=in_channels, out_channels=in_channels*expansion_factor, kernel_size=3, stride=1, padding=1),
             nn.ReLU()

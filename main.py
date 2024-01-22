@@ -1,31 +1,98 @@
 import os
+import argparse
 
-'''
-Contents of the repository: 
+from activations_handler import ActivationsHandler
+from sae_trainer import SAETrainer
+from model_evaluator import ModelEvaluator
 
-- main.py: main script to define parameters and run the pipeline
+# I can run main.py as in the line below (or if I leave the arguments empty, it will use the default values)
+# python main.py --store_activations --train_sae --modify_and_store_activations --model_name resnet18 --dataset_name cifar10 --layer_name model.layer2[0].conv1 --expansion_factor 3 --directory_path C:\Users\Jasper\Downloads\Master thesis\Code
+# python main.py --model_name resnet50 --dataset_name tiny_imagenet --layer_name model.layer1[0].conv3 --expansion_factor 2 --directory_path C:\Users\Jasper\Downloads\Master thesis\Code --metrics ce percentage_same_classification
 
-- resnet50.py: instantiate pre-trained ResNet50 model
-- data.py: dataset
-- sae.py: sparse autoencoder model
-- sparse_loss.py: custom loss function for the sparse autoencoder
-- aux.py: auxiliary functions: print classification results of model and print all layer names
+# IS THIS A GOOD MAIN.PY FILE?? OR SHOULD I ALSO USE CLASSES HERE??
+# IS THIS THE RIGHT WAY TO USE PARAMETERS???
+def parse_arguments():
+    parser = argparse.ArgumentParser(description="Setting parameters")
 
-- extract_intermediate_features.py: extract intermediate features of a specific layer of the model
-- train_sae.py: train sparse autoencoder 
-- evaluate_model_on_adjusted_features.py: output of intermediate layer --> autoencoder --> into model
-'''
+    # command-line arguments
+    parser.add_argument('--model_name', type=str, default='resnet50', help='Specify the model name')
+    parser.add_argument('--dataset_name', type=str, default='tiny_imagenet', help='Specify the dataset name')
+    parser.add_argument('--layer_name', type=str, default='model.layer1[0].conv3', help='Specify the layer name')
+    parser.add_argument('--expansion_factor', type=int, default=2, help='Specify the expansion factor')
+    parser.add_argument('--directory_path', type=str, default=r'C:\Users\Jasper\Downloads\Master thesis\Code', help='Specify the directory path')
+    parser.add_argument('--metrics', nargs='+', default=['ce', 'percentage_same_classification', 'print_classifications', 'intermediate_feature_maps_similarity'], help='Specify the metrics to print')
 
-# TO-DO: MAKE THE PARAMETERS PROPER PARAMETERS; DO NOT IMPORT THEM TO OTHER SCRIPTS THROUGH "IMPORT"!!!
+    # These 4 arguments are False by default. If they are specified on the command line, they will be True due
+    # due to action='store_true'.
+    parser.add_argument('--store_activations', action='store_true', default=False, help='Store activations')
+    parser.add_argument('--train_sae', action='store_true', default=False, help='Train SAE')
+    parser.add_argument('--modify_and_store_activations', action='store_true', default=False, help='Modify and store activations')
+    parser.add_argument('--evaluate_model', action='store_true', default=False, help='Evaluate model')
 
-model_name = 'resnet50' # for seeing all possible models, see model.py
-dataset_name = 'sample_data_1' # for seeing all possible datasets, see data.py
-layer_name = 'model.layer1[0].conv3' # for seeing all possible layers, run the get_names_of_all_layers() function in aux.py
-expansion_factor = 2 # specifies by how much the number of channels in the SAE should be expanded
+    return parser.parse_args()
 
-directory_path = r'C:\Users\Jasper\Downloads\Master thesis\Code'
+if __name__ == '__main__':
+    args = parse_arguments()
 
-# Do not edit below this line
-original_activations_folder_path = os.path.join(directory_path, 'original_feature_maps', model_name, dataset_name)
-sae_weights_folder_path = os.path.join(directory_path, 'trained_sae_weights', model_name, dataset_name)
-adjusted_activations_folder_path = os.path.join(directory_path, 'adjusted_feature_maps', model_name, dataset_name)
+    # If all of them are False, then they are set to True, so that we don't have to specify all
+    # of them if we want to use all of them
+    if args.store_activations == False and args.train_sae == False and args.modify_and_store_activations == False and args.evaluate_model == False:
+        args.store_activations = True
+        args.train_sae = True
+        args.modify_and_store_activations = True
+        args.evaluate_model = True
+
+    model_name = args.model_name
+    dataset_name = args.dataset_name
+    layer_name = args.layer_name
+    expansion_factor = args.expansion_factor
+    directory_path = args.directory_path
+    metrics = args.metrics
+
+    original_activations_folder_path = os.path.join(directory_path, 'original_feature_maps', model_name, dataset_name)
+    sae_weights_folder_path = os.path.join(directory_path, 'trained_sae_weights', model_name, dataset_name)
+    adjusted_activations_folder_path = os.path.join(directory_path, 'adjusted_feature_maps', model_name, dataset_name)
+    
+    # Step 1: Store Activations
+    if args.store_activations:
+        activations_handler = ActivationsHandler(model_name, 
+                                                layer_name, 
+                                                dataset_name, 
+                                                original_activations_folder_path, 
+                                                sae_weights_folder_path, 
+                                                modify_output=False)
+        activations_handler.register_hooks()    
+        activations_handler.forward_pass()
+        activations_handler.save_activations()
+
+    # Step 2: Train SAE on Stored Activations
+    if args.train_sae:
+        sae_trainer = SAETrainer(original_activations_folder_path, 
+                                layer_name, 
+                                sae_weights_folder_path, 
+                                expansion_factor)
+        sae_trainer.train_sae()
+
+    # Step 3: 
+    # - modify output of layer "layer_name" with trained SAE using a hook
+    # - evaluate the model on this adjusted feature map 
+    # - store activations of this modified model
+    if args.modify_and_store_activations:
+        activations_handler = ActivationsHandler(model_name, 
+                                                layer_name, 
+                                                dataset_name, 
+                                                adjusted_activations_folder_path, 
+                                                sae_weights_folder_path,
+                                                modify_output=True, 
+                                                expansion_factor=expansion_factor)
+        activations_handler.register_hooks()
+        activations_handler.forward_pass()
+        activations_handler.save_activations() 
+    
+    # Step 4: Evaluate how "similar" the modified model is to the original model
+    if args.evaluate_model:
+        model_evaluator = ModelEvaluator(model_name,
+                                         layer_name, 
+                                        original_activations_folder_path, 
+                                        adjusted_activations_folder_path)
+        model_evaluator.evaluate(metrics = metrics)

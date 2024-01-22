@@ -1,6 +1,11 @@
 import torch 
+import torch.nn.functional as F
 
-class ModelTrainer:
+class TrainProcess:
+    '''
+    Class that handles the actual training process,
+    handling the training and validation epochs.
+    '''
     def __init__(self,
                  model, 
                  optimizer, 
@@ -42,7 +47,8 @@ class ModelTrainer:
 
         return total_loss / len(dataloader)
 
-    def train(self, train_dataloader, valid_dataloader=None, num_epochs):
+    def train(self, train_dataloader, num_epochs, valid_dataloader=None):
+        print('Training started.')
         for epoch in range(num_epochs):
             train_loss = self.train_epoch(train_dataloader)
             
@@ -59,5 +65,5 @@ class ModelTrainer:
 # model = ...
 # criterion = ...
 # optimizer = ...
-# trainer = SimpleTrainer(model, criterion, optimizer)
+# trainer = TrainProcess(model, criterion, optimizer)
 # trainer.train(train_dataloader, valid_dataloader, num_epochs)

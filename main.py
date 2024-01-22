@@ -2,7 +2,7 @@ import os
 import argparse
 
 from activations_handler import ActivationsHandler
-from sae_trainer import SAETrainer
+from train_pipeline import TrainingPipeline
 from model_evaluator import ModelEvaluator
 
 # I can run main.py as in the line below (or if I leave the arguments empty, it will use the default values)
@@ -21,9 +21,15 @@ def parse_arguments():
     parser.add_argument('--expansion_factor', type=int, default=2, help='Specify the expansion factor')
     parser.add_argument('--directory_path', type=str, default=r'C:\Users\Jasper\Downloads\Master thesis\Code', help='Specify the directory path')
     parser.add_argument('--metrics', nargs='+', default=['ce', 'percentage_same_classification', 'print_classifications', 'intermediate_feature_maps_similarity'], help='Specify the metrics to print')
+    # ADD
+    # model train epochs, Default should be None
+    # sae train epochs
+    # model train learning rate, Default should be None
+    # sae train learning rate
 
-    # These 4 arguments are False by default. If they are specified on the command line, they will be True due
+    # These 5 arguments are False by default. If they are specified on the command line, they will be True due
     # due to action='store_true'.
+    parser.add_argument('--train_model', action='store_true', default=False, help='Train model')
     parser.add_argument('--store_activations', action='store_true', default=False, help='Store activations')
     parser.add_argument('--train_sae', action='store_true', default=False, help='Train SAE')
     parser.add_argument('--modify_and_store_activations', action='store_true', default=False, help='Modify and store activations')
@@ -36,7 +42,8 @@ if __name__ == '__main__':
 
     # If all of them are False, then they are set to True, so that we don't have to specify all
     # of them if we want to use all of them
-    if args.store_activations == False and args.train_sae == False and args.modify_and_store_activations == False and args.evaluate_model == False:
+    if args.train_model == False and args.store_activations == False and args.train_sae == False and args.modify_and_store_activations == False and args.evaluate_model == False:
+        args.train_model = True
         args.store_activations = True
         args.train_sae = True
         args.modify_and_store_activations = True
@@ -50,10 +57,26 @@ if __name__ == '__main__':
     metrics = args.metrics
 
     original_activations_folder_path = os.path.join(directory_path, 'original_feature_maps', model_name, dataset_name)
+    model_weights_folder_path = os.path.join(directory_path, 'model_weights', model_name, dataset_name)
     sae_weights_folder_path = os.path.join(directory_path, 'trained_sae_weights', model_name, dataset_name)
     adjusted_activations_folder_path = os.path.join(directory_path, 'adjusted_feature_maps', model_name, dataset_name)
     
-    # Step 1: Store Activations
+    # Step 1: Train model 
+    if args.train_model:
+        if model_name == 'resnet50':
+            pass # since resnet50 is pretrained
+        elif model_name == 'custom_mlp_1':         
+            # MAKE MODEL EPOCHS AND LEARNING RATE PARAMETERS LATER
+            train_pipeline = TrainingPipeline(model_name,
+                                       dataset_name,
+                                       epochs=2, 
+                                       learning_rate=0.001, 
+                                       weights_folder_path=model_weights_folder_path)
+            train_pipeline.execute_training(criterion_name='cross_entropy', 
+                                            optimizer_name='sgd')   
+            train_pipeline.save_model_weights()         
+
+    # Step 2: Store Activations
     if args.store_activations:
         activations_handler = ActivationsHandler(model_name, 
                                                 layer_name, 
@@ -65,15 +88,23 @@ if __name__ == '__main__':
         activations_handler.forward_pass()
         activations_handler.save_activations()
 
-    # Step 2: Train SAE on Stored Activations
+    # Step 3: Train SAE on Stored Activations
     if args.train_sae:
-        sae_trainer = SAETrainer(original_activations_folder_path, 
-                                layer_name, 
-                                sae_weights_folder_path, 
-                                expansion_factor)
-        sae_trainer.train_sae()
+        # MAKE SAE EPOCHS AND LR PARAMETERS LATER
+        train_pipeline_sae = TrainingPipeline(model_name='sae',
+                                   dataset_name='intermediate_feature_maps',
+                                   data_dir=original_activations_folder_path, 
+                                   layer_name=layer_name,
+                                   epochs=2,
+                                   learning_rate=0.001,
+                                   expansion_factor=expansion_factor,
+                                   )
+        train_pipeline_sae.execute_training(criterion_name='sae_loss',
+                                            optimizer_name='sgd',
+                                            lambda_sparse=0.1)
+        train_pipeline_sae.save_model_weights()
 
-    # Step 3: 
+    # Step 4: 
     # - modify output of layer "layer_name" with trained SAE using a hook
     # - evaluate the model on this adjusted feature map 
     # - store activations of this modified model
@@ -89,10 +120,11 @@ if __name__ == '__main__':
         activations_handler.forward_pass()
         activations_handler.save_activations() 
     
-    # Step 4: Evaluate how "similar" the modified model is to the original model
+    # Step 5: Evaluate how "similar" the modified model is to the original model
     if args.evaluate_model:
         model_evaluator = ModelEvaluator(model_name,
-                                         layer_name, 
+                                        dataset_name,
+                                        layer_name, 
                                         original_activations_folder_path, 
                                         adjusted_activations_folder_path)
         model_evaluator.evaluate(metrics = metrics)

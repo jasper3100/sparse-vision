@@ -1,11 +1,17 @@
 import re
 
-from utils import load_model
+from utils import load_model_aux, load_data_aux
 
 class ModuleNames:
-    def __init__(self, model_name):
+    def __init__(self, model_name, dataset_name, layer_name):
         self.model_name = model_name
-        self.model, _ = load_model(self.model_name)
+        self.model, _ = load_model_aux(self.model_name)
+        _, _, self.img_size = load_data_aux(dataset_name,
+                                            data_dir=None,
+                                            layer_name=layer_name)
+        self.model, _ = load_model_aux(self.model_name, 
+                                       self.img_size, 
+                                       expansion_factor = None)
 
     def convert_name(self, name):
         """

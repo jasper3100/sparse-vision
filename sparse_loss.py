@@ -9,8 +9,10 @@ class SparseLoss(nn.Module):
         super(SparseLoss, self).__init__()
         self.lambda_sparse = lambda_sparse
 
-    def forward(self, encoded, decoded, input_data):
-        reconstruction_loss = nn.MSELoss()(decoded, input_data)
+    def forward(self, outputs, targets):
+        # targets will be the input data
+        encoded, decoded = outputs
+        reconstruction_loss = nn.MSELoss()(decoded, targets)
         # Calculate L1 regularization on hidden layer activations, 
         # i.e. output of encoder, to encourage sparsity
         l1_loss = torch.mean(torch.abs(encoded))

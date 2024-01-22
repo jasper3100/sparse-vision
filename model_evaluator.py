@@ -3,7 +3,8 @@ import torch
 import os
 
 from get_module_names import ModuleNames
-from utils import load_model, load_feature_map
+from utils import load_model_aux, compute_ce, load_data_aux
+from utils_feature_map import load_feature_map
 
 class ModelEvaluator:
     '''
@@ -15,10 +16,12 @@ class ModelEvaluator:
     '''
     def __init__(self, 
                  model_name, 
+                 dataset_name,
                  layer_name,
                  original_activations_folder_path, 
                  adjusted_activations_folder_path):
         self.model_name = model_name
+        self.dataset_name = dataset_name
         self.layer_name = layer_name
         self.original_activations_folder_path = original_activations_folder_path
         self.adjusted_activations_folder_path = adjusted_activations_folder_path
@@ -40,16 +43,6 @@ class ModelEvaluator:
 
         return original_output, adjusted_output
 
-    def compute_ce(self, original_feature_map, adjusted_feature_map):
-        '''
-        We don't want the model's output to change after applying the SAE. The cross-entropy is 
-        suitable for comparing probability outputs. Hence, we want the cross-entropy between 
-        the original model's output and the output of the modified model to be small.
-        '''
-        # cross_entropy(input, target), where target consists of probabilities
-        original_feature_map = F.softmax(original_feature_map, dim=1)
-        return F.cross_entropy(adjusted_feature_map, original_feature_map)
-
     def classification_results_aux(self, original_output, adjusted_output):
         size = original_output.size(0)
         original_prob = F.softmax(original_output, dim=1)
@@ -59,7 +52,13 @@ class ModelEvaluator:
         return original_score, original_class_ids, adjusted_score, adjusted_class_ids, size
 
     def print_classifications(self, original_output, adjusted_output):
-        _, self.weights = load_model(self.model_name)
+
+        _, _, self.img_size = load_data_aux(self.dataset_name, 
+                                            data_dir=None, 
+                                            layer_name=self.layer_name)
+        _, self.weights = load_model_aux(self.model_name, 
+                                         self.img_size, 
+                                         expansion_factor=None)
         original_score, original_class_ids, adjusted_score, adjusted_class_ids, size = self.classification_results_aux(original_output, adjusted_output)
         original_category_names = [self.weights.meta["categories"][index] for index in original_class_ids]
         adjusted_category_names = [self.weights.meta["categories"][index] for index in adjusted_class_ids]
@@ -121,7 +120,12 @@ class ModelEvaluator:
         original_output, adjusted_output = self.load_feature_map_last_layer()
 
         if metrics is None or 'ce' in metrics:
-            ce = self.compute_ce(original_output, adjusted_output)
+            '''
+            We don't want the model's output to change after applying the SAE. The cross-entropy is 
+            suitable for comparing probability outputs. Hence, we want the cross-entropy between 
+            the original model's output and the output of the modified model to be small.
+            '''
+            ce = compute_ce(original_output, adjusted_output)
             print(f"Cross-entropy between original model's output and modified model's output: {ce:.4f}")
 
         if metrics is None or 'percentage_same_classification' in metrics:

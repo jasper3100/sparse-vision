@@ -3,8 +3,8 @@ import os
 
 from get_module_names import ModuleNames
 from sae import SparseAutoencoder
-from utils import load_model, load_data, store_feature_maps
-from functools import reduce
+from utils import load_model_aux, load_data_aux
+from utils_feature_map import store_feature_maps
 
 '''
 Store the activations/feature maps of a selection of layers of the model.
@@ -36,9 +36,13 @@ class ActivationsHandler:
         self.activations = {} # placeholder to store activations
         self.modify_output = modify_output
         self.expansion_factor = expansion_factor
-        self.model, _ = load_model(self.model_name)
+        _, _, self.img_size = load_data_aux(dataset_name,
+                                            data_dir=None,
+                                            layer_name=self.layer_name)
+        self.model, _ = load_model_aux(model_name, 
+                                       self.img_size, 
+                                       self.expansion_factor)
         self.model.eval()
-        self.data = load_data(self.dataset_name)
 
     def get_module_names(self):
         # get the names of the main modules of the model and include layer_name
@@ -48,7 +52,9 @@ class ActivationsHandler:
         layer_names = module_names.get_names_of_all_layers()
         trunc_layer_names = layer_names[layer_names.index(self.layer_name):]    
         '''
-        module_names = ModuleNames(self.model_name)
+        module_names = ModuleNames(self.model_name, 
+                                   self.dataset_name, 
+                                   self.layer_name)
         return module_names.names_of_main_modules_and_specified_layer(self.layer_name)
 
     def modify_layer_output(self, layer_output): 

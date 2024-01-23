@@ -3,7 +3,6 @@ import argparse
 
 from activations_handler import ActivationsHandler
 from train_pipeline import TrainingPipeline
-from evaluate_modified_model import ModifiedModelEvaluator
 from evaluate_model import ModelEvaluator
 
 # I can run main.py as in the line below (or if I leave the arguments empty, it will use the default values)
@@ -31,10 +30,11 @@ def parse_arguments():
     # These 5 arguments are False by default. If they are specified on the command line, they will be True due
     # due to action='store_true'.
     parser.add_argument('--train_model', action='store_true', default=False, help='Train model')
+    parser.add_argument('--evaluate_model', action='store_true', default=False, help='Evaluate model')
     parser.add_argument('--store_activations', action='store_true', default=False, help='Store activations')
     parser.add_argument('--train_sae', action='store_true', default=False, help='Train SAE')
     parser.add_argument('--modify_and_store_activations', action='store_true', default=False, help='Modify and store activations')
-    parser.add_argument('--evaluate_model', action='store_true', default=False, help='Evaluate model')
+    parser.add_argument('--evaluate_modified_model', action='store_true', default=False, help='Evaluate modified model')
 
     return parser.parse_args()
 
@@ -43,12 +43,13 @@ if __name__ == '__main__':
 
     # If all of them are False, then they are set to True, so that we don't have to specify all
     # of them if we want to use all of them
-    if args.train_model == False and args.store_activations == False and args.train_sae == False and args.modify_and_store_activations == False and args.evaluate_model == False:
+    if args.train_model == False and args.store_activations == False and args.train_sae == False and args.modify_and_store_activations == False and args.evaluate_model == False and args.evaluate_modified_model == False:
         args.train_model = True
         args.store_activations = True
         args.train_sae = True
         args.modify_and_store_activations = True
         args.evaluate_model = True
+        args.evaluate_modified_model = True
 
     model_name = args.model_name
     dataset_name = args.dataset_name
@@ -75,7 +76,15 @@ if __name__ == '__main__':
                                        weights_folder_path=model_weights_folder_path)
             train_pipeline.execute_training(criterion_name='cross_entropy', 
                                             optimizer_name='sgd')   
-            train_pipeline.save_model_weights()         
+            train_pipeline.save_model_weights()  
+
+    # Step 1.1: Evaluate model
+    if args.evaluate_model:
+        model_evaluator = ModelEvaluator('single_model',
+                                         model_name,
+                                         dataset_name,
+                                         weights_folder_path = model_weights_folder_path)
+        model_evaluator.evaluate()       
 
     # Step 2: Store Activations
     if args.store_activations:
@@ -122,8 +131,9 @@ if __name__ == '__main__':
         activations_handler.save_activations() 
     
     # Step 5: Evaluate how "similar" the modified model is to the original model
-    if args.evaluate_model:
-        model_evaluator = ModelEvaluator(model_name,
+    if args.evaluate_modified_model:
+        model_evaluator = ModelEvaluator('compare_models',
+                                         model_name,
                                         dataset_name,
                                         layer_name, 
                                         original_activations_folder_path, 

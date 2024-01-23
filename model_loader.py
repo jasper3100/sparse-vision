@@ -19,7 +19,7 @@ class ModelLoader:
             # torch.hub.load("pytorch/vision", "resnet50", weights=weights)
         elif self.model_name == 'custom_mlp_1':
             self.model = CustomMLP1(img_size)
-            self.weights = None # DOESNT WORK: self.model.weights
+            self.weights = None
         elif self.model_name == 'sae':
             self.model = SparseAutoencoder(img_size, expansion_factor)
             self.weights = None

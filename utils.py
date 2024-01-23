@@ -11,7 +11,7 @@ def load_model_aux(model_name, img_size, expansion_factor=None):
 def load_data_aux(dataset_name, data_dir=None, layer_name=None):
     data_loader = InputDataLoader(dataset_name)
     data_loader.load_data(data_dir, layer_name)
-    return data_loader.train_data, data_loader.val_data, data_loader.img_size
+    return data_loader.train_data, data_loader.val_data, data_loader.img_size, data_loader.category_names
 
 def compute_ce(feature_map_1, feature_map_2):
     # cross_entropy(input, target), where target consists of probabilities

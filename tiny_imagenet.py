@@ -156,6 +156,13 @@ class TinyImageNetPaths:
           fname = os.path.join(imgs_path, fname)
           bbox = int(x0), int(y0), int(x1), int(y1)
           self.paths['train'].append((fname, label_id, nid, bbox))
+    
+    # I ADDED THE FUNCTION BELOW
+    def get_all_category_names(self):
+        all_category_names = []
+        for _, category_names in self.nid_to_words.items():
+            all_category_names.extend(category_names)
+        return all_category_names
 
 """Datastructure for the tiny image dataset.
 

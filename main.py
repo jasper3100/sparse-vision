@@ -71,7 +71,7 @@ if __name__ == '__main__':
             # MAKE MODEL EPOCHS AND LEARNING RATE PARAMETERS LATER
             train_pipeline = TrainingPipeline(model_name,
                                        dataset_name,
-                                       epochs=2, 
+                                       epochs=10, 
                                        learning_rate=0.001, 
                                        weights_folder_path=model_weights_folder_path)
             train_pipeline.execute_training(criterion_name='cross_entropy', 

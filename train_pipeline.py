@@ -28,7 +28,7 @@ class TrainingPipeline:
         self.epochs = epochs
         self.learning_rate = learning_rate
         self.weights_folder_path = weights_folder_path
-        self.train_dataloader, self.valid_dataloader, self.img_size = load_data_aux(dataset_name, 
+        self.train_dataloader, self.valid_dataloader, self.img_size, _ = load_data_aux(dataset_name, 
                                                                                     data_dir, 
                                                                                     layer_name)
         self.model, _ = load_model_aux(model_name, 

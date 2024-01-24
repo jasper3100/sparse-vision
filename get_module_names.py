@@ -6,6 +6,7 @@ class ModuleNames:
     def __init__(self, model_name, dataset_name, layer_name):
         self.model_name = model_name
         _, _, self.img_size, _ = load_data_aux(dataset_name,
+                                            batch_size=32, # since we're only interested in the img_size here, the batch_size doesn't matter that much here
                                             data_dir=None,
                                             layer_name=layer_name)
         self.model, _ = load_model_aux(self.model_name, 

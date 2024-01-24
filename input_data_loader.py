@@ -5,12 +5,14 @@ import os
 from torch.utils.data import DataLoader
 
 from dataloaders.tiny_imagenet import TinyImageNetDataset, TinyImageNetPaths
+from dataloaders.intermediate_feature_map_dataset import IntermediateActivationsDataset
 from model_loader import ModelLoader
 from utils_feature_map import load_feature_map
 
 class InputDataLoader:
-    def __init__(self, dataset_name):
+    def __init__(self, dataset_name, batch_size):
         self.dataset_name = dataset_name
+        self.batch_size = batch_size
         self.img_size = None
         self.train_data = None
         self.val_data = None
@@ -34,13 +36,12 @@ class InputDataLoader:
         self.category_names = ('fox')
 
     def load_tiny_imagenet(self, 
-                           root_dir='datasets/tiny-imagenet-200',
-                           batch_size=32):
+                           root_dir='datasets/tiny-imagenet-200'):
         # if root_dir does not exist, download the dataset
         download = not os.path.exists(root_dir)
 
         train_dataset = TinyImageNetDataset(root_dir, mode='train', preload=False, download=download)
-        self.train_data = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
+        self.train_data = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False)
         self.img_size = (3, 64, 64)
 
         tiny_imagenet_paths = TinyImageNetPaths(root_dir, download=False)
@@ -70,8 +71,7 @@ class InputDataLoader:
         '''
 
     def load_cifar_10(self,
-                      root_dir='datasets/cifar-10',
-                      batch_size=32):
+                      root_dir='datasets/cifar-10'):
         # if root_dir does not exist, download the dataset
         download = not os.path.exists(root_dir)
 
@@ -81,9 +81,9 @@ class InputDataLoader:
         ])
 
         train_dataset = torchvision.datasets.CIFAR10(root_dir, train=True, download=download, transform=transform)
-        self.train_data = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+        self.train_data = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=True)
         val_dataset = torchvision.datasets.CIFAR10(root_dir, train=False, download=download, transform=transform)
-        self.val_data = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+        self.val_data = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False)
         self.img_size = (3, 32, 32)
         self.category_names = ('plane', 'car', 'bird', 'cat',
            'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
@@ -91,16 +91,16 @@ class InputDataLoader:
     def load_intermediate_feature_maps(self,
                                        root_dir,
                                        layer_name):
-                                       #batch_size=):
-        # NEED TO MAKE THIS A PROPER DATALOADER ALLOWING FOR SPECIFYING BATCHES ETC
-        file_path = os.path.join(root_dir, f'{layer_name}_activations.h5')
         # NOT SURE ABOUT THE BELOW LINE, WANT TO BE ABLE TO ITERATE as such:
         # for inputs, targets in train_dataloader: and targets should be the same as inputs
         # because we want to compare the inputs with the inputs in the autoencoder
-        #  SET BATCH SIZE MANUALLY FOR NOW --> CHANGE LATER!!!!!
-        self.train_data = DataLoader(load_feature_map(file_path).float(), batch_size=32, shuffle=False)
-        # remove the first dimension (batch dimension) from the shape to get the image size
-        self.img_size = load_feature_map(file_path).float().shape[1:]
+        dataset = IntermediateActivationsDataset(layer_name=layer_name, 
+                                                 root_dir=root_dir, 
+                                                 batch_size=self.batch_size)
+        self.train_data = DataLoader(dataset, 
+                                    batch_size=self.batch_size, 
+                                    shuffle=True)
+        self.img_size = dataset.get_image_size()
         self.val_data = None
         self.category_names = None
 

@@ -8,6 +8,9 @@ from utils import load_model_aux, compute_ce, load_data_aux
 from utils_names import load_module_names
 from utils_feature_map import load_feature_map
 
+# I CALL LOAD DATA AUX THREE TIMES IN THIS SCRIPT --> CHECK IF THIS CAN BE DONE
+# MORE EFFICIENTLY
+
 class ModelEvaluator:
     '''
     This class evaluates the modified model (after applying the SAE) and
@@ -23,6 +26,7 @@ class ModelEvaluator:
                  model_name, 
                  dataset_name,
                  layer_name=None,
+                 batch_size=32,
                  original_activations_folder_path=None, 
                  adjusted_activations_folder_path=None,
                  weights_folder_path=None):
@@ -30,6 +34,7 @@ class ModelEvaluator:
         self.model_name = model_name
         self.dataset_name = dataset_name
         self.layer_name = layer_name
+        self.batch_size = batch_size
         self.original_activations_folder_path = original_activations_folder_path
         self.adjusted_activations_folder_path = adjusted_activations_folder_path
         self.weights_folder_path = weights_folder_path
@@ -49,8 +54,9 @@ class ModelEvaluator:
 
     def get_classification(self, output):
         _, _, self.img_size, self.category_names = load_data_aux(self.dataset_name, 
-                                            data_dir=None, 
-                                            layer_name=self.layer_name)
+                                                                 self.batch_size,
+                                                                data_dir=None, 
+                                                                layer_name=self.layer_name)
         #_, self.weights = load_model_aux(self.model_name, 
         #                                 self.img_size, 
         #                                 expansion_factor=None)
@@ -67,7 +73,10 @@ class ModelEvaluator:
             print(f"Sample {i + 1}: {category_names[i]}: {scores[i]:.1f}%")
     
     def show_classification_with_images(self, input_images, target_ids, output):
-        _, valloader, img_size, class_names = load_data_aux(self.dataset_name, data_dir=None, layer_name=None)
+        _, valloader, img_size, class_names = load_data_aux(self.dataset_name, 
+                                                            self.batch_size,
+                                                            data_dir=None, 
+                                                            layer_name=None)
         scores, predicted_classes, _ = self.get_classification(output)
 
         number_of_images = 10 # show only the first n images, 
@@ -157,6 +166,7 @@ class ModelEvaluator:
 
     def get_model_output(self, select_data, weights_folder_path):
         _, self.test_data, self.img_size, _ = load_data_aux(self.dataset_name,
+                                                            self.batch_size,
                                                             data_dir=None,
                                                             layer_name=None)
         self.model, _ = load_model_aux(self.model_name,

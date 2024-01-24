@@ -1,5 +1,3 @@
-import torch
-
 from train_process import TrainProcess
 from model_saver import ModelSaver
 from criterion import Criterion
@@ -18,6 +16,7 @@ class TrainingPipeline:
                  layer_name=None,
                  epochs=3,
                  learning_rate=0.001,
+                 batch_size=32,
                  expansion_factor=None,
                  weights_folder_path=None):
         self.model_name = model_name
@@ -27,10 +26,12 @@ class TrainingPipeline:
         self.expansion_factor = expansion_factor
         self.epochs = epochs
         self.learning_rate = learning_rate
+        self.batch_size = batch_size
         self.weights_folder_path = weights_folder_path
-        self.train_dataloader, self.valid_dataloader, self.img_size, _ = load_data_aux(dataset_name, 
-                                                                                    data_dir, 
-                                                                                    layer_name)
+        self.train_dataloader, self.valid_dataloader, self.img_size, _ = load_data_aux(dataset_name=dataset_name, 
+                                                                                    batch_size=self.batch_size,
+                                                                                    data_dir=data_dir, 
+                                                                                    layer_name=layer_name)
         self.model, _ = load_model_aux(model_name, 
                                        self.img_size, 
                                        self.expansion_factor)

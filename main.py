@@ -82,6 +82,7 @@ if __name__ == '__main__':
                                             dataset_name,
                                             epochs=model_epochs,
                                             learning_rate=model_learning_rate, 
+                                            batch_size=32,
                                             weights_folder_path=model_weights_folder_path)
             train_pipeline.execute_training(criterion_name='cross_entropy', 
                                             optimizer_name=model_optimizer)   #'adam' 'sgd'
@@ -92,6 +93,7 @@ if __name__ == '__main__':
         model_evaluator = ModelEvaluator('single_model',
                                          model_name,
                                          dataset_name,
+                                         batch_size=32,
                                          weights_folder_path = model_weights_folder_path)
         model_evaluator.evaluate()       
 
@@ -102,10 +104,11 @@ if __name__ == '__main__':
                                                 dataset_name=dataset_name, 
                                                 original_activations_folder_path=original_activations_folder_path, 
                                                 sae_weights_folder_path=sae_weights_folder_path, 
-                                                modify_output=False)
-        activations_handler.register_hooks()    
+                                                modify_output=False,
+                                                batch_size=32)
         activations_handler.forward_pass()
-        activations_handler.save_activations()
+
+    # MAKE BATCH SIZE A PARAMETER! PAY ATTENTION WHERE I NEED DIFFERENT BATCH SIZES!!!
 
     # Step 3: Train SAE on Stored Activations
     if args.train_sae:
@@ -115,9 +118,9 @@ if __name__ == '__main__':
                                             layer_name=layer_name,
                                             epochs=sae_epochs,
                                             learning_rate=sae_learning_rate,
+                                            batch_size=32,
                                             weights_folder_path=sae_weights_folder_path,
-                                            expansion_factor=expansion_factor,
-                                            )
+                                            expansion_factor=expansion_factor)
         train_pipeline_sae.execute_training(criterion_name='sae_loss',
                                             optimizer_name=sae_optimizer,
                                             lambda_sparse=0.1)
@@ -137,10 +140,9 @@ if __name__ == '__main__':
                                                 sae_model_name=sae_model_name,
                                                 sae_dataset_name='intermediate_feature_maps',
                                                 modify_output=True, 
-                                                expansion_factor=expansion_factor)
-        activations_handler_2.register_hooks()
+                                                expansion_factor=expansion_factor,
+                                                batch_size=32) # batch size here should be the same as in previous activations handler object
         activations_handler_2.forward_pass()
-        activations_handler_2.save_activations() 
     
     # Step 5: Evaluate how "similar" the modified model is to the original model
     if args.evaluate_modified_model:
@@ -148,6 +150,7 @@ if __name__ == '__main__':
                                          model_name,
                                         dataset_name,
                                         layer_name, 
-                                        original_activations_folder_path, 
-                                        adjusted_activations_folder_path)
+                                        batch_size=32,	
+                                        original_activations_folder_path=original_activations_folder_path, 
+                                        adjusted_activations_folder_path=adjusted_activations_folder_path,)
         model_evaluator.evaluate(metrics = metrics)

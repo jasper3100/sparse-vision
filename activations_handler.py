@@ -5,14 +5,13 @@ from utils import load_model_aux, load_data_aux
 from utils_names import load_module_names
 from utils_feature_map import store_feature_maps
 
-'''
-Store the activations/feature maps of a selection of layers of the model.
-If desired, the output of a specific layer can be modified, in particular, by
-passing it through a sparse autoencoder (SAE) and then using the output of the
-SAE as the output of the layer.
-'''
-
 class ActivationsHandler:
+    '''
+    Store the activations/feature maps of a selection of layers of the model.
+    If desired, the output of a specific layer can be modified, in particular, by
+    passing it through a sparse autoencoder (SAE) and then using the output of the
+    SAE as the output of the layer.
+    '''
     # constructor of the class (__init__ method)
     def __init__(self, 
                  model_name, 
@@ -24,7 +23,8 @@ class ActivationsHandler:
                  sae_model_name=None,
                  sae_dataset_name=None,
                  modify_output=False, 
-                 expansion_factor=None):
+                 expansion_factor=None,
+                 batch_size=32):
         self.model_name = model_name
         self.sae_model_name = sae_model_name
         self.layer_name = layer_name
@@ -36,7 +36,9 @@ class ActivationsHandler:
         self.activations = {} # placeholder to store activations
         self.modify_output = modify_output
         self.expansion_factor = expansion_factor
-        self.training_data, _, self.img_size, _ = load_data_aux(dataset_name,
+        self.batch_size = batch_size
+        self.training_data, _, self.img_size, _ = load_data_aux(self.dataset_name,
+                                                                self.batch_size,
                                                                 data_dir=None,
                                                                 layer_name=self.layer_name)
         self.model, _ = load_model_aux(model_name, 
@@ -51,6 +53,7 @@ class ActivationsHandler:
         if self.modify_output:
             # Instantiate the sparse autoencoder (SAE) model and load trained weights
             _, _, self.sae_img_size, _ = load_data_aux(self.sae_dataset_name,
+                                                        self.batch_size,
                                                         data_dir=self.original_activations_folder_path,
                                                         layer_name=self.layer_name)
             sae, _ = load_model_aux(self.sae_model_name, 
@@ -63,7 +66,6 @@ class ActivationsHandler:
             return modified_output
         else:
             return layer_output
-
 
     def hook(self, module, input, output, name):
         # modify output of the specified layer if requested
@@ -81,7 +83,7 @@ class ActivationsHandler:
 
     def register_hooks(self):
         # print the layer names
-        print(f"Store activations step. Print layer names: {self.module_names}")
+        # print(f"Store activations step. Print layer names: {self.module_names}")
 
         for name in self.module_names:
             m = getattr(self.model, name)
@@ -96,35 +98,63 @@ class ActivationsHandler:
         #for name in module_names:
         #    exec(f"{name}.register_forward_hook(lambda module, inp, out, name=name: self.hook(module, inp, out, name))")
 
+    def batch_forward_pass(self, inputs, batch_idx):
+        self.register_hooks()          
+        self.model(inputs)
+        self.save_activations(batch_idx)
+        self.activations = {}
+
     def forward_pass(self):
         # Once we perform the forward pass, the hook will store the activations 
-        # (and possibly modify the output of the specified layer)
+        # (and modify the output of the specified layer if desired)
         with torch.no_grad():
+            batch_idx = 0
             if self.dataset_name == 'sample_data_1':
                 self.model(self.data)
             elif self.dataset_name == 'tiny_imagenet':
                 for batch in self.training_data:
-                    inputs, _ = batch['image'], batch['label']            
-                    self.model(inputs)
-                    break # do only one batch for now
+                    inputs, _ = batch['image'], batch['label']  
+                    batch_idx += 1
+                    self.batch_forward_pass(inputs, batch_idx)
+                    if batch_idx == 2:
+                        break # do only two batches for now
             elif self.dataset_name == 'cifar_10':
                 for batch in self.training_data:
                     inputs, _ = batch
-                    self.model(inputs)
-                    break # do only one batch for now
+                    batch_idx += 1
+                    self.batch_forward_pass(inputs, batch_idx)
+                    if batch_idx == 2:
+                        break # do only one batch for now
             else:
                 raise ValueError(f"Unsupported dataset: {self.dataset_name}")
+        
+        num_batches = batch_idx
+        self.save_batch_num(num_batches)
+        print("Successfully stored features")
 
-    def save_activations(self):
+    def save_activations(self, batch_idx):
+        # if we consider the modified activations, we store them in a different location
         if self.modify_output:
-            store_feature_maps(self.activations.keys(), 
-                               self.activations, 
-                               self.adjusted_activations_folder_path)
-            # instead of self.activations.keys(), we can also use module_names (which would have to be extracted from above)
+            folder_path = self.adjusted_activations_folder_path
         else:
-            store_feature_maps(self.activations.keys(), 
-                               self.activations, 
-                               self.original_activations_folder_path)
+            folder_path = self.original_activations_folder_path
+            
+        store_feature_maps(self.activations.keys(), 
+                            self.activations, 
+                            folder_path,
+                            batch_idx)
+        # instead of self.activations.keys(), we can also use module_names (which would have to be extracted from above)
+
+    def save_batch_num(self, num_batches):
+        # if we consider the modified activations, we store them in a different location
+        if self.modify_output:
+            folder_path = self.adjusted_activations_folder_path
+        else:
+            folder_path = self.original_activations_folder_path
+        file_path = os.path.join(folder_path, 'num_batches.txt')
+        with open(file_path, 'w') as f:
+            f.write(str(num_batches))
+            
 
 
 

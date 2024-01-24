@@ -73,7 +73,7 @@ class ActivationsHandler:
             out = self.modify_layer_output(output[0])
             # if out and output[0] are different then print success message
             if not torch.equal(out, output[0]):
-                print(f"Successfully modified output of layer {name}")
+                print(f"Successfully modified output of layer {name} for one batch of data")
             output[0] = out
 
         # store the activations
@@ -98,52 +98,54 @@ class ActivationsHandler:
         #for name in module_names:
         #    exec(f"{name}.register_forward_hook(lambda module, inp, out, name=name: self.hook(module, inp, out, name))")
 
-    def batch_forward_pass(self, inputs, batch_idx):
-        self.register_hooks()          
-        self.model(inputs)
-        self.save_activations(batch_idx)
-        self.activations = {}
-
     def forward_pass(self):
         # Once we perform the forward pass, the hook will store the activations 
         # (and modify the output of the specified layer if desired)
+        # As we iterate over batches, the activations will be appended to the dictionary
+        batch_idx = 0
+        self.register_hooks() # registering the hook within the for loop will lead to undesired behavior
+        # as the hook will be registered multiple times --> activations will be captured multiple times!
         with torch.no_grad():
-            batch_idx = 0
             if self.dataset_name == 'sample_data_1':
                 self.model(self.data)
             elif self.dataset_name == 'tiny_imagenet':
                 for batch in self.training_data:
                     inputs, _ = batch['image'], batch['label']  
                     batch_idx += 1
-                    self.batch_forward_pass(inputs, batch_idx)
-                    if batch_idx == 2:
-                        break # do only two batches for now
+                    self.model(inputs)
             elif self.dataset_name == 'cifar_10':
                 for batch in self.training_data:
                     inputs, _ = batch
+                    self.model(inputs)
                     batch_idx += 1
-                    self.batch_forward_pass(inputs, batch_idx)
                     if batch_idx == 2:
-                        break # do only one batch for now
+                        break # only do 2 batches for now
             else:
                 raise ValueError(f"Unsupported dataset: {self.dataset_name}")
         
         num_batches = batch_idx
         self.save_batch_num(num_batches)
-        print("Successfully stored features")
 
-    def save_activations(self, batch_idx):
+    def save_activations(self):
         # if we consider the modified activations, we store them in a different location
         if self.modify_output:
             folder_path = self.adjusted_activations_folder_path
         else:
             folder_path = self.original_activations_folder_path
             
-        store_feature_maps(self.activations.keys(), 
-                            self.activations, 
-                            folder_path,
-                            batch_idx)
-        # instead of self.activations.keys(), we can also use module_names (which would have to be extracted from above)
+        # Combine activations from all batches
+        combined_activations = {}
+        for layer_name, activations_list in self.activations.items():
+            combined_activations[layer_name] = torch.cat(activations_list, dim=0)
+
+        store_feature_maps(combined_activations.keys(), # these are the module/layer names
+                            combined_activations, 
+                            folder_path)
+
+        if self.modify_output:
+            print(f"Successfully stored modified features with shape {combined_activations['fc1'].shape} for layer {self.layer_name}")
+        else:
+            print(f"Successfully stored original features with shape {combined_activations['fc1'].shape} for layer {self.layer_name}")
 
     def save_batch_num(self, num_batches):
         # if we consider the modified activations, we store them in a different location
@@ -154,8 +156,6 @@ class ActivationsHandler:
         file_path = os.path.join(folder_path, 'num_batches.txt')
         with open(file_path, 'w') as f:
             f.write(str(num_batches))
-            
-
 
 
 '''

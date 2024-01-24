@@ -80,8 +80,10 @@ class InputDataLoader:
             transforms.Normalize((0.5,0.5,0.5),(0.5,0.5,0.5))
         ])
 
+        # Data shuffling should be turned off here so that the activations rhat we store in the model without SAE
+        # are in the same order as the activations that we store in the model with SAE
         train_dataset = torchvision.datasets.CIFAR10(root_dir, train=True, download=download, transform=transform)
-        self.train_data = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=True)
+        self.train_data = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False)
         val_dataset = torchvision.datasets.CIFAR10(root_dir, train=False, download=download, transform=transform)
         self.val_data = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False)
         self.img_size = (3, 32, 32)

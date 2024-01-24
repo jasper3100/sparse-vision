@@ -107,6 +107,7 @@ if __name__ == '__main__':
                                                 modify_output=False,
                                                 batch_size=32)
         activations_handler.forward_pass()
+        activations_handler.save_activations()
 
     # MAKE BATCH SIZE A PARAMETER! PAY ATTENTION WHERE I NEED DIFFERENT BATCH SIZES!!!
 
@@ -143,6 +144,7 @@ if __name__ == '__main__':
                                                 expansion_factor=expansion_factor,
                                                 batch_size=32) # batch size here should be the same as in previous activations handler object
         activations_handler_2.forward_pass()
+        activations_handler_2.save_activations()
     
     # Step 5: Evaluate how "similar" the modified model is to the original model
     if args.evaluate_modified_model:

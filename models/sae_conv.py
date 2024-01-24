@@ -1,6 +1,6 @@
 import torch.nn as nn
 
-class SparseAutoencoder(nn.Module):
+class SaeConv(nn.Module):
     def __init__(self, img_size, expansion_factor):
         '''
         Autoencoder used to expand a given intermediate feature map of a model.
@@ -16,7 +16,7 @@ class SparseAutoencoder(nn.Module):
         expansion_factor : int
             Factor by which the number of channels is expanded in the encoder.
         '''
-        super(SparseAutoencoder, self).__init__()
+        super(SaeConv, self).__init__()
         # WOULD A BIAS LAYER MAKE SENSE IN OUR CASE??? CAN ONLY DETERMINE THIS ONCE WE KNOW 
         # HOW INTERPRETABLE THE INTERMEDIATE FEATURES ARE I SUPPOSE()
         #self.bias = nn.Parameter(torch.ones(1))

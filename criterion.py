@@ -1,6 +1,6 @@
 import torch.nn as nn
 
-from sparse_loss import SparseLoss
+from losses.sparse_loss import SparseLoss
 
 class Criterion(nn.Module):
     def __init__(self, criterion_name):

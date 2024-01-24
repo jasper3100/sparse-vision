@@ -4,8 +4,8 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
-from get_module_names import ModuleNames
 from utils import load_model_aux, compute_ce, load_data_aux
+from utils_names import load_module_names
 from utils_feature_map import load_feature_map
 
 class ModelEvaluator:
@@ -34,15 +34,11 @@ class ModelEvaluator:
         self.adjusted_activations_folder_path = adjusted_activations_folder_path
         self.weights_folder_path = weights_folder_path
         if self.layer_name is not None:
-            self.module_names = self.get_module_names(self.model_name, self.layer_name)
-    
-    def get_module_names(self, model_name, layer_name):
-        module_names = ModuleNames(model_name)
-        return module_names.names_of_main_modules_and_specified_layer(layer_name)
+            self.module_names = load_module_names(self.model_name, self.dataset_name, self.layer_name)
 
     def load_feature_map_last_layer(self, folder_path):
-        # the output layer is the second last layer, because layer_name is the last
-        output_layer = self.module_names[-2]
+        # the output layer is the last layer
+        output_layer = self.module_names[-1]
         file_path = os.path.join(folder_path, f'{output_layer}_activations.h5')
         return load_feature_map(file_path)
         
@@ -52,7 +48,6 @@ class ModelEvaluator:
         return scores, class_ids
 
     def get_classification(self, output):
-
         _, _, self.img_size, self.category_names = load_data_aux(self.dataset_name, 
                                             data_dir=None, 
                                             layer_name=self.layer_name)

@@ -52,7 +52,7 @@ class TrainingPipeline:
 
     def save_model_weights(self):
         model_saver = ModelSaver(self.model, self.weights_folder_path)
-        model_saver.save_model_weights()
+        model_saver.save_model_weights(layer_name=self.layer_name)
 
 
 '''

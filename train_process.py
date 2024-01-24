@@ -18,13 +18,22 @@ class TrainProcess:
         self.model.train()
         total_loss = 0.0
 
-        for inputs, targets in dataloader:
-            #inputs, targets = inputs.to(self.device), targets.to(self.device)
-
+        for data in dataloader:
+            if isinstance(data, (list, tuple)) and len(data) == 2:
+                inputs, targets = data
+                #inputs, targets = inputs.to(self.device), targets.to(self.device)
+                outputs = self.model(inputs)
+                loss = self.criterion(outputs, targets)
+            elif isinstance(data, torch.Tensor):
+                # if the dataloader doesn't contain targets, then we use
+                # the inputs as targets (f.e. autoencoder reconstruction loss)
+                inputs = data
+                outputs = self.model(inputs)
+                loss = self.criterion(outputs, inputs)
+            else:
+                raise ValueError("Unexpected data format from dataloader")
+            
             self.optimizer.zero_grad()
-
-            outputs = self.model(inputs)
-            loss = self.criterion(outputs, targets)
             loss.backward()
             self.optimizer.step()
 

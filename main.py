@@ -16,16 +16,18 @@ def parse_arguments():
 
     # command-line arguments
     parser.add_argument('--model_name', type=str, default='resnet50', help='Specify the model name')
+    parser.add_argument('--sae_model_name', type=str, default='sae_mlp', help='Specify the sae model name')
     parser.add_argument('--dataset_name', type=str, default='tiny_imagenet', help='Specify the dataset name')
     parser.add_argument('--layer_name', type=str, default='model.layer1[0].conv3', help='Specify the layer name')
     parser.add_argument('--expansion_factor', type=int, default=2, help='Specify the expansion factor')
     parser.add_argument('--directory_path', type=str, default=r'C:\Users\Jasper\Downloads\Master thesis\Code', help='Specify the directory path')
     parser.add_argument('--metrics', nargs='+', default=['ce', 'percentage_same_classification', 'print_classifications', 'intermediate_feature_maps_similarity'], help='Specify the metrics to print')
-    # ADD
-    # model train epochs, Default should be None
-    # sae train epochs
-    # model train learning rate, Default should be None
-    # sae train learning rate
+    parser.add_argument('--model_epochs', type=int, default=5, help='Specify the model epochs')
+    parser.add_argument('--model_learning_rate', type=float, default=0.1, help='Specify the model learning rate')
+    parser.add_argument('--model_optimizer', type=str, default='sgd', help='Specify the model optimizer')
+    parser.add_argument('--sae_epochs', type=int, default=2, help='Specify the sae epochs')
+    parser.add_argument('--sae_learning_rate', type=float, default=0.001, help='Specify the sae learning rate')
+    parser.add_argument('--sae_optimizer', type=str, default='adam', help='Specify the sae optimizer')
 
     # These 5 arguments are False by default. If they are specified on the command line, they will be True due
     # due to action='store_true'.
@@ -52,11 +54,18 @@ if __name__ == '__main__':
         args.evaluate_modified_model = True
 
     model_name = args.model_name
+    sae_model_name = args.sae_model_name
     dataset_name = args.dataset_name
     layer_name = args.layer_name
     expansion_factor = args.expansion_factor
     directory_path = args.directory_path
     metrics = args.metrics
+    model_epochs = args.model_epochs
+    model_learning_rate = args.model_learning_rate
+    model_optimizer = args.model_optimizer
+    sae_epochs = args.sae_epochs
+    sae_learning_rate = args.sae_learning_rate
+    sae_optimizer = args.sae_optimizer
 
     original_activations_folder_path = os.path.join(directory_path, 'original_feature_maps', model_name, dataset_name)
     model_weights_folder_path = os.path.join(directory_path, 'model_weights', model_name, dataset_name)
@@ -70,12 +79,12 @@ if __name__ == '__main__':
         elif model_name == 'custom_mlp_1':         
             # MAKE MODEL EPOCHS AND LEARNING RATE PARAMETERS LATER
             train_pipeline = TrainingPipeline(model_name,
-                                       dataset_name,
-                                       epochs=10, 
-                                       learning_rate=0.001, 
-                                       weights_folder_path=model_weights_folder_path)
+                                            dataset_name,
+                                            epochs=model_epochs,
+                                            learning_rate=model_learning_rate, 
+                                            weights_folder_path=model_weights_folder_path)
             train_pipeline.execute_training(criterion_name='cross_entropy', 
-                                            optimizer_name='sgd')   
+                                            optimizer_name=model_optimizer)   #'adam' 'sgd'
             train_pipeline.save_model_weights()  
 
     # Step 1.1: Evaluate model
@@ -88,11 +97,11 @@ if __name__ == '__main__':
 
     # Step 2: Store Activations
     if args.store_activations:
-        activations_handler = ActivationsHandler(model_name, 
-                                                layer_name, 
-                                                dataset_name, 
-                                                original_activations_folder_path, 
-                                                sae_weights_folder_path, 
+        activations_handler = ActivationsHandler(model_name=model_name, 
+                                                layer_name=layer_name, 
+                                                dataset_name=dataset_name, 
+                                                original_activations_folder_path=original_activations_folder_path, 
+                                                sae_weights_folder_path=sae_weights_folder_path, 
                                                 modify_output=False)
         activations_handler.register_hooks()    
         activations_handler.forward_pass()
@@ -100,17 +109,17 @@ if __name__ == '__main__':
 
     # Step 3: Train SAE on Stored Activations
     if args.train_sae:
-        # MAKE SAE EPOCHS AND LR PARAMETERS LATER
-        train_pipeline_sae = TrainingPipeline(model_name='sae',
-                                   dataset_name='intermediate_feature_maps',
-                                   data_dir=original_activations_folder_path, 
-                                   layer_name=layer_name,
-                                   epochs=2,
-                                   learning_rate=0.001,
-                                   expansion_factor=expansion_factor,
-                                   )
+        train_pipeline_sae = TrainingPipeline(model_name=sae_model_name,
+                                            dataset_name='intermediate_feature_maps',
+                                            data_dir=original_activations_folder_path, 
+                                            layer_name=layer_name,
+                                            epochs=sae_epochs,
+                                            learning_rate=sae_learning_rate,
+                                            weights_folder_path=sae_weights_folder_path,
+                                            expansion_factor=expansion_factor,
+                                            )
         train_pipeline_sae.execute_training(criterion_name='sae_loss',
-                                            optimizer_name='sgd',
+                                            optimizer_name=sae_optimizer,
                                             lambda_sparse=0.1)
         train_pipeline_sae.save_model_weights()
 
@@ -119,16 +128,19 @@ if __name__ == '__main__':
     # - evaluate the model on this adjusted feature map 
     # - store activations of this modified model
     if args.modify_and_store_activations:
-        activations_handler = ActivationsHandler(model_name, 
-                                                layer_name, 
-                                                dataset_name, 
-                                                adjusted_activations_folder_path, 
-                                                sae_weights_folder_path,
+        activations_handler_2 = ActivationsHandler(model_name = model_name, 
+                                                layer_name = layer_name, 
+                                                dataset_name = dataset_name,
+                                                original_activations_folder_path=original_activations_folder_path, 
+                                                sae_weights_folder_path=sae_weights_folder_path,
+                                                adjusted_activations_folder_path=adjusted_activations_folder_path,
+                                                sae_model_name=sae_model_name,
+                                                sae_dataset_name='intermediate_feature_maps',
                                                 modify_output=True, 
                                                 expansion_factor=expansion_factor)
-        activations_handler.register_hooks()
-        activations_handler.forward_pass()
-        activations_handler.save_activations() 
+        activations_handler_2.register_hooks()
+        activations_handler_2.forward_pass()
+        activations_handler_2.save_activations() 
     
     # Step 5: Evaluate how "similar" the modified model is to the original model
     if args.evaluate_modified_model:

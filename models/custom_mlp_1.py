@@ -1,14 +1,13 @@
 import torch.nn as nn
 import torch.nn.functional as F
+import torch
 
 class CustomMLP1(nn.Module):
     def __init__(self, img_size):
         # call the constructor of the parent class
         super(CustomMLP1, self).__init__()
         self.img_size = img_size
-
-        self.prod_size = self.img_size[0]*self.img_size[1]*self.img_size[2]
-        # self.prod.size = torch.prod(torch.tensor(self.img_size)).item()
+        self.prod_size = torch.prod(torch.tensor(self.img_size)).item()
 
         # define the layers
         self.fc1 = nn.Linear(self.prod_size, 256)

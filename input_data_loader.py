@@ -4,7 +4,7 @@ import torchvision.transforms as transforms
 import os
 from torch.utils.data import DataLoader
 
-from tiny_imagenet import TinyImageNetDataset, TinyImageNetPaths
+from dataloaders.tiny_imagenet import TinyImageNetDataset, TinyImageNetPaths
 from model_loader import ModelLoader
 from utils_feature_map import load_feature_map
 
@@ -93,15 +93,16 @@ class InputDataLoader:
                                        layer_name):
                                        #batch_size=):
         # NEED TO MAKE THIS A PROPER DATALOADER ALLOWING FOR SPECIFYING BATCHES ETC
-        # root dir original_activations_folder_path
         file_path = os.path.join(root_dir, f'{layer_name}_activations.h5')
         # NOT SURE ABOUT THE BELOW LINE, WANT TO BE ABLE TO ITERATE as such:
         # for inputs, targets in train_dataloader: and targets should be the same as inputs
         # because we want to compare the inputs with the inputs in the autoencoder
-        self.train_data = (load_feature_map(file_path).float(), load_feature_map(file_path).float())
-        # the last 3 dimensions of train_dataloader.shape are the image dimensions
-        self.img_size = tuple(self.train_data.shape[-3:])
+        #  SET BATCH SIZE MANUALLY FOR NOW --> CHANGE LATER!!!!!
+        self.train_data = DataLoader(load_feature_map(file_path).float(), batch_size=32, shuffle=False)
+        # remove the first dimension (batch dimension) from the shape to get the image size
+        self.img_size = load_feature_map(file_path).float().shape[1:]
         self.val_data = None
+        self.category_names = None
 
     def load_data(self, root_dir=None, layer_name=None):
         if self.dataset_name == 'sample_data_1':

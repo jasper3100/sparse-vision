@@ -5,8 +5,7 @@ from utils import load_model_aux, load_data_aux
 class ModuleNames:
     def __init__(self, model_name, dataset_name, layer_name):
         self.model_name = model_name
-        self.model, _ = load_model_aux(self.model_name)
-        _, _, self.img_size = load_data_aux(dataset_name,
+        _, _, self.img_size, _ = load_data_aux(dataset_name,
                                             data_dir=None,
                                             layer_name=layer_name)
         self.model, _ = load_model_aux(self.model_name, 
@@ -63,8 +62,19 @@ class ModuleNames:
         """
         module_names, _ = self.get_main_modules_and_names()
         module_names = [f"model.{name}" for name in module_names]
-        module_names.append(layer_name)
+        # if layer_name is not in module_names, append it
+        if layer_name not in module_names:
+            module_names.append(layer_name)
         return module_names
+    
+    def named_modules(self):
+        """
+        Get the names of all named modules in the model.
+        """
+        layer_names = [name for name, _ in self.model.named_modules()]
+        # remove emtpy string
+        layer_names = list(filter(None, layer_names))
+        return layer_names
 
 #'''
 # Example usage:

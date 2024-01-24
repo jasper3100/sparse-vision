@@ -6,12 +6,15 @@ class ModelSaver:
         self.model = model
         self.folder_path = folder_path
 
-    def save_model_weights(self, file_name='model_weights.pth'):
+    def save_model_weights(self, file_name='model_weights.pth', layer_name=None):
         # Ensure the folder exists; create it if it doesn't
         os.makedirs(self.folder_path, exist_ok=True)
 
-        # Save model weights
-        file_path = os.path.join(self.folder_path, file_name)
+        if layer_name is not None:
+            file_path = os.path.join(self.folder_path, f'{layer_name}_{file_name}')
+        else:
+            file_path = os.path.join(self.folder_path, file_name)
+            
         torch.save(self.model.state_dict(), file_path)
         print(f"Successfully stored model weights in {file_path}")
 

@@ -41,8 +41,9 @@ class ActivationsHandler:
             pass
         # store the activations
         if name not in self.activations:
-            self.activations[name] = []
-        self.activations[name].append(output)
+            self.activations[name] = output 
+        else:
+            self.activations[name] = torch.cat((self.activations[name], output), dim=0)
 
     def register_hooks(self):
         module_names = get_module_names(self.model)
@@ -66,15 +67,15 @@ class ActivationsHandler:
                     inputs, _ = batch['image'], batch['label']  
                     self.model(inputs)
                     batch_idx += 1
-                    if batch_idx == 2:
-                        break # only do 2 batches for now
+                    #if batch_idx == 2:
+                    #    break 
             elif self.dataset_name == 'cifar_10':
                 for batch in self.train_dataloader:
                     inputs, _ = batch
                     self.model(inputs)
                     batch_idx += 1
-                    if batch_idx == 2:
-                        break # only do 2 batches for now
+                    #if batch_idx == 2:
+                    #    break 
             else:
                 raise ValueError(f"Unsupported dataset: {self.dataset_name}")
         num_batches = batch_idx
@@ -86,20 +87,13 @@ class ActivationsHandler:
             folder_path = self.adjusted_activations_folder_path
         else:
             folder_path = self.original_activations_folder_path
-    
-        # Combine activations from all batches
-        combined_activations = {}
-        for layer_name, activations_list in self.activations.items():
-            combined_activations[layer_name] = torch.cat(activations_list, dim=0)
 
-        store_feature_maps(combined_activations.keys(), # these are the module/layer names
-                            combined_activations, 
-                            folder_path)
+        store_feature_maps(self.activations, folder_path)
 
         if self.sae_model is not None:
-            print(f"Successfully stored modified features with shape {combined_activations['fc1'].shape} for layer {self.layer_name}")
+            print(f"Successfully stored modified features. In particular, the features of layer {self.layer_name} with shape {self.activations[self.layer_name].shape}")
         else:
-            print(f"Successfully stored original features with shape {combined_activations['fc1'].shape} for layer {self.layer_name}")
+            print(f"Successfully stored original features. In particular, the features of layer {self.layer_name} with shape {self.activations[self.layer_name].shape}")
 
     def save_batch_num(self, num_batches):
         # if we consider the modified activations, we store them in a different location
@@ -107,6 +101,8 @@ class ActivationsHandler:
             folder_path = self.adjusted_activations_folder_path
         else:
             folder_path = self.original_activations_folder_path
+        os.makedirs(folder_path, exist_ok=True)
         file_path = os.path.join(folder_path, 'num_batches.txt')
+        
         with open(file_path, 'w') as f:
             f.write(str(num_batches))

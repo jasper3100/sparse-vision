@@ -21,11 +21,11 @@ def parse_arguments():
     parser.add_argument('--layer_name', type=str, default='model.layer1[0].conv3', help='Specify the layer name')
     parser.add_argument('--sae_expansion_factor', type=int, default=2, help='Specify the expansion factor')
     parser.add_argument('--directory_path', type=str, default=r'C:\Users\Jasper\Downloads\Master thesis\Code', help='Specify the directory path')
-    parser.add_argument('--metrics', nargs='+', default=['ce', 'percentage_same_classification', 'intermediate_feature_maps_similarity', 'train_accuracy', 'visualize_classifications'], help='Specify the metrics to print')
+    parser.add_argument('--metrics', nargs='+', default=['kld', 'percentage_same_classification', 'intermediate_feature_maps_similarity', 'train_accuracy', 'visualize_classifications'], help='Specify the metrics to print')
     parser.add_argument('--model_epochs', type=int, default=5, help='Specify the model epochs')
     parser.add_argument('--model_learning_rate', type=float, default=0.1, help='Specify the model learning rate')
     parser.add_argument('--model_optimizer', type=str, default='sgd', help='Specify the model optimizer')
-    parser.add_argument('--sae_epochs', type=int, default=2, help='Specify the sae epochs')
+    parser.add_argument('--sae_epochs', type=int, default=5, help='Specify the sae epochs')
     parser.add_argument('--sae_learning_rate', type=float, default=0.001, help='Specify the sae learning rate')
     parser.add_argument('--sae_optimizer', type=str, default='adam', help='Specify the sae optimizer')
     parser.add_argument('--batch_size', type=int, default=32, help='Specify the batch size')
@@ -76,8 +76,9 @@ if __name__ == '__main__':
     sae_weights_folder_path = os.path.join(directory_path, 'model_weights', sae_model_name, dataset_name)
     adjusted_activations_folder_path = os.path.join(directory_path, 'adjusted_feature_maps', model_name, dataset_name)
     
-    # Step 0: Load data loader (so that in each step we use the same order of batches)
-    train_dataloader, val_dataloader, category_names = load_data(dataset_name, batch_size)
+    # Step 0: Load data loader (so that when evaluating the output feature maps later on, they are in the same order
+    # that was used to train the model in the first place)
+    train_dataloader, val_dataloader, category_names, train_dataset_length = load_data(dataset_name, batch_size)
     img_size = get_img_size(dataset_name)
 
     # Step 1: Train model 
@@ -105,7 +106,9 @@ if __name__ == '__main__':
                                     
     # Step 2: Store Activations
     if args.store_activations:
-        model = load_model(model_name, img_size)
+        model = load_pretrained_model(model_name,
+                                      img_size,
+                                      model_weights_folder_path)
         model.eval()
         activations_handler = ActivationsHandler(model = model, 
                                                 train_dataloader=train_dataloader,
@@ -119,8 +122,9 @@ if __name__ == '__main__':
     # Step 3: Train SAE on Stored Activations
     if args.train_sae:
         feature_maps_dataset = IntermediateActivationsDataset(layer_name=layer_name, 
-                                                            root_dir=original_activations_folder_path, 
-                                                            batch_size=sae_batch_size)
+                                                            original_activations_folder_path=original_activations_folder_path, 
+                                                            batch_size=sae_batch_size,
+                                                            train_dataset_length=train_dataset_length)
         sae_train_dataloader = DataLoader(feature_maps_dataset, 
                                           batch_size=sae_batch_size, 
                                           shuffle=True)
@@ -132,22 +136,30 @@ if __name__ == '__main__':
                                 criterion_name='sae_loss',
                                 learning_rate=sae_learning_rate,
                                 lambda_sparse=0.1)
-        training.train(train_dataloader=sae_train_dataloader,
-                       num_epochs=sae_epochs,
-                       valid_dataloader=sae_val_dataloader)
-        training.save_model(sae_weights_folder_path, layer_name)
+        training_sae.train(train_dataloader=sae_train_dataloader,
+                            num_epochs=sae_epochs,
+                            valid_dataloader=sae_val_dataloader)
+        training_sae.save_model(sae_weights_folder_path, layer_name)
 
     # Step 4: 
     # - modify output of layer "layer_name" with trained SAE using a hook
     # - evaluate the model on this adjusted feature map 
     # - store activations of this modified model
     if args.modify_and_store_activations:  
+        # we instantiate this dataset here only for getting sae_img_size
+        feature_maps_dataset = IntermediateActivationsDataset(layer_name=layer_name, 
+                                                                original_activations_folder_path=original_activations_folder_path, 
+                                                                batch_size=sae_batch_size,
+                                                                train_dataset_length=train_dataset_length)
+        sae_img_size = feature_maps_dataset.get_image_size()
         sae_model = load_pretrained_model(sae_model_name,
                                         sae_img_size,
                                         sae_weights_folder_path,
                                         sae_expansion_factor,
                                         layer_name)
-        model = load_model(model_name, img_size, sae_expansion_factor)
+        model = load_pretrained_model(model_name,
+                                      img_size,
+                                      model_weights_folder_path)
         model.eval()
         activations_handler_modify = ActivationsHandler(model = model, 
                                                         train_dataloader=train_dataloader,
@@ -168,5 +180,5 @@ if __name__ == '__main__':
                               adjusted_activations_folder_path,
                               class_names=category_names,
                               metrics=metrics,
-                              model = model, 
+                              model=model, 
                               train_dataloader=train_dataloader) 

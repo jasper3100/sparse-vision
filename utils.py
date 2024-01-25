@@ -25,9 +25,9 @@ def get_criterion(criterion_name, lambda_sparse=None):
         raise ValueError(f"Unsupported criterion: {criterion_name}")
     
 def get_img_size(dataset_name):
-    if dataset_name == 'tiny-imagenet':
+    if dataset_name == 'tiny_imagenet':
         return (3, 64, 64)
-    elif dataset_name == 'cifar-10':
+    elif dataset_name == 'cifar_10':
         return (3, 32, 32)
     else:
         raise ValueError(f"Unsupported dataset: {dataset_name}")
@@ -91,17 +91,22 @@ def load_data(dataset_name, batch_size):
         
         category_names = train_dataset.classes
         # the classes are: ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
-        first_few_labels = [train_dataset.targets[i] for i in range(5)]
-        print("Predefined labels:", first_few_labels)
+        #first_few_labels = [train_dataset.targets[i] for i in range(5)]
+        #print("Predefined labels:", first_few_labels)
+
+        train_dataset_length = len(train_dataset) # alternatively: train_dataset.__len__()
+        # on the contrary: len(train_dataloader) returns the number of batches
+
+        return train_dataloader, val_dataloader, category_names, train_dataset_length
 
     else:
         raise ValueError(f"Unsupported dataset: {dataset_name}")
 
-def store_feature_maps(layer_names, activations, folder_path):
+def store_feature_maps(activations, folder_path):
     os.makedirs(folder_path, exist_ok=True) # create the folder
 
     # store the intermediate feature maps
-    for name in layer_names:
+    for name in activations.keys():
         activation = activations[name]
 
         # if activation is empty, we give error message
@@ -147,7 +152,12 @@ def load_pretrained_model(model_name,
     return model
 
 def get_classifications(output, category_names=None):
-    prob = F.softmax(output, dim=1)
+    # if output is already a prob distribution (f.e. if last layer of network is softmax)
+    # then we don't apply softmax. Applying softmax twice would be wrong.
+    if torch.allclose(output.sum(dim=1), torch.tensor(1.0), atol=1e-3) and (output.min().item() >= 0) and (output.max().item() <= 1):
+        prob = output
+    else:
+        prob = F.softmax(output, dim=1)
     scores, class_ids = prob.max(dim=1)
     if category_names is not None:
         category_list = [category_names[index] for index in class_ids]
@@ -167,16 +177,11 @@ def show_classification_with_images(train_dataloader,
 
     if model is not None:
         output = model(input_images)
-        title = f'{class_names[target_ids[i]]}\n{predicted_classes[i]} ({scores[i].item():.1f}%)'
-    if output is not None:             
-        scores, predicted_classes, _ = get_classifications(output)
-        # print(output.shape)
-        if output_2 is not None:
-            scores_2, predicted_classes_2, _ = get_classifications(output_2)
-            title = f'{class_names[target_ids[i]]}\n{predicted_classes[i]} ({scores[i].item():.1f}%)\n{predicted_classes_2[i]} ({scores_2[i].item():.1f}%)'
-        else:
-            title = f'{class_names[target_ids[i]]}\n{predicted_classes[i]} ({scores[i].item():.1f}%)'
-        
+    
+    scores, predicted_classes, class_ids = get_classifications(output, class_names)
+    if output_2 is not None:
+        scores_2, predicted_classes_2, _ = get_classifications(output_2, class_names)
+    
     number_of_images = 10  # show only the first n images, 
     # for showing all images in the batch use len(predicted_classes)
     fig, axes = plt.subplots(1, number_of_images + 1, figsize=(20, 3))
@@ -190,6 +195,12 @@ def show_classification_with_images(train_dataloader,
         img = input_images[i] / 2 + 0.5 # unnormalize the image
         npimg = img.numpy()
         axes[i + 1].imshow(np.transpose(npimg, (1, 2, 0)))
+
+        if output_2 is not None:
+            title = f'{class_names[target_ids[i]]}\n{predicted_classes[i]} ({100*scores[i].item():.1f}%)\n{predicted_classes_2[i]} ({100*scores_2[i].item():.1f}%)'
+        else:
+            title = f'{class_names[target_ids[i]]}\n{predicted_classes[i]} ({100*scores[i].item():.1f}%)'
+
         axes[i + 1].set_title(title, fontsize=8)
         axes[i + 1].axis('off')
 
@@ -206,3 +217,9 @@ def print_model_accuracy(model, train_dataloader):
         total_samples += target.size(0)
     accuracy = correct_predictions / total_samples
     print(f'Train accuracy: {accuracy * 100:.2f}%')
+
+def get_num_batches(root_dir):
+    file_path = os.path.join(root_dir, 'num_batches.txt')
+    with open(file_path, 'r') as file:
+        num_batches = int(file.read())
+    return num_batches 

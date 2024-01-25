@@ -1,23 +1,21 @@
 from torch.utils.data import Dataset
 import os
 
-from utils import load_feature_map
+from utils import load_feature_map, get_num_batches
 
 class IntermediateActivationsDataset(Dataset):
-    def __init__(self, layer_name, root_dir, batch_size):
+    def __init__(self, layer_name, original_activations_folder_path, batch_size, train_dataset_length):
         self.layer_name = layer_name
-        self.root_dir = root_dir
+        self.original_activations_folder_path = original_activations_folder_path
         self.batch_size = batch_size
+        self.train_dataset_length = train_dataset_length
         self.image_size = None
 
     def __len__(self):
-        file_path = os.path.join(self.root_dir, 'num_batches.txt')
-        with open(file_path, 'r') as file:
-            num_batches = int(file.read())
-        return num_batches * self.batch_size
+        return self.train_dataset_length
 
     def __getitem__(self, sample_idx):
-        file_path = os.path.join(self.root_dir, f'{self.layer_name}_activations.h5')
+        file_path = os.path.join(self.original_activations_folder_path, f'{self.layer_name}_activations.h5')
         combined_activations = load_feature_map(file_path).float()
         if sample_idx == 1:
             self.image_size = combined_activations.shape[1:]

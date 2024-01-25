@@ -90,7 +90,7 @@ class ActivationsHandler:
             m.register_forward_hook(lambda module, inp, out, name=name: self.hook(module, inp, out, name))
 
         # The below line works successfully for ResNet50:
-        #self.model.layer1[0].conv3.register_forward_hook(lambda module, inp, out, name='model.layer1[0].conv3': self.hook(module, inp, out, name))
+        self.model.layer1[0].conv3.register_forward_hook(lambda module, inp, out, name='model.layer1[0].conv3': self.hook(module, inp, out, name))
         # if I do this in ResNet50: m = getattr(module, 'layer1[0].conv3') --> not an attribute of the model
 
         # This is what I did before, but it doesn't work anymore within classes etc + using 

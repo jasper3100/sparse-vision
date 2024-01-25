@@ -18,3 +18,4 @@ class SparseLoss(nn.Module):
         l1_loss = torch.mean(torch.abs(encoded))
         total_loss = reconstruction_loss + self.lambda_sparse * l1_loss
         return total_loss
+    

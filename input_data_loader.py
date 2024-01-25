@@ -14,26 +14,8 @@ class InputDataLoader:
         self.dataset_name = dataset_name
         self.batch_size = batch_size
         self.img_size = None
-        self.train_data = None
-        self.val_data = None
-
-    def load_sample_data_1(self):
-        torch.manual_seed(0)
-        self.train_data = torch.randn(10, 3, 224, 224)
-        self.img_size = (3, 224, 224)
-        self.category_names = ('random1', 'random2', 'random3', 'random4', 'random5',
-                               'random6', 'random7', 'random8', 'random9', 'random10')
-
-    def load_image_data(self, 
-                        image_path=r"C:\Users\Jasper\Downloads\Master thesis\Code\fox.jpg", 
-                        model_name='resnet50'):
-        img = torchvision.io.read_image(image_path)
-        model = ModelLoader(model_name).load_model().model
-        weights = model.weights
-        preprocess = weights.transforms()
-        self.train_data = preprocess(img).unsqueeze(0)
-        self.img_size = (3, 224, 224)
-        self.category_names = ('fox')
+        self.train_dataloader = None
+        self.val_dataloader = None
 
     def load_tiny_imagenet(self, 
                            root_dir='datasets/tiny-imagenet-200'):
@@ -41,7 +23,7 @@ class InputDataLoader:
         download = not os.path.exists(root_dir)
 
         train_dataset = TinyImageNetDataset(root_dir, mode='train', preload=False, download=download)
-        self.train_data = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False)
+        self.train_dataloader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False)
         self.img_size = (3, 64, 64)
 
         tiny_imagenet_paths = TinyImageNetPaths(root_dir, download=False)
@@ -83,12 +65,15 @@ class InputDataLoader:
         # Data shuffling should be turned off here so that the activations rhat we store in the model without SAE
         # are in the same order as the activations that we store in the model with SAE
         train_dataset = torchvision.datasets.CIFAR10(root_dir, train=True, download=download, transform=transform)
-        self.train_data = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False)
+        self.train_dataloader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False)
         val_dataset = torchvision.datasets.CIFAR10(root_dir, train=False, download=download, transform=transform)
-        self.val_data = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False)
+        self.val_dataloader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False)
+        
         self.img_size = (3, 32, 32)
-        self.category_names = ('plane', 'car', 'bird', 'cat',
-           'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
+        self.category_names = train_dataset.classes
+        # the classes are: ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
+        first_few_labels = [train_dataset.targets[i] for i in range(5)]
+        print("Predefined labels:", first_few_labels)
 
     def load_intermediate_feature_maps(self,
                                        root_dir,
@@ -99,19 +84,15 @@ class InputDataLoader:
         dataset = IntermediateActivationsDataset(layer_name=layer_name, 
                                                  root_dir=root_dir, 
                                                  batch_size=self.batch_size)
-        self.train_data = DataLoader(dataset, 
+        self.train_dataloader = DataLoader(dataset, 
                                     batch_size=self.batch_size, 
                                     shuffle=True)
         self.img_size = dataset.get_image_size()
-        self.val_data = None
+        self.val_dataloader = None
         self.category_names = None
 
     def load_data(self, root_dir=None, layer_name=None):
-        if self.dataset_name == 'sample_data_1':
-            self.load_sample_data_1()
-        elif self.dataset_name == 'img':
-            self.load_image_data()
-        elif self.dataset_name == 'tiny_imagenet':
+        if self.dataset_name == 'tiny_imagenet':
             self.load_tiny_imagenet()
         elif self.dataset_name == 'cifar_10':
             self.load_cifar_10()

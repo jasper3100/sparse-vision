@@ -4,7 +4,7 @@ import argparse
 from activations_handler import ActivationsHandler
 from train_pipeline import TrainingPipeline
 from evaluate_model import ModelEvaluator
-
+from utils import load_data_aux
 # I can run main.py as in the line below (or if I leave the arguments empty, it will use the default values)
 # python main.py --store_activations --train_sae --modify_and_store_activations --model_name resnet18 --dataset_name cifar10 --layer_name model.layer2[0].conv1 --expansion_factor 3 --directory_path C:\Users\Jasper\Downloads\Master thesis\Code
 # python main.py --model_name resnet50 --dataset_name tiny_imagenet --layer_name model.layer1[0].conv3 --expansion_factor 2 --directory_path C:\Users\Jasper\Downloads\Master thesis\Code --metrics ce percentage_same_classification
@@ -21,13 +21,15 @@ def parse_arguments():
     parser.add_argument('--layer_name', type=str, default='model.layer1[0].conv3', help='Specify the layer name')
     parser.add_argument('--expansion_factor', type=int, default=2, help='Specify the expansion factor')
     parser.add_argument('--directory_path', type=str, default=r'C:\Users\Jasper\Downloads\Master thesis\Code', help='Specify the directory path')
-    parser.add_argument('--metrics', nargs='+', default=['ce', 'percentage_same_classification', 'print_classifications', 'intermediate_feature_maps_similarity'], help='Specify the metrics to print')
+    parser.add_argument('--metrics', nargs='+', default=['ce', 'percentage_same_classification', 'intermediate_feature_maps_similarity', 'visualize_classifications'], help='Specify the metrics to print')
     parser.add_argument('--model_epochs', type=int, default=5, help='Specify the model epochs')
     parser.add_argument('--model_learning_rate', type=float, default=0.1, help='Specify the model learning rate')
     parser.add_argument('--model_optimizer', type=str, default='sgd', help='Specify the model optimizer')
     parser.add_argument('--sae_epochs', type=int, default=2, help='Specify the sae epochs')
     parser.add_argument('--sae_learning_rate', type=float, default=0.001, help='Specify the sae learning rate')
     parser.add_argument('--sae_optimizer', type=str, default='adam', help='Specify the sae optimizer')
+    parser.add_argument('--batch_size', type=int, default=32, help='Specify the batch size')
+    parser.add_argument('--batch_size_feature_maps', type=int, default=32, help='Specify the batch size for the feature maps')
 
     # These 5 arguments are False by default. If they are specified on the command line, they will be True due
     # due to action='store_true'.
@@ -66,12 +68,17 @@ if __name__ == '__main__':
     sae_epochs = args.sae_epochs
     sae_learning_rate = args.sae_learning_rate
     sae_optimizer = args.sae_optimizer
+    batch_size = args.batch_size
+    batch_size_feature_maps = args.batch_size_feature_maps
 
     original_activations_folder_path = os.path.join(directory_path, 'original_feature_maps', model_name, dataset_name)
     model_weights_folder_path = os.path.join(directory_path, 'model_weights', model_name, dataset_name)
     sae_weights_folder_path = os.path.join(directory_path, 'trained_sae_weights', model_name, dataset_name)
     adjusted_activations_folder_path = os.path.join(directory_path, 'adjusted_feature_maps', model_name, dataset_name)
     
+    # Step 0: Load data loader (so that in each step we use the same order of batches)
+    train_dataloader, val_dataloader, img_size, category_names = load_data_aux(dataset_name, batch_size)
+
     # Step 1: Train model 
     if args.train_model:
         if model_name == 'resnet50':
@@ -82,7 +89,7 @@ if __name__ == '__main__':
                                             dataset_name,
                                             epochs=model_epochs,
                                             learning_rate=model_learning_rate, 
-                                            batch_size=32,
+                                            batch_size=batch_size,
                                             weights_folder_path=model_weights_folder_path)
             train_pipeline.execute_training(criterion_name='cross_entropy', 
                                             optimizer_name=model_optimizer)   #'adam' 'sgd'
@@ -93,7 +100,7 @@ if __name__ == '__main__':
         model_evaluator = ModelEvaluator('single_model',
                                          model_name,
                                          dataset_name,
-                                         batch_size=32,
+                                         batch_size=batch_size,
                                          weights_folder_path = model_weights_folder_path)
         model_evaluator.evaluate()       
 
@@ -105,7 +112,7 @@ if __name__ == '__main__':
                                                 original_activations_folder_path=original_activations_folder_path, 
                                                 sae_weights_folder_path=sae_weights_folder_path, 
                                                 modify_output=False,
-                                                batch_size=32)
+                                                batch_size=batch_size)
         activations_handler.forward_pass()
         activations_handler.save_activations()
 
@@ -119,7 +126,7 @@ if __name__ == '__main__':
                                             layer_name=layer_name,
                                             epochs=sae_epochs,
                                             learning_rate=sae_learning_rate,
-                                            batch_size=32,
+                                            batch_size=batch_size_feature_maps,
                                             weights_folder_path=sae_weights_folder_path,
                                             expansion_factor=expansion_factor)
         train_pipeline_sae.execute_training(criterion_name='sae_loss',
@@ -142,7 +149,7 @@ if __name__ == '__main__':
                                                 sae_dataset_name='intermediate_feature_maps',
                                                 modify_output=True, 
                                                 expansion_factor=expansion_factor,
-                                                batch_size=32) # batch size here should be the same as in previous activations handler object
+                                                batch_size=batch_size) # batch size here should be the same as in previous activations handler object
         activations_handler_2.forward_pass()
         activations_handler_2.save_activations()
     
@@ -152,7 +159,7 @@ if __name__ == '__main__':
                                          model_name,
                                         dataset_name,
                                         layer_name, 
-                                        batch_size=32,	
+                                        batch_size=batch_size,	
                                         original_activations_folder_path=original_activations_folder_path, 
                                         adjusted_activations_folder_path=adjusted_activations_folder_path,)
         model_evaluator.evaluate(metrics = metrics)

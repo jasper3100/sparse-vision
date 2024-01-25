@@ -1,21 +1,208 @@
 import torch.nn.functional as F
+import torch.nn as nn
+import torch
+import os
+from torchvision.models import resnet50, ResNet50_Weights
+import torchvision
+import torchvision.transforms as transforms
+from torch.utils.data import DataLoader
+import h5py
+import matplotlib.pyplot as plt
+import numpy as np
 
-from model_loader import ModelLoader
-from input_data_loader import InputDataLoader
+from dataloaders.tiny_imagenet import TinyImageNetDataset, TinyImageNetPaths
+from models.custom_mlp_1 import CustomMLP1
+from models.sae_conv import SaeConv
+from models.sae_mlp import SaeMLP
+from losses.sparse_loss import SparseLoss
 
-def load_model_aux(model_name, img_size, expansion_factor=None):
-    model_loader = ModelLoader(model_name)
-    model_loader.load_model(img_size, expansion_factor)
-    return model_loader.model, model_loader.weights
+def get_criterion(criterion_name, lambda_sparse=None):
+    if criterion_name == 'cross_entropy':
+        return nn.CrossEntropyLoss()
+    elif criterion_name == 'sae_loss':
+        return SparseLoss(lambda_sparse=lambda_sparse)
+    else:
+        raise ValueError(f"Unsupported criterion: {criterion_name}")
+    
+def get_img_size(dataset_name):
+    if dataset_name == 'tiny-imagenet':
+        return (3, 64, 64)
+    elif dataset_name == 'cifar-10':
+        return (3, 32, 32)
+    else:
+        raise ValueError(f"Unsupported dataset: {dataset_name}")
+    
+def save_model_weights(model, folder_path, file_name='model_weights.pth', layer_name=None):
+    os.makedirs(folder_path, exist_ok=True) # create folder if it doesn't exist
 
-def load_data_aux(dataset_name, batch_size, data_dir=None, layer_name=None):
-    data_loader = InputDataLoader(dataset_name, batch_size)
-    data_loader.load_data(root_dir=data_dir, layer_name=layer_name)
-    return data_loader.train_dataloader, data_loader.val_dataloader, data_loader.img_size, data_loader.category_names
+    # layer_name is used for SAE models, because SAE is trained on activations
+    # of a specific layer
+    if layer_name is not None:
+        file_path = os.path.join(folder_path, f'{layer_name}_{file_name}')
+    else:
+        file_path = os.path.join(folder_path, file_name)
+        
+    torch.save(model.state_dict(), file_path)
+    print(f"Successfully stored model weights in {file_path}")
 
-def compute_ce(feature_map_1, feature_map_2):
-    # cross_entropy(input, target), where target consists of probabilities
-    feature_map_1 = F.softmax(feature_map_1, dim=1)
-    #feature_map_1 = feature_map_1.to(torch.float64)
-    #feature_map_2 = feature_map_2.to(torch.float64)
-    return F.cross_entropy(feature_map_2, feature_map_1)
+def load_model(model_name, img_size=None, expansion_factor=None):
+    if model_name == 'resnet50':
+        return resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
+    elif model_name == 'custom_mlp_1':
+        return CustomMLP1(img_size)
+    elif model_name == 'sae_conv':
+        return SaeConv(img_size, expansion_factor)
+    elif model_name == 'sae_mlp':
+        return SaeMLP(img_size, expansion_factor)
+    else:
+        raise ValueError(f"Unsupported model: {model_name}")
+
+def load_data(dataset_name, batch_size):
+    if dataset_name == 'tiny_imagenet':
+        root_dir='datasets/tiny-imagenet-200'
+        # if root_dir does not exist, download the dataset
+        download = not os.path.exists(root_dir)
+
+        # Data shuffling should be turned off here so that the activations that we store in the model without SAE
+        # are in the same order as the activations that we store in the model with SAE
+        train_dataset = TinyImageNetDataset(root_dir, mode='train', preload=False, download=download)
+        train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
+        val_dataset = TinyImageNetDataset(root_dir, mode='val', preload=False, download=download)
+        val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+
+        tiny_imagenet_paths = TinyImageNetPaths(root_dir, download=False)
+        category_names = tiny_imagenet_paths.get_all_category_names()
+
+        return train_dataloader, val_dataloader, category_names
+    
+    elif dataset_name == 'cifar_10':
+        root_dir='datasets/cifar-10'
+        download = not os.path.exists(root_dir)
+
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,0.5,0.5),(0.5,0.5,0.5))
+        ])
+
+        train_dataset = torchvision.datasets.CIFAR10(root_dir, train=True, download=download, transform=transform)
+        train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
+        val_dataset = torchvision.datasets.CIFAR10(root_dir, train=False, download=download, transform=transform)
+        val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+        
+        category_names = train_dataset.classes
+        # the classes are: ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
+        first_few_labels = [train_dataset.targets[i] for i in range(5)]
+        print("Predefined labels:", first_few_labels)
+
+    else:
+        raise ValueError(f"Unsupported dataset: {dataset_name}")
+
+def store_feature_maps(layer_names, activations, folder_path):
+    os.makedirs(folder_path, exist_ok=True) # create the folder
+
+    # store the intermediate feature maps
+    for name in layer_names:
+        activation = activations[name]
+
+        # if activation is empty, we give error message
+        if activation.nelement() == 0:
+            raise ValueError(f"Activation of layer {name} is empty")
+        else:
+            activations_file_path = os.path.join(folder_path, f'{name}_activations.h5')
+            # Store activations to an HDF5 file
+            with h5py.File(activations_file_path, 'w') as h5_file:
+                h5_file.create_dataset('data', data=activation.numpy())
+
+def load_feature_map(file_path):
+    with h5py.File(file_path, 'r') as h5_file:
+        data = torch.from_numpy(h5_file['data'][:])
+    # if data is emtpy, we give error message
+    if data.nelement() == 0:
+        raise ValueError(f"Trying to load feature map but it is empty")
+    else:
+        return data
+    
+def get_module_names(model):
+    """
+    Get the names of all named modules in the model.
+    """
+    layer_names = [name for name, _ in model.named_modules()]
+    layer_names = list(filter(None, layer_names)) # remove emtpy strings
+    return layer_names
+
+def load_pretrained_model(model_name, 
+                        img_size, 
+                        weights_folder_path,
+                        sae_expansion_factor=None, # only needed for SAE models
+                        layer_name=None): # only needed for SAE models, 
+                        # which are trained on activations of a specific layer
+    model = load_model(model_name, img_size, sae_expansion_factor)
+    if layer_name is not None:
+        file_name = f'{layer_name}_model_weights.pth'
+    else:
+        file_name = 'model_weights.pth'
+    weights_file_path = os.path.join(weights_folder_path, file_name)
+    model.load_state_dict(torch.load(weights_file_path))
+    model.eval()
+    return model
+
+def get_classifications(output, category_names=None):
+    prob = F.softmax(output, dim=1)
+    scores, class_ids = prob.max(dim=1)
+    if category_names is not None:
+        category_list = [category_names[index] for index in class_ids]
+    else:
+        category_list = None
+    return scores, category_list, class_ids
+
+def show_classification_with_images(train_dataloader,
+                                    class_names, 
+                                    model=None,
+                                    output=None,
+                                    output_2=None):
+    '''
+    This function either works with available model output or the model can be used to generate the output.
+    '''
+    input_images, target_ids = next(iter(train_dataloader))  
+
+    if model is not None:
+        output = model(input_images)
+        title = f'{class_names[target_ids[i]]}\n{predicted_classes[i]} ({scores[i].item():.1f}%)'
+    if output is not None:             
+        scores, predicted_classes, _ = get_classifications(output)
+        # print(output.shape)
+        if output_2 is not None:
+            scores_2, predicted_classes_2, _ = get_classifications(output_2)
+            title = f'{class_names[target_ids[i]]}\n{predicted_classes[i]} ({scores[i].item():.1f}%)\n{predicted_classes_2[i]} ({scores_2[i].item():.1f}%)'
+        else:
+            title = f'{class_names[target_ids[i]]}\n{predicted_classes[i]} ({scores[i].item():.1f}%)'
+        
+    number_of_images = 10  # show only the first n images, 
+    # for showing all images in the batch use len(predicted_classes)
+    fig, axes = plt.subplots(1, number_of_images + 1, figsize=(20, 3))
+
+    # Add a title column to the left
+    title_column = 'True\nOriginal Prediction\nModified Prediction'
+    axes[0].text(0.5, 0.5, title_column, va='center', ha='center', fontsize=8, wrap=True)
+    axes[0].axis('off')
+
+    for i in range(number_of_images):
+        img = input_images[i] / 2 + 0.5 # unnormalize the image
+        npimg = img.numpy()
+        axes[i + 1].imshow(np.transpose(npimg, (1, 2, 0)))
+        axes[i + 1].set_title(title, fontsize=8)
+        axes[i + 1].axis('off')
+
+    plt.subplots_adjust(wspace=0.5)  # Adjust space between images
+    plt.show()
+
+def print_model_accuracy(model, train_dataloader):
+    correct_predictions = 0
+    total_samples = 0
+    for input, target in train_dataloader:
+        output = model(input)
+        _, _, class_ids = get_classifications(output)
+        correct_predictions += (class_ids == target).sum().item()
+        total_samples += target.size(0)
+    accuracy = correct_predictions / total_samples
+    print(f'Train accuracy: {accuracy * 100:.2f}%')

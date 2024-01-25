@@ -1,18 +1,22 @@
 import torch 
-import torch.nn.functional as F
 
-class TrainProcess:
+from utils import get_criterion, save_model_weights, load_model
+from optimizer import Optimizer
+
+class Training:
     '''
-    Class that handles the actual training process,
-    handling the training and validation epochs.
+    Class that handles the training process.
     '''
     def __init__(self,
                  model, 
-                 optimizer, 
-                 criterion):
+                 optimizer_name, 
+                 criterion_name,
+                 learning_rate,
+                 lambda_sparse=None):
         self.model = model
-        self.optimizer = optimizer
-        self.criterion = criterion
+        optimizer_builder = Optimizer(self.model, learning_rate, optimizer_name)
+        self.optimizer = optimizer_builder.forward()
+        self.criterion = get_criterion(criterion_name, lambda_sparse)
 
     def train_epoch(self, dataloader):
         self.model.train()
@@ -69,10 +73,7 @@ class TrainProcess:
 
         print('Training complete.')
 
-# Example usage:
-# Assuming you have a PyTorch model, criterion, and optimizer already defined
-# model = ...
-# criterion = ...
-# optimizer = ...
-# trainer = TrainProcess(model, criterion, optimizer)
-# trainer.train(train_dataloader, valid_dataloader, num_epochs)
+    def save_model(self, weights_folder_path, layer_name=None):
+        # layer_name is used for SAE models, because SAE is trained on activations
+        # of a specific layer
+        save_model_weights(self.model, weights_folder_path, layer_name=layer_name)

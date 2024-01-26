@@ -159,6 +159,7 @@ if __name__ == '__main__':
                                         sae_weights_folder_path,
                                         sae_expansion_factor,
                                         layer_name)
+        sae_model.eval()
         model = load_pretrained_model(model_name,
                                       img_size,
                                       model_weights_folder_path)
@@ -178,6 +179,7 @@ if __name__ == '__main__':
         model = load_pretrained_model(model_name,
                                       img_size,
                                       model_weights_folder_path)
+        model.eval()
         evaluate_feature_maps(original_activations_folder_path,
                               adjusted_activations_folder_path,
                               class_names=category_names,

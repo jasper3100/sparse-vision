@@ -169,7 +169,8 @@ def show_classification_with_images(train_dataloader,
                                     class_names, 
                                     model=None,
                                     output=None,
-                                    output_2=None):
+                                    output_2=None,
+                                    save_path='classification_images.jpg'):
     '''
     This function either works with available model output or the model can be used to generate the output.
     '''
@@ -205,7 +206,9 @@ def show_classification_with_images(train_dataloader,
         axes[i + 1].axis('off')
 
     plt.subplots_adjust(wspace=0.5)  # Adjust space between images
-    plt.show()
+    plt.savefig(save_path)
+    plt.close()
+    #plt.show()
 
 def print_model_accuracy(model, train_dataloader):
     correct_predictions = 0
@@ -234,6 +237,7 @@ def measure_sparsity(x, threshold):
     """
     Measure the sparsity of a tensor x. Usually, the output of the SAE encoder
     went through a ReLU and thus x.abs() = x, but we apply the absolute value here
-    regardless for cases where no ReLU was applied.
+    regardless for cases where no ReLU was applied. To compute the sparsity one has to
+    do: 1 - (number of activating units / total number of units)
     """
     return (x.abs() > threshold).sum().item(), x.nelement()

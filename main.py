@@ -21,7 +21,7 @@ def parse_arguments():
     parser.add_argument('--layer_name', type=str, default='model.layer1[0].conv3', help='Specify the layer name')
     parser.add_argument('--sae_expansion_factor', type=int, default=2, help='Specify the expansion factor')
     parser.add_argument('--directory_path', type=str, default=r'C:\Users\Jasper\Downloads\Master thesis\Code', help='Specify the directory path')
-    parser.add_argument('--metrics', nargs='+', default=['kld', 'percentage_same_classification', 'intermediate_feature_maps_similarity', 'train_accuracy', 'visualize_classifications'], help='Specify the metrics to print')
+    parser.add_argument('--metrics', nargs='+', default=['kld', 'percentage_same_classification', 'intermediate_feature_maps_similarity', 'train_accuracy', 'visualize_classifications', 'sparsity'], help='Specify the metrics to print')
     parser.add_argument('--model_epochs', type=int, default=5, help='Specify the model epochs')
     parser.add_argument('--model_learning_rate', type=float, default=0.1, help='Specify the model learning rate')
     parser.add_argument('--model_optimizer', type=str, default='sgd', help='Specify the model optimizer')
@@ -30,6 +30,7 @@ def parse_arguments():
     parser.add_argument('--sae_optimizer', type=str, default='adam', help='Specify the sae optimizer')
     parser.add_argument('--batch_size', type=int, default=32, help='Specify the batch size')
     parser.add_argument('--sae_batch_size', type=int, default=32, help='Specify the batch size for the feature maps')
+    parser.add_argument('--eval_sparsity_threshold', type=float, default=0.05, help='Specify the sparsity threshold')
 
     # These 5 arguments are False by default. If they are specified on the command line, they will be True due
     # due to action='store_true'.
@@ -70,6 +71,7 @@ if __name__ == '__main__':
     sae_optimizer = args.sae_optimizer
     batch_size = args.batch_size
     sae_batch_size = args.sae_batch_size
+    eval_sparsity_threshold = args.eval_sparsity_threshold
 
     original_activations_folder_path = os.path.join(directory_path, 'original_feature_maps', model_name, dataset_name)
     model_weights_folder_path = os.path.join(directory_path, 'model_weights', model_name, dataset_name)
@@ -114,8 +116,8 @@ if __name__ == '__main__':
                                                 train_dataloader=train_dataloader,
                                                 layer_name = layer_name, 
                                                 dataset_name = dataset_name,
-                                                original_activations_folder_path=original_activations_folder_path, 
-                                                adjusted_activations_folder_path=adjusted_activations_folder_path)
+                                                folder_path=original_activations_folder_path,
+                                                eval_sparsity_threshold=eval_sparsity_threshold) 
         activations_handler.forward_pass()
         activations_handler.save_activations()
 
@@ -165,8 +167,8 @@ if __name__ == '__main__':
                                                         train_dataloader=train_dataloader,
                                                         layer_name = layer_name, 
                                                         dataset_name = dataset_name,
-                                                        original_activations_folder_path=original_activations_folder_path, 
-                                                        adjusted_activations_folder_path=adjusted_activations_folder_path,
+                                                        folder_path=adjusted_activations_folder_path,
+                                                        eval_sparsity_threshold=eval_sparsity_threshold,
                                                         sae_model=sae_model)
         activations_handler_modify.forward_pass()
         activations_handler_modify.save_activations()
@@ -181,4 +183,5 @@ if __name__ == '__main__':
                               class_names=category_names,
                               metrics=metrics,
                               model=model, 
-                              train_dataloader=train_dataloader) 
+                              train_dataloader=train_dataloader,
+                              layer_name=layer_name) 

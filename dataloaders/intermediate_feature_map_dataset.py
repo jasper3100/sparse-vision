@@ -1,7 +1,7 @@
 from torch.utils.data import Dataset
 import os
 
-from utils import load_feature_map, get_num_batches
+from utils import load_feature_map
 
 class IntermediateActivationsDataset(Dataset):
     def __init__(self, layer_name, original_activations_folder_path, batch_size, train_dataset_length):

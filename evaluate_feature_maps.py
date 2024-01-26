@@ -2,7 +2,7 @@ import os
 import torch
 import torch.nn.functional as F
 
-from utils import load_feature_map, get_classifications, show_classification_with_images, get_module_names, get_num_batches
+from utils import load_feature_map, get_classifications, show_classification_with_images, get_module_names, get_stored_number
 
 def intermediate_feature_maps_similarity(module_names, 
                                          original_activations_folder_path, 
@@ -87,10 +87,14 @@ def evaluate_feature_maps(original_activations_folder_path,
                           class_names=None,
                           metrics=None,
                           model=None,
-                          train_dataloader=None):
+                          train_dataloader=None,
+                          layer_name=None):
     module_names = get_module_names(model)
     original_output = get_feature_map_last_layer(module_names, original_activations_folder_path)
     adjusted_output = get_feature_map_last_layer(module_names, adjusted_activations_folder_path)
+
+    print(adjusted_output.shape)
+    print(original_output.shape)
 
     if metrics is None or 'kld' in metrics:
         kld = kl_divergence(adjusted_output, original_output)
@@ -105,7 +109,7 @@ def evaluate_feature_maps(original_activations_folder_path,
                                              adjusted_activations_folder_path)
         
     if metrics is None or 'train_accuracy' in metrics:
-        num_batches = get_num_batches(original_activations_folder_path)
+        num_batches = int(get_stored_number(original_activations_folder_path, 'num_batches.txt'))
         all_targets = []
         batch_idx = 0
 
@@ -115,6 +119,7 @@ def evaluate_feature_maps(original_activations_folder_path,
             if batch_idx == num_batches:
                 break
         target = torch.cat(all_targets, dim=0)
+        print(target.shape)
         original_accuracy = get_accuracy(original_output, target)
         adjusted_accuracy = get_accuracy(adjusted_output, target)
         print(f"Train accuracy of original model: {100*original_accuracy:.4f}%")
@@ -125,3 +130,9 @@ def evaluate_feature_maps(original_activations_folder_path,
                                         class_names,
                                         output=original_output, 
                                         output_2=adjusted_output)
+    
+    if metrics is None or 'sparsity' in metrics:
+        original_sparsity = get_stored_number(original_activations_folder_path, f'{layer_name}_sparsity.txt')
+        print(f"Sparsity of the {layer_name} layer output: {100*original_sparsity:.4f}%")
+        adjusted_sparsity = get_stored_number(adjusted_activations_folder_path, f'{layer_name}_sparsity.txt')
+        print(f"Sparsity of the SAE-augmented {layer_name} layer output: {100*adjusted_sparsity:.4f}%")

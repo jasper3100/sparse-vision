@@ -218,8 +218,22 @@ def print_model_accuracy(model, train_dataloader):
     accuracy = correct_predictions / total_samples
     print(f'Train accuracy: {accuracy * 100:.2f}%')
 
-def get_num_batches(root_dir):
-    file_path = os.path.join(root_dir, 'num_batches.txt')
+def save_number(x, folder_path, file_path):
+    os.makedirs(folder_path, exist_ok=True)
+    file_path = os.path.join(folder_path, file_path)
+    with open(file_path, 'w') as f:
+        f.write(str(x))
+
+def get_stored_number(folder_path, file_name):
+    file_path = os.path.join(folder_path, file_name)
     with open(file_path, 'r') as file:
-        num_batches = int(file.read())
-    return num_batches 
+        x = float(file.read())
+    return x 
+
+def measure_sparsity(x, threshold):
+    """
+    Measure the sparsity of a tensor x. Usually, the output of the SAE encoder
+    went through a ReLU and thus x.abs() = x, but we apply the absolute value here
+    regardless for cases where no ReLU was applied.
+    """
+    return (x.abs() > threshold).sum().item(), x.nelement()

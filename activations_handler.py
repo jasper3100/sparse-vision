@@ -59,6 +59,8 @@ class ActivationsHandler:
             self.activations[name] = output 
         else:
             self.activations[name] = torch.cat((self.activations[name], output), dim=0)
+        
+        return output
 
     def register_hooks(self):
         module_names = get_module_names(self.model)
@@ -98,7 +100,7 @@ class ActivationsHandler:
         num_batches = batch_idx
         save_number(num_batches, self.folder_path, 'num_batches.txt')
 
-        sparsity = self.activated_units / self.total_units
+        sparsity = 1 - self.activated_units / self.total_units
         save_number(sparsity, self.folder_path, f'{self.layer_name}_sparsity.txt')
 
     def save_activations(self):

@@ -44,7 +44,11 @@ def intermediate_feature_maps_similarity(module_names,
 
         if L2_distance:
             # calculate euclidean distance between feature maps
-            L2_dist = torch.linalg.norm(original_feature_map - adjusted_feature_map, dim=1)
+            # first, we normalize the feature maps, because otherwise the results are not comparable
+            # between feature maps with large values and small values (f.e. softmax layer output has small values)
+            normalized_original_feature_map = F.normalize(original_feature_map)
+            normalized_adjusted_feature_map = F.normalize(adjusted_feature_map)
+            L2_dist = torch.linalg.norm(normalized_original_feature_map - normalized_adjusted_feature_map, dim=1)
             L2_dist_mean = round(L2_dist.mean().item(), 2)
             L2_dist_std = round(L2_dist.std().item(), 2)        
             L2_dist_mean_list.append(L2_dist_mean)
@@ -54,7 +58,7 @@ def intermediate_feature_maps_similarity(module_names,
         if cosine_similarity:
             print(f"Layer: {module_names[i]} | Cosine similarity mean: {similarity_mean_list[i]} +/- {similarity_std_list[i]}")
         if L2_distance: 
-            print(f"Layer: {module_names[i]} | L2 distance mean: {L2_dist_mean_list[i]} +/- {L2_dist_std_list[i]}")
+            print(f"Layer: {module_names[i]} | L2 distance mean of normalized feature maps: {L2_dist_mean_list[i]} +/- {L2_dist_std_list[i]}")
         
 def get_feature_map_last_layer(module_names, folder_path):
     # the output layer is the last layer
@@ -125,14 +129,15 @@ def evaluate_feature_maps(original_activations_folder_path,
         print(f"Train accuracy of original model: {100*original_accuracy:.4f}%")
         print(f"Train accuracy of modified model: {100*adjusted_accuracy:.4f}%")
 
+    if metrics is None or 'sparsity' in metrics:
+        original_sparsity = get_stored_number(original_activations_folder_path, f'{layer_name}_sparsity.txt')
+        print(f"Mean sparsity of the {layer_name} layer output: {100*original_sparsity:.4f}%")
+        adjusted_sparsity = get_stored_number(adjusted_activations_folder_path, f'{layer_name}_sparsity.txt')
+        print(f"Mean sparsity of the SAE-augmented {layer_name} layer output: {100*adjusted_sparsity:.4f}%")
+        # mean over all samples (in training data)
+
     if metrics is None or 'visualize_classifications' in metrics:
         show_classification_with_images(train_dataloader, 
                                         class_names,
                                         output=original_output, 
                                         output_2=adjusted_output)
-    
-    if metrics is None or 'sparsity' in metrics:
-        original_sparsity = get_stored_number(original_activations_folder_path, f'{layer_name}_sparsity.txt')
-        print(f"Sparsity of the {layer_name} layer output: {100*original_sparsity:.4f}%")
-        adjusted_sparsity = get_stored_number(adjusted_activations_folder_path, f'{layer_name}_sparsity.txt')
-        print(f"Sparsity of the SAE-augmented {layer_name} layer output: {100*adjusted_sparsity:.4f}%")

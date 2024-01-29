@@ -16,6 +16,14 @@ from models.sae_conv import SaeConv
 from models.sae_mlp import SaeMLP
 from losses.sparse_loss import SparseLoss
 
+def get_optimizer(optimizer_name, model, learning_rate):
+    if optimizer_name == 'adam':
+        return torch.optim.Adam(model.parameters(), lr=learning_rate)
+    elif optimizer_name == 'sgd':
+        return torch.optim.SGD(model.parameters(), lr=learning_rate) # momentum= 0.9, weight_decay=1e-4)
+    else:
+        raise ValueError(f"Unsupported optimizer: {optimizer_name}")
+
 def get_criterion(criterion_name, lambda_sparse=None):
     if criterion_name == 'cross_entropy':
         return nn.CrossEntropyLoss()
@@ -168,13 +176,21 @@ def get_classifications(output, category_names=None):
 def show_classification_with_images(train_dataloader,
                                     class_names, 
                                     model=None,
+                                    device=None,
                                     output=None,
-                                    output_2=None,
-                                    save_path='classification_images.jpg'):
+                                    output_2=None):
     '''
     This function either works with available model output or the model can be used to generate the output.
     '''
+    os.makedirs('evaluation_results', exist_ok=True)
+    save_path = 'evaluation_results/classification_visualizations_original.png'
+    
+    n = 10  # show only the first n images, 
+    # for showing all images in the batch use len(predicted_classes)
+
     input_images, target_ids = next(iter(train_dataloader))  
+    input_images, target_ids = input_images[:n], target_ids[:n] # only show the first 10 images
+    input_images, target_ids = input_images.to(device), target_ids.to(device)
 
     if model is not None:
         output = model(input_images)
@@ -182,17 +198,16 @@ def show_classification_with_images(train_dataloader,
     scores, predicted_classes, class_ids = get_classifications(output, class_names)
     if output_2 is not None:
         scores_2, predicted_classes_2, _ = get_classifications(output_2, class_names)
+        save_path = 'evaluation_results/classification_visualizations_original_modified.png'
     
-    number_of_images = 10  # show only the first n images, 
-    # for showing all images in the batch use len(predicted_classes)
-    fig, axes = plt.subplots(1, number_of_images + 1, figsize=(20, 3))
+    fig, axes = plt.subplots(1, n + 1, figsize=(20, 3))
 
     # Add a title column to the left
     title_column = 'True\nOriginal Prediction\nModified Prediction'
     axes[0].text(0.5, 0.5, title_column, va='center', ha='center', fontsize=8, wrap=True)
     axes[0].axis('off')
 
-    for i in range(number_of_images):
+    for i in range(n):
         img = input_images[i] / 2 + 0.5 # unnormalize the image
         npimg = img.numpy()
         axes[i + 1].imshow(np.transpose(npimg, (1, 2, 0)))
@@ -210,16 +225,39 @@ def show_classification_with_images(train_dataloader,
     plt.close()
     #plt.show()
 
-def print_model_accuracy(model, train_dataloader):
+
+def print_model_accuracy(model, device, train_dataloader):
     correct_predictions = 0
     total_samples = 0
     for input, target in train_dataloader:
+        input, target = input.to(device), target.to(device)
         output = model(input)
         _, _, class_ids = get_classifications(output)
         correct_predictions += (class_ids == target).sum().item()
         total_samples += target.size(0)
     accuracy = correct_predictions / total_samples
     print(f'Train accuracy: {accuracy * 100:.2f}%')
+
+    ''' # Alternative: seems to be equally fast
+    num_batches = 1563 #int(get_stored_number(original_activations_folder_path, 'num_batches.txt'))
+    all_targets = []
+    all_outputs = []
+    batch_idx = 0
+
+    for input, target in train_dataloader:
+        input, target = input.to(device), target.to(device)
+        batch_idx += 1
+        output = model(input)
+        all_targets.append(target)
+        all_outputs.append(output)
+        if batch_idx == num_batches:
+                break
+    target = torch.cat(all_targets, dim=0)
+    output = torch.cat(all_outputs, dim=0)
+    #print(target.shape)
+    accuracy = get_accuracy(output, target)
+    print(f'Train accuracy: {accuracy * 100:.2f}%')
+    '''
 
 def save_number(x, folder_path, file_path):
     os.makedirs(folder_path, exist_ok=True)
@@ -241,3 +279,7 @@ def measure_sparsity(x, threshold):
     do: 1 - (number of activating units / total number of units)
     """
     return (x.abs() > threshold).sum().item(), x.nelement()
+
+def get_accuracy(output, target):
+    _, _, class_ids = get_classifications(output)
+    return (class_ids == target).sum().item() / target.size(0)

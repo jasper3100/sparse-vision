@@ -4,10 +4,9 @@ import os
 from utils import load_feature_map
 
 class IntermediateActivationsDataset(Dataset):
-    def __init__(self, layer_name, original_activations_folder_path, batch_size, train_dataset_length):
+    def __init__(self, layer_name, original_activations_folder_path, train_dataset_length):
         self.layer_name = layer_name
         self.original_activations_folder_path = original_activations_folder_path
-        self.batch_size = batch_size
         self.train_dataset_length = train_dataset_length
         self.image_size = None
 

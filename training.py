@@ -27,7 +27,7 @@ class Training:
             #print(data.shape)
             if isinstance(data, (list, tuple)) and len(data) == 2:
                 inputs, targets = data
-                print(inputs.shape, targets.shape)
+                #print(inputs.shape, targets.shape)
                 inputs, targets = inputs.to(self.device), targets.to(self.device)
                 outputs = self.model(inputs)
                 loss = self.criterion(outputs, targets)

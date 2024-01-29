@@ -12,6 +12,7 @@ class ActivationsHandler:
     # constructor of the class (__init__ method)
     def __init__(self, 
                  model,
+                 device,
                  train_dataloader,
                  layer_name, 
                  dataset_name, 
@@ -19,6 +20,7 @@ class ActivationsHandler:
                  eval_sparsity_threshold,
                  sae_model=None):
         self.model = model
+        self.device = device
         self.train_dataloader = train_dataloader
         self.layer_name = layer_name
         self.dataset_name = dataset_name
@@ -42,8 +44,8 @@ class ActivationsHandler:
             self.activated_units += activated_units
             self.total_units += total_units
 
-            if not torch.equal(out, output):
-                print(f"Successfully modified output of layer {name} for one batch of data")
+            #if not torch.equal(out, output):
+            #    print(f"Successfully modified output of layer {name} for one batch of data")
             output = out
         elif self.sae_model is None and name == self.layer_name: 
             # When passing the data through the original model we measure the sparsity of the output of the
@@ -82,6 +84,7 @@ class ActivationsHandler:
             if self.dataset_name == 'tiny_imagenet':
                 for batch in self.train_dataloader:
                     inputs, _ = batch['image'], batch['label']  
+                    inputs = inputs.to(self.device)
                     self.model(inputs)
                     batch_idx += 1
                     #if batch_idx == 2:
@@ -89,6 +92,7 @@ class ActivationsHandler:
             elif self.dataset_name == 'cifar_10':
                 for batch in self.train_dataloader:
                     inputs, _ = batch
+                    inputs = inputs.to(self.device)
                     self.model(inputs)
                     batch_idx += 1
                     #if batch_idx == 2:

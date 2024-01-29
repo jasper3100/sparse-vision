@@ -1,7 +1,7 @@
 import torch 
+import time
 
-from utils import get_criterion, save_model_weights, load_model
-from optimizer import Optimizer
+from utils import get_criterion, save_model_weights, get_optimizer
 
 class Training:
     '''
@@ -9,31 +9,40 @@ class Training:
     '''
     def __init__(self,
                  model, 
+                 device,
                  optimizer_name, 
                  criterion_name,
                  learning_rate,
                  lambda_sparse=None):
         self.model = model
-        optimizer_builder = Optimizer(self.model, learning_rate, optimizer_name)
-        self.optimizer = optimizer_builder.forward()
+        self.device = device
+        self.optimizer = get_optimizer(optimizer_name, self.model, learning_rate)
         self.criterion = get_criterion(criterion_name, lambda_sparse)
 
     def train_epoch(self, dataloader):
         self.model.train()
         total_loss = 0.0
-
+        idx = 0
         for data in dataloader:
+            #print(data.shape)
             if isinstance(data, (list, tuple)) and len(data) == 2:
                 inputs, targets = data
-                #inputs, targets = inputs.to(self.device), targets.to(self.device)
+                print(inputs.shape, targets.shape)
+                inputs, targets = inputs.to(self.device), targets.to(self.device)
                 outputs = self.model(inputs)
                 loss = self.criterion(outputs, targets)
+                idx += 1
+                if idx == 10:
+                    break
             elif isinstance(data, torch.Tensor):
                 # if the dataloader doesn't contain targets, then we use
                 # the inputs as targets (f.e. autoencoder reconstruction loss)
-                inputs = data
+                inputs = data.to(self.device)
                 outputs = self.model(inputs)
                 loss = self.criterion(outputs, inputs)
+                idx += 1
+                if idx == 10:
+                    break
             else:
                 raise ValueError("Unexpected data format from dataloader")
             
@@ -42,6 +51,7 @@ class Training:
             self.optimizer.step()
 
             total_loss += loss.item()
+            print("One batch done.")
 
         return total_loss / len(dataloader)
 
@@ -50,12 +60,22 @@ class Training:
         total_loss = 0.0
 
         with torch.no_grad():
-            for inputs, targets in dataloader:
-                #inputs, targets = inputs.to(self.device), targets.to(self.device)
-
-                outputs = self.model(inputs)
-                loss = self.criterion(outputs, targets)
-
+            for data in dataloader:
+                #data = data.to(self.device)
+                if isinstance(data, (list, tuple)) and len(data) == 2:
+                    inputs, targets = data
+                    inputs, targets = inputs.to(self.device), targets.to(self.device)
+                    outputs = self.model(inputs)
+                    loss = self.criterion(outputs, targets)
+                elif isinstance(data, torch.Tensor):
+                    # if the dataloader doesn't contain targets, then we use
+                    # the inputs as targets (f.e. autoencoder reconstruction loss)
+                    inputs = data.to(self.device)
+                    outputs = self.model(inputs)
+                    loss = self.criterion(outputs, inputs)
+                else:
+                    raise ValueError("Unexpected data format from dataloader")
+                
                 total_loss += loss.item()
 
         return total_loss / len(dataloader)

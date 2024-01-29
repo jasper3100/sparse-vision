@@ -1,5 +1,7 @@
 import os
 import argparse
+import time
+import torch
 
 from activations_handler import ActivationsHandler
 from training import Training
@@ -78,41 +80,65 @@ if __name__ == '__main__':
     sae_weights_folder_path = os.path.join(directory_path, 'model_weights', sae_model_name, dataset_name)
     adjusted_activations_folder_path = os.path.join(directory_path, 'adjusted_feature_maps', model_name, dataset_name)
     
+    if torch.cuda.is_available():
+        device = torch.device('cuda')
+        print('Using GPU')
+    else:
+        device = torch.device('cpu')
+        print('Using CPU')
+
+    start0 = time.process_time()
     # Step 0: Load data loader (so that when evaluating the output feature maps later on, they are in the same order
     # that was used to train the model in the first place)
     train_dataloader, val_dataloader, category_names, train_dataset_length = load_data(dataset_name, batch_size)
     img_size = get_img_size(dataset_name)
+    print("Seconds taken to load data: ", time.process_time() - start0)
 
     # Step 1: Train model 
     if args.train_model:
+        #start1 = time.process_time()
         if model_name == 'resnet50':
             pass # since resnet50 is pretrained
         elif model_name == 'custom_mlp_1':  
             model = load_model(model_name, img_size)
-            training = Training(model=model,
-                                optimizer_name=model_optimizer,
-                                criterion_name='cross_entropy',
-                                learning_rate=model_learning_rate)
-            training.train(train_dataloader=train_dataloader,
-                           num_epochs=model_epochs,
-                           valid_dataloader=val_dataloader)
-            training.save_model(model_weights_folder_path)
+            model = model.to(device)
+            with torch.autograd.profiler.profile(use_cuda=True) as prof:
+                training = Training(model=model,
+                                    device=device,
+                                    optimizer_name=model_optimizer,
+                                    criterion_name='cross_entropy',
+                                    learning_rate=model_learning_rate)
+                training.train(train_dataloader=train_dataloader,
+                                num_epochs=model_epochs,
+                                valid_dataloader=val_dataloader)
+            print(prof)
+            print(prof.key_averages().table(sort_by="cuda_time_total"))
+            #training.save_model(model_weights_folder_path)
+        #print("Seconds taken to train model: ", time.process_time() - start1)
 
     # Step 1.1: Evaluate model
     if args.evaluate_model:
+        start11 = time.process_time()
         model = load_pretrained_model(model_name,
-                                      img_size,
-                                      model_weights_folder_path)
-        print_model_accuracy(model, train_dataloader)
-        show_classification_with_images(train_dataloader,category_names,model=model)
-                                    
+                                    img_size,
+                                    model_weights_folder_path)
+        model = model.to(device)
+        print_model_accuracy(model, device, train_dataloader)
+        show_classification_with_images(train_dataloader,
+                                        category_names,
+                                        model=model, 
+                                        device=device)
+        print("Seconds taken to evaluate model: ", time.process_time() - start11)
+
     # Step 2: Store Activations
     if args.store_activations:
+        start2 = time.process_time()
         model = load_pretrained_model(model_name,
                                       img_size,
                                       model_weights_folder_path)
-        model.eval()
+        model = model.to(device)
         activations_handler = ActivationsHandler(model = model, 
+                                                 device=device,
                                                 train_dataloader=train_dataloader,
                                                 layer_name = layer_name, 
                                                 dataset_name = dataset_name,
@@ -120,38 +146,49 @@ if __name__ == '__main__':
                                                 eval_sparsity_threshold=eval_sparsity_threshold) 
         activations_handler.forward_pass()
         activations_handler.save_activations()
+        print("Seconds taken to store activations: ", time.process_time() - start2)
 
     # Step 3: Train SAE on Stored Activations
     if args.train_sae:
+        #start3 = time.process_time()
         feature_maps_dataset = IntermediateActivationsDataset(layer_name=layer_name, 
-                                                            original_activations_folder_path=original_activations_folder_path, 
-                                                            batch_size=sae_batch_size,
+                                                            original_activations_folder_path=original_activations_folder_path,
                                                             train_dataset_length=train_dataset_length)
         sae_train_dataloader = DataLoader(feature_maps_dataset, 
                                           batch_size=sae_batch_size, 
+                                          #num_workers=4,
                                           shuffle=True)
         sae_img_size = feature_maps_dataset.get_image_size()
         sae_val_dataloader = None
         sae_model = load_model(sae_model_name, sae_img_size, sae_expansion_factor)
-        training_sae = Training(model=sae_model,
-                                optimizer_name=sae_optimizer,
-                                criterion_name='sae_loss',
-                                learning_rate=sae_learning_rate,
-                                lambda_sparse=0.1)
-        training_sae.train(train_dataloader=sae_train_dataloader,
-                            num_epochs=sae_epochs,
-                            valid_dataloader=sae_val_dataloader)
-        training_sae.save_model(sae_weights_folder_path, layer_name)
+        sae_model = sae_model.to(device)
+        #print("Seconds taken to train SAE: ", time.time() - start3)
+        #'''
+        with torch.autograd.profiler.profile(use_cuda=True) as prof:
+            training_sae = Training(model=sae_model,
+                                    device=device,
+                                    optimizer_name=sae_optimizer,
+                                    criterion_name='sae_loss',
+                                    learning_rate=sae_learning_rate,
+                                    lambda_sparse=0.1)
+            training_sae.train(train_dataloader=sae_train_dataloader,
+                                num_epochs=sae_epochs,
+                                valid_dataloader=sae_val_dataloader)
+        print(prof)
+        print(prof.key_averages().table(sort_by="cuda_time_total"))
+        #training_sae.save_model(sae_weights_folder_path, layer_name)
+        #'''
+        #print("Seconds taken to train SAE: ", time.process_time() - start3)
 
     # Step 4: 
     # - modify output of layer "layer_name" with trained SAE using a hook
     # - evaluate the model on this adjusted feature map 
     # - store activations of this modified model
-    if args.modify_and_store_activations:  
+    if args.modify_and_store_activations:
+        start4 = time.process_time()
         # we instantiate this dataset here only for getting sae_img_size
         feature_maps_dataset = IntermediateActivationsDataset(layer_name=layer_name, 
                                                                 original_activations_folder_path=original_activations_folder_path, 
-                                                                batch_size=sae_batch_size,
                                                                 train_dataset_length=train_dataset_length)
         sae_img_size = feature_maps_dataset.get_image_size()
         sae_model = load_pretrained_model(sae_model_name,
@@ -159,12 +196,13 @@ if __name__ == '__main__':
                                         sae_weights_folder_path,
                                         sae_expansion_factor,
                                         layer_name)
-        sae_model.eval()
+        sae_model = sae_model.to(device)
         model = load_pretrained_model(model_name,
                                       img_size,
                                       model_weights_folder_path)
-        model.eval()
+        model = model.to(device)
         activations_handler_modify = ActivationsHandler(model = model, 
+                                                        device=device,
                                                         train_dataloader=train_dataloader,
                                                         layer_name = layer_name, 
                                                         dataset_name = dataset_name,
@@ -173,17 +211,21 @@ if __name__ == '__main__':
                                                         sae_model=sae_model)
         activations_handler_modify.forward_pass()
         activations_handler_modify.save_activations()
+        print("Seconds taken to modify and store activations: ", time.process_time() - start4)
     
     # Step 5: Evaluate how "similar" the modified model is to the original model
     if args.evaluate_modified_model:
+        start5 = time.process_time()
         model = load_pretrained_model(model_name,
                                       img_size,
                                       model_weights_folder_path)
-        model.eval()
+        model = model.to(device)
         evaluate_feature_maps(original_activations_folder_path,
                               adjusted_activations_folder_path,
                               class_names=category_names,
                               metrics=metrics,
                               model=model, 
+                              device=device,
                               train_dataloader=train_dataloader,
                               layer_name=layer_name) 
+        print("Seconds taken to evaluate modified model: ", time.process_time() - start5)

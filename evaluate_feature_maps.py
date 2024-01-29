@@ -1,9 +1,9 @@
 import os
 import torch
 import torch.nn.functional as F
+import time
 
-from utils import load_feature_map, get_classifications, show_classification_with_images, get_module_names, get_stored_number
-
+from utils import load_feature_map, get_classifications, show_classification_with_images, get_module_names, get_stored_number, get_accuracy
 def intermediate_feature_maps_similarity(module_names, 
                                          original_activations_folder_path, 
                                          adjusted_activations_folder_path,
@@ -82,15 +82,12 @@ def kl_divergence(input, target):
     return F.kl_div(torch.log(input), target, reduction='batchmean')
     # equivalent to: (target * (torch.log(target) - torch.log(input))).sum() / target.size(0)
 
-def get_accuracy(output, target):
-    _, _, class_ids = get_classifications(output)
-    return (class_ids == target).sum().item() / target.size(0)
-
 def evaluate_feature_maps(original_activations_folder_path,
                           adjusted_activations_folder_path,
                           class_names=None,
                           metrics=None,
                           model=None,
+                          device=None,
                           train_dataloader=None,
                           layer_name=None):
     module_names = get_module_names(model)
@@ -117,6 +114,8 @@ def evaluate_feature_maps(original_activations_folder_path,
         all_targets = []
         batch_idx = 0
 
+        start_time = time.time()
+        start_cpu_time = time.process_time()
         for _, target in train_dataloader:
             batch_idx += 1
             all_targets.append(target)
@@ -126,6 +125,10 @@ def evaluate_feature_maps(original_activations_folder_path,
         print(target.shape)
         original_accuracy = get_accuracy(original_output, target)
         adjusted_accuracy = get_accuracy(adjusted_output, target)
+        end_time = time.time()
+        end_cpu_time = time.process_time()
+        print(f"Time elapsed: {end_time - start_time:.4f} seconds")
+        print(f"CPU time elapsed: {end_cpu_time - start_cpu_time:.4f} seconds")
         print(f"Train accuracy of original model: {100*original_accuracy:.4f}%")
         print(f"Train accuracy of modified model: {100*adjusted_accuracy:.4f}%")
 

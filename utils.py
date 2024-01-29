@@ -65,13 +65,14 @@ def load_model(model_name, img_size=None, expansion_factor=None):
     else:
         raise ValueError(f"Unsupported model: {model_name}")
 
-def load_data(dataset_name, batch_size):
+def load_data(directory_path, dataset_name, batch_size):
     if dataset_name == 'tiny_imagenet':
         root_dir='datasets/tiny-imagenet-200'
         # if root_dir does not exist, download the dataset
+        root_dir=os.path.join(directory_path, root_dir)
+        download = not os.path.exists(root_dir)
         if not os.path.exists(root_dir):
             os.makedirs(root_dir, exist_ok=True)
-        download = not os.path.exists(root_dir)
 
         # Data shuffling should be turned off here so that the activations that we store in the model without SAE
         # are in the same order as the activations that we store in the model with SAE
@@ -88,9 +89,10 @@ def load_data(dataset_name, batch_size):
     elif dataset_name == 'cifar_10':
         root_dir='datasets/cifar-10'
         # if root_dir does not exist, download the dataset
+        root_dir=os.path.join(directory_path, root_dir)
+        download = not os.path.exists(root_dir)
         if not os.path.exists(root_dir):
             os.makedirs(root_dir, exist_ok=True)
-        download = not os.path.exists(root_dir)
 
         transform = transforms.Compose([
             transforms.ToTensor(),

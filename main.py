@@ -102,17 +102,17 @@ if __name__ == '__main__':
         elif model_name == 'custom_mlp_1':  
             model = load_model(model_name, img_size)
             model = model.to(device)
-            with torch.autograd.profiler.profile(use_cuda=True) as prof:
-                training = Training(model=model,
-                                    device=device,
-                                    optimizer_name=model_optimizer,
-                                    criterion_name='cross_entropy',
-                                    learning_rate=model_learning_rate)
-                training.train(train_dataloader=train_dataloader,
-                                num_epochs=model_epochs,
-                                valid_dataloader=val_dataloader)
-            print(prof)
-            print(prof.key_averages().table(sort_by="cuda_time_total"))
+            #with torch.autograd.profiler.profile(use_cuda=True) as prof:
+            training = Training(model=model,
+                                device=device,
+                                optimizer_name=model_optimizer,
+                                criterion_name='cross_entropy',
+                                learning_rate=model_learning_rate)
+            training.train(train_dataloader=train_dataloader,
+                            num_epochs=model_epochs,
+                            valid_dataloader=val_dataloader)
+            #print(prof)
+            #print(prof.key_averages().table(sort_by="cuda_time_total"))
             #training.save_model(model_weights_folder_path)
         #print("Seconds taken to train model: ", time.process_time() - start1)
 

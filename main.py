@@ -90,7 +90,7 @@ if __name__ == '__main__':
     start0 = time.process_time()
     # Step 0: Load data loader (so that when evaluating the output feature maps later on, they are in the same order
     # that was used to train the model in the first place)
-    train_dataloader, val_dataloader, category_names, train_dataset_length = load_data(dataset_name, batch_size)
+    train_dataloader, val_dataloader, category_names, train_dataset_length = load_data(directory_path, dataset_name, batch_size)
     img_size = get_img_size(dataset_name)
     print("Seconds taken to load data: ", time.process_time() - start0)
 

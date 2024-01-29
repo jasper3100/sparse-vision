@@ -91,7 +91,8 @@ def load_data(directory_path, dataset_name, batch_size):
         #root_dir='datasets/cifar-10'
         # if root_dir does not exist, download the dataset
         #root_dir=os.path.join(directory_path, root_dir)
-        root_dir=r'\lustre\home\jtoussaint\master_thesis\datasets\cifar-10'
+        #root_dir=r'\lustre\home\jtoussaint\master_thesis\datasets\cifar-10'
+        root_dir='/lustre/home/jtoussaint/master_thesis/datasets/cifar-10'
         download = not os.path.exists(root_dir)
         if not os.path.exists(root_dir):
             os.makedirs(root_dir, exist_ok=True)

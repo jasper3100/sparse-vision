@@ -69,6 +69,8 @@ def load_data(dataset_name, batch_size):
     if dataset_name == 'tiny_imagenet':
         root_dir='datasets/tiny-imagenet-200'
         # if root_dir does not exist, download the dataset
+        if not os.path.exists(root_dir):
+            os.makedirs(root_dir, exist_ok=True)
         download = not os.path.exists(root_dir)
 
         # Data shuffling should be turned off here so that the activations that we store in the model without SAE
@@ -85,6 +87,9 @@ def load_data(dataset_name, batch_size):
     
     elif dataset_name == 'cifar_10':
         root_dir='datasets/cifar-10'
+        # if root_dir does not exist, download the dataset
+        if not os.path.exists(root_dir):
+            os.makedirs(root_dir, exist_ok=True)
         download = not os.path.exists(root_dir)
 
         transform = transforms.Compose([

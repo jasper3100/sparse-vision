@@ -26,9 +26,10 @@ def parse_arguments(name=None):
     parser.add_argument('--directory_path', type=str, default=r'C:\Users\Jasper\Downloads\Master thesis\Code', help='Specify the directory path')
     parser.add_argument('--metrics', nargs='+', default=['kld', 'percentage_same_classification', 'intermediate_feature_maps_similarity', 'train_accuracy', 'visualize_classifications', 'sparsity'], help='Specify the metrics to print')
     parser.add_argument('--eval_sparsity_threshold', type=float, default=0.05, help='Specify the sparsity threshold')
+    parser.add_argument('--run_group_ID', type=str, default='main', help='ID of group of runs for W&B')
 
     # if we are in main.py, and not in main_gridsearch.py
-    if name is None:
+    if name=='main':
         parser.add_argument('--steps_to_execute', type=str, default='123456', help='Specify which steps to execute')
         parser.add_argument('--model_epochs', type=int, default=5, help='Specify the model epochs')
         parser.add_argument('--model_learning_rate', type=float, default=0.1, help='Specify the model learning rate')
@@ -38,15 +39,19 @@ def parse_arguments(name=None):
         parser.add_argument('--sae_optimizer', type=str, default='adam', help='Specify the sae optimizer')
         parser.add_argument('--batch_size', type=int, default=32, help='Specify the batch size')
         parser.add_argument('--sae_batch_size', type=int, default=32, help='Specify the batch size for the feature maps')
-        
+    elif name=='gridsearch':
+        pass
+    else:
+        raise ValueError('Specify whether you are in main.py or in main_gridsearch.py')
     return parser.parse_args()
 
-def get_vars(name=None):
-    args = parse_arguments(name)
-    return args.steps_to_execute, args.model_name, args.sae_model_name, args.dataset_name, args.layer_name, args.sae_expansion_factor, args.directory_path, args.metrics, args.eval_sparsity_threshold, args.model_epochs, args.model_learning_rate, args.model_optimizer, args.sae_epochs, args.sae_learning_rate, args.sae_optimizer, args.batch_size, args.sae_batch_size
+def get_vars(args, name):
+    if name=='main':
+        return args.model_name, args.sae_model_name, args.dataset_name, args.layer_name, args.sae_expansion_factor, args.directory_path, args.metrics, args.eval_sparsity_threshold, args.run_group_ID, args.steps_to_execute, args.model_epochs, args.model_learning_rate, args.model_optimizer, args.sae_epochs, args.sae_learning_rate, args.sae_optimizer, args.batch_size, args.sae_batch_size
+    elif name=='gridsearch':
+        return args.model_name, args.sae_model_name, args.dataset_name, args.layer_name, args.sae_expansion_factor, args.directory_path, args.metrics, args.eval_sparsity_threshold, args.run_group_ID
 
-def execute_project(steps_to_execute, 
-                    model_name, 
+def execute_project(model_name, 
                     sae_model_name, 
                     dataset_name, 
                     layer_name, 
@@ -54,6 +59,8 @@ def execute_project(steps_to_execute,
                     directory_path, 
                     metrics, 
                     eval_sparsity_threshold,
+                    run_group_ID,
+                    steps_to_execute, 
                     model_epochs, 
                     model_learning_rate, 
                     model_optimizer, 
@@ -78,9 +85,13 @@ def execute_project(steps_to_execute,
         device = torch.device('cpu')
         print('Using CPU')
 
+    print(run_group_ID)
+
     wandb.login()
     wandb.init(project="master-thesis",
-                name="run",
+                #name="run",
+                group=run_group_ID,
+                #job_type="train", can specify job type for adding description
                 config={"steps_to_execute": steps_to_execute,
                         "model_name": model_name,
                         "sae_model_name": sae_model_name,
@@ -267,7 +278,6 @@ def execute_project(steps_to_execute,
     wandb.finish()
 
 if __name__ == '__main__':
-    args = parse_arguments()
-
-    variables = get_vars()
+    args = parse_arguments(name='main')
+    variables = get_vars(args, name='main')
     execute_project(*variables)

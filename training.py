@@ -93,7 +93,7 @@ class Training:
 
         print('Training complete.')
 
-    def save_model(self, weights_folder_path, layer_name=None):
+    def save_model(self, weights_folder_path, layer_name=None, params=None):
         # layer_name is used for SAE models, because SAE is trained on activations
         # of a specific layer
-        save_model_weights(self.model, weights_folder_path, layer_name=layer_name)
+        save_model_weights(self.model, weights_folder_path, layer_name=layer_name, params=params)

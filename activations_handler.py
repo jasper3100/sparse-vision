@@ -1,6 +1,6 @@
 import torch 
 
-from utils import store_feature_maps, get_module_names, measure_sparsity, save_number
+from utils import store_feature_maps, get_module_names, measure_sparsity, save_number, get_file_path
 
 class ActivationsHandler:
     '''
@@ -18,6 +18,7 @@ class ActivationsHandler:
                  dataset_name, 
                  folder_path, 
                  eval_sparsity_threshold,
+                 params,
                  sae_model=None):
         self.model = model
         self.device = device
@@ -26,6 +27,7 @@ class ActivationsHandler:
         self.dataset_name = dataset_name
         self.folder_path = folder_path
         self.eval_sparsity_threshold = eval_sparsity_threshold
+        self.params = params
         self.sae_model = sae_model
 
         self.activations = {} # placeholder to store activations
@@ -102,13 +104,15 @@ class ActivationsHandler:
         # Storing the number of batches is useful if we want to use less batches than the 
         # total number of batches for debugging purposes
         num_batches = batch_idx
-        save_number(num_batches, self.folder_path, 'num_batches.txt')
+        file_path = get_file_path(self.folder_path, self.layer_name, self.params, 'num_batches.txt')
+        save_number(num_batches, file_path)
 
         sparsity = 1 - self.activated_units / self.total_units
-        save_number(sparsity, self.folder_path, f'{self.layer_name}_sparsity.txt')
+        file_path = get_file_path(self.folder_path, self.layer_name, self.params, 'sparsity.txt')
+        save_number(sparsity, file_path)
 
     def save_activations(self):
-        store_feature_maps(self.activations, self.folder_path)
+        store_feature_maps(self.activations, self.folder_path, params=self.params)
 
         if self.sae_model is not None:
             print(f"Successfully stored modified features. In particular, the features of layer {self.layer_name} with shape {self.activations[self.layer_name].shape}")

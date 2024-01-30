@@ -3,10 +3,13 @@ import torch
 import torch.nn.functional as F
 import time
 
-from utils import load_feature_map, get_classifications, show_classification_with_images, get_module_names, get_stored_number, get_accuracy
+from utils import load_feature_map, get_classifications, show_classification_with_images, get_module_names, get_stored_number, get_accuracy, get_file_path
+
 def intermediate_feature_maps_similarity(module_names, 
                                          original_activations_folder_path, 
                                          adjusted_activations_folder_path,
+                                         model_params,
+                                         sae_params,
                                          L2_distance=True,
                                          cosine_similarity=False):
     '''
@@ -20,8 +23,8 @@ def intermediate_feature_maps_similarity(module_names,
     L2_dist_std_list = []
 
     for name in module_names:
-        original_activations_file_path = os.path.join(original_activations_folder_path, f'{name}_activations.h5')
-        adjusted_activations_file_path = os.path.join(adjusted_activations_folder_path, f'{name}_activations.h5')
+        original_activations_file_path = get_file_path(original_activations_folder_path, layer_name=name, params=model_params, file_name='activations.h5')
+        adjusted_activations_file_path = get_file_path(adjusted_activations_folder_path, layer_name=name, params=sae_params, file_name='activations.h5')
 
         original_feature_map = load_feature_map(original_activations_file_path)
         adjusted_feature_map = load_feature_map(adjusted_activations_file_path)
@@ -60,10 +63,10 @@ def intermediate_feature_maps_similarity(module_names,
         if L2_distance: 
             print(f"Layer: {module_names[i]} | L2 distance mean of normalized feature maps: {L2_dist_mean_list[i]} +/- {L2_dist_std_list[i]}")
         
-def get_feature_map_last_layer(module_names, folder_path):
+def get_feature_map_last_layer(module_names, folder_path, params):
     # the output layer is the last layer
     output_layer = module_names[-1]
-    file_path = os.path.join(folder_path, f'{output_layer}_activations.h5')
+    file_path = get_file_path(folder_path, layer_name=output_layer, params=params, file_name='activations.h5')
     return load_feature_map(file_path)
 
 def print_percentage_same_classification(original_output, adjusted_output):
@@ -84,6 +87,9 @@ def kl_divergence(input, target):
 
 def evaluate_feature_maps(original_activations_folder_path,
                           adjusted_activations_folder_path,
+                          model_params,
+                          sae_params,
+                          evaluation_results_folder_path=None,
                           class_names=None,
                           metrics=None,
                           model=None,
@@ -91,8 +97,8 @@ def evaluate_feature_maps(original_activations_folder_path,
                           train_dataloader=None,
                           layer_name=None):
     module_names = get_module_names(model)
-    original_output = get_feature_map_last_layer(module_names, original_activations_folder_path)
-    adjusted_output = get_feature_map_last_layer(module_names, adjusted_activations_folder_path)
+    original_output = get_feature_map_last_layer(module_names, original_activations_folder_path, model_params)
+    adjusted_output = get_feature_map_last_layer(module_names, adjusted_activations_folder_path, sae_params)
 
     print(adjusted_output.shape)
     print(original_output.shape)
@@ -107,10 +113,13 @@ def evaluate_feature_maps(original_activations_folder_path,
     if metrics is None or 'intermediate_feature_maps_similarity' in metrics:
         intermediate_feature_maps_similarity(module_names, 
                                              original_activations_folder_path, 
-                                             adjusted_activations_folder_path)
+                                             adjusted_activations_folder_path,
+                                             model_params,
+                                             sae_params)
         
     if metrics is None or 'train_accuracy' in metrics:
-        num_batches = int(get_stored_number(original_activations_folder_path, 'num_batches.txt'))
+        batch_file_path = get_file_path(original_activations_folder_path, layer_name=layer_name, params=model_params, file_name='num_batches.txt')
+        num_batches = int(get_stored_number(batch_file_path))
         all_targets = []
         batch_idx = 0
 
@@ -133,14 +142,18 @@ def evaluate_feature_maps(original_activations_folder_path,
         print(f"Train accuracy of modified model: {100*adjusted_accuracy:.4f}%")
 
     if metrics is None or 'sparsity' in metrics:
-        original_sparsity = get_stored_number(original_activations_folder_path, f'{layer_name}_sparsity.txt')
+        original_sparsity_file_path = get_file_path(original_activations_folder_path, layer_name=layer_name, params=model_params, file_name='sparsity.txt')
+        adjusted_sparsity_file_path = get_file_path(adjusted_activations_folder_path, layer_name=layer_name, params=sae_params, file_name='sparsity.txt')
+        original_sparsity = get_stored_number(original_sparsity_file_path)
         print(f"Mean sparsity of the {layer_name} layer output: {100*original_sparsity:.4f}%")
-        adjusted_sparsity = get_stored_number(adjusted_activations_folder_path, f'{layer_name}_sparsity.txt')
-        print(f"Mean sparsity of the SAE-augmented {layer_name} layer output: {100*adjusted_sparsity:.4f}%")
+        adjusted_sparsity = get_stored_number(adjusted_sparsity_file_path)
+        print(f"Mean sparsity of the SAE encoder output, i.e., the augmented {layer_name} layer output: {100*adjusted_sparsity:.4f}%")
         # mean over all samples (in training data)
 
     if metrics is None or 'visualize_classifications' in metrics:
         show_classification_with_images(train_dataloader, 
                                         class_names,
+                                        folder_path=evaluation_results_folder_path,
+                                        layer_name=layer_name,
                                         output=original_output, 
                                         output_2=adjusted_output)

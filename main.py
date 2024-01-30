@@ -17,6 +17,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description="Setting parameters")
 
     # command-line arguments
+    parser.add_argument('--steps_to_execute', type=str, default='123456', help='Specify which steps to execute')
     parser.add_argument('--model_name', type=str, default='resnet50', help='Specify the model name')
     parser.add_argument('--sae_model_name', type=str, default='sae_mlp', help='Specify the sae model name')
     parser.add_argument('--dataset_name', type=str, default='tiny_imagenet', help='Specify the dataset name')
@@ -34,30 +35,12 @@ def parse_arguments():
     parser.add_argument('--sae_batch_size', type=int, default=32, help='Specify the batch size for the feature maps')
     parser.add_argument('--eval_sparsity_threshold', type=float, default=0.05, help='Specify the sparsity threshold')
 
-    # These 5 arguments are False by default. If they are specified on the command line, they will be True due
-    # due to action='store_true'.
-    parser.add_argument('--train_model', action='store_true', default=False, help='Train model')
-    parser.add_argument('--evaluate_model', action='store_true', default=False, help='Evaluate model')
-    parser.add_argument('--store_activations', action='store_true', default=False, help='Store activations')
-    parser.add_argument('--train_sae', action='store_true', default=False, help='Train SAE')
-    parser.add_argument('--modify_and_store_activations', action='store_true', default=False, help='Modify and store activations')
-    parser.add_argument('--evaluate_modified_model', action='store_true', default=False, help='Evaluate modified model')
-
     return parser.parse_args()
 
 if __name__ == '__main__':
     args = parse_arguments()
 
-    # If all of them are False, then they are set to True, so that we don't have to specify all
-    # of them if we want to use all of them
-    if args.train_model == False and args.store_activations == False and args.train_sae == False and args.modify_and_store_activations == False and args.evaluate_model == False and args.evaluate_modified_model == False:
-        args.train_model = True
-        args.store_activations = True
-        args.train_sae = True
-        args.modify_and_store_activations = True
-        args.evaluate_model = True
-        args.evaluate_modified_model = True
-
+    steps_to_execute = args.steps_to_execute
     model_name = args.model_name
     sae_model_name = args.sae_model_name
     dataset_name = args.dataset_name
@@ -98,7 +81,7 @@ if __name__ == '__main__':
     print("Seconds taken to load data: ", time.process_time() - start0)
 
     # Step 1: Train model 
-    if args.train_model:
+    if "1" in steps_to_execute:
         #start1 = time.process_time()
         if model_name == 'resnet50':
             pass # since resnet50 is pretrained
@@ -119,8 +102,8 @@ if __name__ == '__main__':
             training.save_model(model_weights_folder_path, params=model_params)
         #print("Seconds taken to train model: ", time.process_time() - start1)
 
-    # Step 1.1: Evaluate model
-    if args.evaluate_model:
+    # Step 2: Evaluate model
+    if "2" in steps_to_execute:
         #start11 = time.process_time()
         model = load_pretrained_model(model_name,
                                     img_size,
@@ -136,8 +119,8 @@ if __name__ == '__main__':
                                         params=model_params)
         #print("Seconds taken to evaluate model: ", time.process_time() - start11)
 
-    # Step 2: Store Activations
-    if args.store_activations:
+    # Step 3: Store Activations
+    if "3" in steps_to_execute:
         start2 = time.process_time()
         model = load_pretrained_model(model_name,
                                       img_size,
@@ -156,8 +139,8 @@ if __name__ == '__main__':
         activations_handler.save_activations()
         print("Seconds taken to store activations: ", time.process_time() - start2)
 
-    # Step 3: Train SAE on Stored Activations
-    if args.train_sae:
+    # Step 4: Train SAE on Stored Activations
+    if "4" in steps_to_execute:
         #start3 = time.process_time()
         feature_maps_dataset = IntermediateActivationsDataset(layer_name=layer_name, 
                                                             original_activations_folder_path=original_activations_folder_path,
@@ -189,11 +172,11 @@ if __name__ == '__main__':
         #'''
         #print("Seconds taken to train SAE: ", time.process_time() - start3)
 
-    # Step 4: 
+    # Step 5: 
     # - modify output of layer "layer_name" with trained SAE using a hook
     # - evaluate the model on this adjusted feature map 
     # - store activations of this modified model
-    if args.modify_and_store_activations:
+    if "5" in steps_to_execute:
         start4 = time.process_time()
         # we instantiate this dataset here only for getting sae_img_size
         feature_maps_dataset = IntermediateActivationsDataset(layer_name=layer_name, 
@@ -226,8 +209,8 @@ if __name__ == '__main__':
         activations_handler_modify.save_activations()
         print("Seconds taken to modify and store activations: ", time.process_time() - start4)
     
-    # Step 5: Evaluate how "similar" the modified model is to the original model
-    if args.evaluate_modified_model:
+    # Step 6: Evaluate how "similar" the modified model is to the original model
+    if "6" in steps_to_execute:
         start5 = time.process_time()
         model = load_pretrained_model(model_name,
                                       img_size,

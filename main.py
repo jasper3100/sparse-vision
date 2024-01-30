@@ -14,11 +14,10 @@ from evaluate_feature_maps import evaluate_feature_maps
 # python main.py --store_activations --train_sae --modify_and_store_activations --model_name resnet18 --dataset_name cifar10 --layer_name model.layer2[0].conv1 --sae_expansion_factor 3 --directory_path C:\Users\Jasper\Downloads\Master thesis\Code
 # python main.py --model_name resnet50 --dataset_name tiny_imagenet --layer_name model.layer1[0].conv3 --sae_expansion_factor 2 --directory_path C:\Users\Jasper\Downloads\Master thesis\Code --metrics ce percentage_same_classification
 
-def parse_arguments():
+def parse_arguments(name=None):
     parser = argparse.ArgumentParser(description="Setting parameters")
 
     # command-line arguments
-    parser.add_argument('--steps_to_execute', type=str, default='123456', help='Specify which steps to execute')
     parser.add_argument('--model_name', type=str, default='resnet50', help='Specify the model name')
     parser.add_argument('--sae_model_name', type=str, default='sae_mlp', help='Specify the sae model name')
     parser.add_argument('--dataset_name', type=str, default='tiny_imagenet', help='Specify the dataset name')
@@ -26,38 +25,43 @@ def parse_arguments():
     parser.add_argument('--sae_expansion_factor', type=int, default=2, help='Specify the expansion factor')
     parser.add_argument('--directory_path', type=str, default=r'C:\Users\Jasper\Downloads\Master thesis\Code', help='Specify the directory path')
     parser.add_argument('--metrics', nargs='+', default=['kld', 'percentage_same_classification', 'intermediate_feature_maps_similarity', 'train_accuracy', 'visualize_classifications', 'sparsity'], help='Specify the metrics to print')
-    parser.add_argument('--model_epochs', type=int, default=5, help='Specify the model epochs')
-    parser.add_argument('--model_learning_rate', type=float, default=0.1, help='Specify the model learning rate')
-    parser.add_argument('--model_optimizer', type=str, default='sgd', help='Specify the model optimizer')
-    parser.add_argument('--sae_epochs', type=int, default=5, help='Specify the sae epochs')
-    parser.add_argument('--sae_learning_rate', type=float, default=0.001, help='Specify the sae learning rate')
-    parser.add_argument('--sae_optimizer', type=str, default='adam', help='Specify the sae optimizer')
-    parser.add_argument('--batch_size', type=int, default=32, help='Specify the batch size')
-    parser.add_argument('--sae_batch_size', type=int, default=32, help='Specify the batch size for the feature maps')
     parser.add_argument('--eval_sparsity_threshold', type=float, default=0.05, help='Specify the sparsity threshold')
 
+    # if we are in main.py, and not in main_gridsearch.py
+    if name is None:
+        parser.add_argument('--steps_to_execute', type=str, default='123456', help='Specify which steps to execute')
+        parser.add_argument('--model_epochs', type=int, default=5, help='Specify the model epochs')
+        parser.add_argument('--model_learning_rate', type=float, default=0.1, help='Specify the model learning rate')
+        parser.add_argument('--model_optimizer', type=str, default='sgd', help='Specify the model optimizer')
+        parser.add_argument('--sae_epochs', type=int, default=5, help='Specify the sae epochs')
+        parser.add_argument('--sae_learning_rate', type=float, default=0.001, help='Specify the sae learning rate')
+        parser.add_argument('--sae_optimizer', type=str, default='adam', help='Specify the sae optimizer')
+        parser.add_argument('--batch_size', type=int, default=32, help='Specify the batch size')
+        parser.add_argument('--sae_batch_size', type=int, default=32, help='Specify the batch size for the feature maps')
+        
     return parser.parse_args()
 
-if __name__ == '__main__':
-    args = parse_arguments()
+def get_vars(name=None):
+    args = parse_arguments(name)
+    return args.steps_to_execute, args.model_name, args.sae_model_name, args.dataset_name, args.layer_name, args.sae_expansion_factor, args.directory_path, args.metrics, args.eval_sparsity_threshold, args.model_epochs, args.model_learning_rate, args.model_optimizer, args.sae_epochs, args.sae_learning_rate, args.sae_optimizer, args.batch_size, args.sae_batch_size
 
-    steps_to_execute = args.steps_to_execute
-    model_name = args.model_name
-    sae_model_name = args.sae_model_name
-    dataset_name = args.dataset_name
-    layer_name = args.layer_name
-    sae_expansion_factor = args.sae_expansion_factor
-    directory_path = args.directory_path
-    metrics = args.metrics
-    model_epochs = args.model_epochs
-    model_learning_rate = args.model_learning_rate
-    model_optimizer = args.model_optimizer
-    sae_epochs = args.sae_epochs
-    sae_learning_rate = args.sae_learning_rate
-    sae_optimizer = args.sae_optimizer
-    batch_size = args.batch_size
-    sae_batch_size = args.sae_batch_size
-    eval_sparsity_threshold = args.eval_sparsity_threshold
+def execute_project(steps_to_execute, 
+                    model_name, 
+                    sae_model_name, 
+                    dataset_name, 
+                    layer_name, 
+                    sae_expansion_factor, 
+                    directory_path, 
+                    metrics, 
+                    eval_sparsity_threshold,
+                    model_epochs, 
+                    model_learning_rate, 
+                    model_optimizer, 
+                    sae_epochs, 
+                    sae_learning_rate, 
+                    sae_optimizer, 
+                    batch_size, 
+                    sae_batch_size):
     model_params = {'epochs': model_epochs, 'learning_rate': model_learning_rate, 'batch_size': batch_size, 'optimizer': model_optimizer}
     sae_params = {'epochs': sae_epochs, 'learning_rate': sae_learning_rate, 'batch_size': sae_batch_size, 'optimizer': sae_optimizer}
 
@@ -261,3 +265,9 @@ if __name__ == '__main__':
         print("Seconds taken to evaluate modified model: ", time.process_time() - start5)
 
     wandb.finish()
+
+if __name__ == '__main__':
+    args = parse_arguments()
+
+    variables = get_vars()
+    execute_project(*variables)

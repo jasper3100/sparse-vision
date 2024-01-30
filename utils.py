@@ -9,6 +9,7 @@ from torch.utils.data import DataLoader
 import h5py
 import matplotlib.pyplot as plt
 import numpy as np
+import wandb
 
 from dataloaders.tiny_imagenet import TinyImageNetDataset, TinyImageNetPaths
 from models.custom_mlp_1 import CustomMLP1
@@ -207,7 +208,7 @@ def show_classification_with_images(train_dataloader,
     if model is not None:
         output = model(input_images)
     
-    scores, predicted_classes, class_ids = get_classifications(output, class_names)
+    scores, predicted_classes, _ = get_classifications(output, class_names)
     if output_2 is not None:
         scores_2, predicted_classes_2, _ = get_classifications(output_2, class_names)
         file_path = get_file_path(folder_path, layer_name, params, 'classif_visual_original_modified.png')
@@ -237,6 +238,58 @@ def show_classification_with_images(train_dataloader,
     plt.close()
     #plt.show()
 
+def log_image_table(train_dataloader,
+                    class_names, 
+                    model=None,
+                    device=None,
+                    output=None,
+                    output_2=None):
+    n = 10  # show only the first n images, 
+    # for showing all images in the batch use len(predicted_classes)
+
+    images, target_ids = next(iter(train_dataloader))  
+    images, target_ids = images[:n], target_ids[:n] # only show the first 10 images
+    images, target_ids = images.to(device), target_ids.to(device)
+
+    if model is not None:
+        output = model(images)
+    
+    scores, predicted_classes, _ = get_classifications(output, class_names)
+    if output_2 is not None:
+        scores_2, predicted_classes_2, _ = get_classifications(output_2, class_names)
+        table = wandb.Table(columns=["image", "target", "pred","scores","pred_2","scores_2"])
+        for image, predicted_class, target_id, score, predicted_class_2, score_2 in zip(images,
+                                                                                        predicted_classes, 
+                                                                                        target_ids,#.to("cpu"), 
+                                                                                        scores, 
+                                                                                        predicted_classes_2, 
+                                                                                        scores_2):
+            img = image / 2 + 0.5
+            img = np.transpose(img.cpu().numpy(), (1,2,0))
+            score = 100*score.item()
+            score_2 = 100*score_2.item()
+            table.add_data(wandb.Image(image),
+                            class_names[target_id],
+                            predicted_class,
+                            score,
+                            predicted_class_2,
+                            score_2)
+        wandb.log({"original_and_modified_predictions_table":table}, commit=False)
+    else:
+        table = wandb.Table(columns=["image", "target", "pred", "scores"])
+        for image, predicted_class, target_id, score in zip(images, 
+                                                            predicted_classes, 
+                                                            target_ids,#.to("cpu"), 
+                                                            scores):#.to("cpu")):
+            img = image / 2 + 0.5 # unnormalize the image
+            img = np.transpose(img.cpu().numpy(), (1,2,0))
+            score = 100*score.item()
+            table.add_data(wandb.Image(image), 
+                            class_names[target_id], 
+                            predicted_class, 
+                            score)#*score.detach().numpy())
+        wandb.log({"original_predictions_table":table}, commit=False)
+    
 
 def print_model_accuracy(model, device, train_dataloader):
     correct_predictions = 0
@@ -249,6 +302,7 @@ def print_model_accuracy(model, device, train_dataloader):
         total_samples += target.size(0)
     accuracy = correct_predictions / total_samples
     print(f'Train accuracy: {accuracy * 100:.2f}%')
+    wandb.log({"model_train_accuracy": accuracy})
 
     ''' # Alternative: seems to be equally fast
     num_batches = 1563 #int(get_stored_number(original_activations_folder_path, 'num_batches.txt'))

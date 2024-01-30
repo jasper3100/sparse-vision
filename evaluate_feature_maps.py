@@ -2,8 +2,9 @@ import os
 import torch
 import torch.nn.functional as F
 import time
+import wandb
 
-from utils import load_feature_map, get_classifications, show_classification_with_images, get_module_names, get_stored_number, get_accuracy, get_file_path
+from utils import load_feature_map, get_classifications, show_classification_with_images, get_module_names, get_stored_number, get_accuracy, get_file_path, log_image_table
 
 def intermediate_feature_maps_similarity(module_names, 
                                          original_activations_folder_path, 
@@ -59,8 +60,10 @@ def intermediate_feature_maps_similarity(module_names,
 
     for i in range(len(module_names)):
         if cosine_similarity:
+            wandb.log({f"cosine_similarity_{module_names[i]}": similarity_mean_list[i]})
             print(f"Layer: {module_names[i]} | Cosine similarity mean: {similarity_mean_list[i]} +/- {similarity_std_list[i]}")
         if L2_distance: 
+            wandb.log({f"L2_distance_{module_names[i]}": L2_dist_mean_list[i]})
             print(f"Layer: {module_names[i]} | L2 distance mean of normalized feature maps: {L2_dist_mean_list[i]} +/- {L2_dist_std_list[i]}")
         
 def get_feature_map_last_layer(module_names, folder_path, params):
@@ -69,14 +72,13 @@ def get_feature_map_last_layer(module_names, folder_path, params):
     file_path = get_file_path(folder_path, layer_name=output_layer, params=params, file_name='activations.h5')
     return load_feature_map(file_path)
 
-def print_percentage_same_classification(original_output, adjusted_output):
+def percentage_same_classification(original_output, adjusted_output):
     '''
     Print percentage of samples with same classification as before
     '''
     _, _, original_class_ids = get_classifications(original_output)
     _, _, adjusted_class_ids = get_classifications(adjusted_output)
-    percentage_same_classification = (original_class_ids == adjusted_class_ids).sum().item() / original_class_ids.size(0)
-    print(f"Percentage of samples with the same classification (between original and modified model): {100*percentage_same_classification:.7f}%")
+    return 100 * ((original_class_ids == adjusted_class_ids).sum().item() / original_class_ids.size(0))
 
 def kl_divergence(input, target):
     '''
@@ -89,7 +91,7 @@ def evaluate_feature_maps(original_activations_folder_path,
                           adjusted_activations_folder_path,
                           model_params,
                           sae_params,
-                          evaluation_results_folder_path=None,
+                          evaluation_results_folder_path=None, # used by show_classification_with_images (if activated)
                           class_names=None,
                           metrics=None,
                           model=None,
@@ -105,10 +107,13 @@ def evaluate_feature_maps(original_activations_folder_path,
 
     if metrics is None or 'kld' in metrics:
         kld = kl_divergence(adjusted_output, original_output)
+        wandb.log({"kld": kld})
         print(f"KL divergence between original model's output and modified model's output: {kld:.4f}")
 
     if metrics is None or 'percentage_same_classification' in metrics:
-        print_percentage_same_classification(original_output, adjusted_output)
+        perc = percentage_same_classification(original_output, adjusted_output)
+        wandb.log({"percentage_same_classification": perc})
+        print(f"Percentage of samples with the same classification (between original and modified model): {perc:.7f}%")
 
     if metrics is None or 'intermediate_feature_maps_similarity' in metrics:
         intermediate_feature_maps_similarity(module_names, 
@@ -139,21 +144,31 @@ def evaluate_feature_maps(original_activations_folder_path,
         print(f"Time elapsed: {end_time - start_time:.4f} seconds")
         print(f"CPU time elapsed: {end_cpu_time - start_cpu_time:.4f} seconds")
         print(f"Train accuracy of original model: {100*original_accuracy:.4f}%")
+        wandb.log({"train_accuracy_original_model": 100*original_accuracy})
         print(f"Train accuracy of modified model: {100*adjusted_accuracy:.4f}%")
+        wandb.log({"train_accuracy_modified_model": 100*adjusted_accuracy})
 
     if metrics is None or 'sparsity' in metrics:
         original_sparsity_file_path = get_file_path(original_activations_folder_path, layer_name=layer_name, params=model_params, file_name='sparsity.txt')
         adjusted_sparsity_file_path = get_file_path(adjusted_activations_folder_path, layer_name=layer_name, params=sae_params, file_name='sparsity.txt')
         original_sparsity = get_stored_number(original_sparsity_file_path)
-        print(f"Mean sparsity of the {layer_name} layer output: {100*original_sparsity:.4f}%")
+        print(f"sparsity of the {layer_name} layer output: {100*original_sparsity:.4f}%")
+        wandb.log({f"sparsity_layer_{layer_name}_output": 100*original_sparsity})
         adjusted_sparsity = get_stored_number(adjusted_sparsity_file_path)
-        print(f"Mean sparsity of the SAE encoder output, i.e., the augmented {layer_name} layer output: {100*adjusted_sparsity:.4f}%")
-        # mean over all samples (in training data)
+        print(f"sparsity of the SAE encoder output, i.e., the augmented {layer_name} layer output: {100*adjusted_sparsity:.4f}%")
+        wandb.log({f"sparsity_sae_encoder_output_layer_{layer_name}": 100*adjusted_sparsity})
+        # sparsity is mean sparsity over all samples (in training data)
 
     if metrics is None or 'visualize_classifications' in metrics:
+        log_image_table(train_dataloader,
+                        class_names,
+                        output=original_output, 
+                        output_2=adjusted_output)
+        '''
         show_classification_with_images(train_dataloader, 
                                         class_names,
                                         folder_path=evaluation_results_folder_path,
                                         layer_name=layer_name,
                                         output=original_output, 
                                         output_2=adjusted_output)
+        '''

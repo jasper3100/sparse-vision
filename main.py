@@ -2,10 +2,11 @@ import os
 import argparse
 import time
 import torch
+import wandb
 
 from activations_handler import ActivationsHandler
 from training import Training
-from utils import get_img_size, load_data, load_pretrained_model, load_model, print_model_accuracy, show_classification_with_images
+from utils import get_img_size, load_data, load_pretrained_model, load_model, print_model_accuracy, log_image_table, show_classification_with_images
 from dataloaders.intermediate_feature_map_dataset import IntermediateActivationsDataset
 from torch.utils.data import DataLoader
 from evaluate_feature_maps import evaluate_feature_maps
@@ -73,6 +74,27 @@ if __name__ == '__main__':
         device = torch.device('cpu')
         print('Using CPU')
 
+    wandb.login()
+    wandb.init(project="master-thesis",
+                name="run",
+                config={"steps_to_execute": steps_to_execute,
+                        "model_name": model_name,
+                        "sae_model_name": sae_model_name,
+                        "dataset_name": dataset_name,
+                        "layer_name": layer_name,
+                        "sae_expansion_factor": sae_expansion_factor,
+                        "directory_path": directory_path,
+                        "metrics": metrics,
+                        "model_epochs": model_epochs,
+                        "model_learning_rate": model_learning_rate,
+                        "model_optimizer": model_optimizer,
+                        "sae_epochs": sae_epochs,
+                        "sae_learning_rate": sae_learning_rate,
+                        "sae_optimizer": sae_optimizer,
+                        "batch_size": batch_size,
+                        "sae_batch_size": sae_batch_size,
+                        "eval_sparsity_threshold": eval_sparsity_threshold},)
+
     start0 = time.process_time()
     # Step 0: Load data loader (so that when evaluating the output feature maps later on, they are in the same order
     # that was used to train the model in the first place)
@@ -96,6 +118,7 @@ if __name__ == '__main__':
                                 learning_rate=model_learning_rate)
             training.train(train_dataloader=train_dataloader,
                             num_epochs=model_epochs,
+                            name="model",
                             valid_dataloader=val_dataloader)
             #print(prof)
             #print(prof.key_averages().table(sort_by="cuda_time_total"))
@@ -111,12 +134,18 @@ if __name__ == '__main__':
                                     params=model_params)
         model = model.to(device)
         print_model_accuracy(model, device, train_dataloader)
+        '''
         show_classification_with_images(train_dataloader,
                                         category_names,
                                         folder_path=evaluation_results_folder_path,
                                         model=model, 
                                         device=device,
                                         params=model_params)
+        '''
+        log_image_table(train_dataloader,
+                        category_names,
+                        model=model, 
+                        device=device)
         #print("Seconds taken to evaluate model: ", time.process_time() - start11)
 
     # Step 3: Store Activations
@@ -165,6 +194,7 @@ if __name__ == '__main__':
                                 lambda_sparse=0.1)
         training_sae.train(train_dataloader=sae_train_dataloader,
                             num_epochs=sae_epochs,
+                            name="sae",
                             valid_dataloader=sae_val_dataloader)
         #print(prof)
         #print(prof.key_averages().table(sort_by="cuda_time_total"))
@@ -229,3 +259,5 @@ if __name__ == '__main__':
                               train_dataloader=train_dataloader,
                               layer_name=layer_name) 
         print("Seconds taken to evaluate modified model: ", time.process_time() - start5)
+
+    wandb.finish()

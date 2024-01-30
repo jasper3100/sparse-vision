@@ -1,5 +1,6 @@
 import torch 
 import time
+import wandb
 
 from utils import get_criterion, save_model_weights, get_optimizer
 
@@ -80,15 +81,27 @@ class Training:
 
         return total_loss / len(dataloader)
 
-    def train(self, train_dataloader, num_epochs, valid_dataloader=None):
+    def train(self, train_dataloader, num_epochs, name, valid_dataloader=None):
         print('Training started.')
         for epoch in range(num_epochs):
             train_loss = self.train_epoch(train_dataloader)
             
             if valid_dataloader is not None:
                 valid_loss = self.validate_epoch(valid_dataloader)
+                if name == "model":
+                    wandb.log({"model_train_loss": train_loss, "model_val_loss": valid_loss})
+                elif name == "sae":
+                    wandb.log({"sae_train_loss": train_loss, "sae_val_loss": valid_loss})
+                else:
+                    raise ValueError(f"Unexpected name: {name}")
                 print(f'Epoch {epoch + 1}/{num_epochs} -> Train Loss: {train_loss:.4f}, Valid Loss: {valid_loss:.4f}')
             else:
+                if name == "model":
+                    wandb.log({"model_train_loss": train_loss})
+                elif name == "sae":
+                    wandb.log({"sae_train_loss": train_loss})
+                else:
+                    raise ValueError(f"Unexpected name: {name}")
                 print(f'Epoch {epoch + 1}/{num_epochs} -> Train Loss: {train_loss:.4f}')
 
         print('Training complete.')

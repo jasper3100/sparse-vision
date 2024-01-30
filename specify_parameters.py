@@ -14,11 +14,11 @@ Step 6: evaluate modified model
 model_epochs = [1, 2]
 model_learning_rate = [0.1, 0.2]
 batch_size = [32]
-model_optimizer = ['SGD']
+model_optimizer = ['sgd']
 sae_epochs = [1, 2]
 sae_learning_rate = [0.1, 0.2]
 sae_batch_size = [32]
-sae_optimizer = ['Adam']
+sae_optimizer = ['adam']
 
 # Concatenate the list of numbers as strings and convert it to an integer
 # then we only have one argument specifying which steps to execute

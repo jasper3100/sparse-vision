@@ -11,3 +11,5 @@ loading_datasets_attempts/
 old_files/
 model_weights/
 model_weights*
+evaluation_results/
+evaluation_results*

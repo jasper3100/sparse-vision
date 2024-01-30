@@ -40,18 +40,34 @@ def get_img_size(dataset_name):
     else:
         raise ValueError(f"Unsupported dataset: {dataset_name}")
     
-def save_model_weights(model, folder_path, file_name='model_weights.pth', layer_name=None):
-    os.makedirs(folder_path, exist_ok=True) # create folder if it doesn't exist
-
-    # layer_name is used for SAE models, because SAE is trained on activations
-    # of a specific layer
-    if layer_name is not None:
-        file_path = os.path.join(folder_path, f'{layer_name}_{file_name}')
+def get_file_path(folder_path, layer_name=None, params=None, file_name=None):
+    if params is not None:
+        file_name = f'{layer_name}_{params["epochs"]}_{params["learning_rate"]}_{params["batch_size"]}_{params["optimizer"]}_{file_name}'
     else:
-        file_path = os.path.join(folder_path, file_name)
-        
+        file_name = f'{layer_name}_{file_name}'
+    file_path = os.path.join(folder_path, file_name)
+    return file_path
+    
+def save_model_weights(model, 
+                       folder_path, 
+                       layer_name=None, # layer_name is used for SAE models, because SAE is trained on activations of a specific layer
+                       params=None):
+    os.makedirs(folder_path, exist_ok=True) # create folder if it doesn't exist
+    file_path = get_file_path(folder_path, layer_name, params, 'model_weights.pth')
     torch.save(model.state_dict(), file_path)
     print(f"Successfully stored model weights in {file_path}")
+
+def load_pretrained_model(model_name, 
+                        img_size, 
+                        folder_path,
+                        sae_expansion_factor=None, # only needed for SAE models
+                        layer_name=None,# only needed for SAE models, which are trained on activations of a specific layer
+                        params=None):  
+    model = load_model(model_name, img_size, sae_expansion_factor)
+    file_path = get_file_path(folder_path, layer_name, params, 'model_weights.pth')
+    model.load_state_dict(torch.load(file_path))
+    model.eval()
+    return model
 
 def load_model(model_name, img_size=None, expansion_factor=None):
     if model_name == 'resnet50':
@@ -67,10 +83,9 @@ def load_model(model_name, img_size=None, expansion_factor=None):
 
 def load_data(directory_path, dataset_name, batch_size):
     if dataset_name == 'tiny_imagenet':
-        #root_dir='datasets/tiny-imagenet-200'
-        root_dir=r'\lustre\home\jtoussaint\master_thesis\datasets\tiny-imagenet-200'
+        root_dir='datasets/tiny-imagenet-200'
         # if root_dir does not exist, download the dataset
-        #root_dir=os.path.join(directory_path, root_dir)
+        root_dir=os.path.join(directory_path, root_dir)
         download = not os.path.exists(root_dir)
         if not os.path.exists(root_dir):
             os.makedirs(root_dir, exist_ok=True)
@@ -120,7 +135,7 @@ def load_data(directory_path, dataset_name, batch_size):
     else:
         raise ValueError(f"Unsupported dataset: {dataset_name}")
 
-def store_feature_maps(activations, folder_path):
+def store_feature_maps(activations, folder_path, params=None):
     os.makedirs(folder_path, exist_ok=True) # create the folder
 
     # store the intermediate feature maps
@@ -131,9 +146,9 @@ def store_feature_maps(activations, folder_path):
         if activation.nelement() == 0:
             raise ValueError(f"Activation of layer {name} is empty")
         else:
-            activations_file_path = os.path.join(folder_path, f'{name}_activations.h5')
+            file_path = get_file_path(folder_path, layer_name=name, params=params, file_name='activations.h5')
             # Store activations to an HDF5 file
-            with h5py.File(activations_file_path, 'w') as h5_file:
+            with h5py.File(file_path, 'w') as h5_file:
                 h5_file.create_dataset('data', data=activation.numpy())
 
 def load_feature_map(file_path):
@@ -153,22 +168,6 @@ def get_module_names(model):
     layer_names = list(filter(None, layer_names)) # remove emtpy strings
     return layer_names
 
-def load_pretrained_model(model_name, 
-                        img_size, 
-                        weights_folder_path,
-                        sae_expansion_factor=None, # only needed for SAE models
-                        layer_name=None): # only needed for SAE models, 
-                        # which are trained on activations of a specific layer
-    model = load_model(model_name, img_size, sae_expansion_factor)
-    if layer_name is not None:
-        file_name = f'{layer_name}_model_weights.pth'
-    else:
-        file_name = 'model_weights.pth'
-    weights_file_path = os.path.join(weights_folder_path, file_name)
-    model.load_state_dict(torch.load(weights_file_path))
-    model.eval()
-    return model
-
 def get_classifications(output, category_names=None):
     # if output is already a prob distribution (f.e. if last layer of network is softmax)
     # then we don't apply softmax. Applying softmax twice would be wrong.
@@ -185,15 +184,18 @@ def get_classifications(output, category_names=None):
 
 def show_classification_with_images(train_dataloader,
                                     class_names, 
+                                    folder_path=None,
+                                    layer_name=None,
                                     model=None,
                                     device=None,
                                     output=None,
-                                    output_2=None):
+                                    output_2=None,
+                                    params=None):
     '''
     This function either works with available model output or the model can be used to generate the output.
     '''
-    os.makedirs('evaluation_results', exist_ok=True)
-    save_path = 'evaluation_results/classification_visualizations_original.png'
+    os.makedirs(folder_path, exist_ok=True)
+    file_path = get_file_path(folder_path, layer_name, params, 'classif_visual_original.png')
     
     n = 10  # show only the first n images, 
     # for showing all images in the batch use len(predicted_classes)
@@ -208,7 +210,7 @@ def show_classification_with_images(train_dataloader,
     scores, predicted_classes, class_ids = get_classifications(output, class_names)
     if output_2 is not None:
         scores_2, predicted_classes_2, _ = get_classifications(output_2, class_names)
-        save_path = 'evaluation_results/classification_visualizations_original_modified.png'
+        file_path = get_file_path(folder_path, layer_name, params, 'classif_visual_original_modified.png')
     
     fig, axes = plt.subplots(1, n + 1, figsize=(20, 3))
 
@@ -219,7 +221,7 @@ def show_classification_with_images(train_dataloader,
 
     for i in range(n):
         img = input_images[i] / 2 + 0.5 # unnormalize the image
-        npimg = img.numpy()
+        npimg = img.cpu().numpy()
         axes[i + 1].imshow(np.transpose(npimg, (1, 2, 0)))
 
         if output_2 is not None:
@@ -231,7 +233,7 @@ def show_classification_with_images(train_dataloader,
         axes[i + 1].axis('off')
 
     plt.subplots_adjust(wspace=0.5)  # Adjust space between images
-    plt.savefig(save_path)
+    plt.savefig(file_path)
     plt.close()
     #plt.show()
 
@@ -269,14 +271,11 @@ def print_model_accuracy(model, device, train_dataloader):
     print(f'Train accuracy: {accuracy * 100:.2f}%')
     '''
 
-def save_number(x, folder_path, file_path):
-    os.makedirs(folder_path, exist_ok=True)
-    file_path = os.path.join(folder_path, file_path)
+def save_number(x, file_path):
     with open(file_path, 'w') as f:
         f.write(str(x))
 
-def get_stored_number(folder_path, file_name):
-    file_path = os.path.join(folder_path, file_name)
+def get_stored_number(file_path):
     with open(file_path, 'r') as file:
         x = float(file.read())
     return x 

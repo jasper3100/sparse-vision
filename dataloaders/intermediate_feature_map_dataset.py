@@ -1,20 +1,24 @@
 from torch.utils.data import Dataset
 import os
 
-from utils import load_feature_map
+from utils import load_feature_map, get_file_path
 
 class IntermediateActivationsDataset(Dataset):
-    def __init__(self, layer_name, original_activations_folder_path, train_dataset_length):
+    def __init__(self, layer_name, original_activations_folder_path, train_dataset_length, params):
         self.layer_name = layer_name
         self.original_activations_folder_path = original_activations_folder_path
         self.train_dataset_length = train_dataset_length
         self.image_size = None
+        self.params = params
 
     def __len__(self):
         return self.train_dataset_length
 
     def __getitem__(self, sample_idx):
-        file_path = os.path.join(self.original_activations_folder_path, f'{self.layer_name}_activations.h5')
+        file_path = get_file_path(self.original_activations_folder_path,  
+                                  layer_name=self.layer_name, 
+                                  params=self.params, 
+                                  file_name='activations.h5')
         combined_activations = load_feature_map(file_path).float()
         if sample_idx == 1:
             self.image_size = combined_activations.shape[1:]

@@ -48,7 +48,11 @@ def get_file_path(folder_path=None, layer_name=None, params=None, file_name=None
         file_name = f'{layer_name}_{params["epochs"]}_{params["learning_rate"]}_{params["batch_size"]}_{params["optimizer"]}_{params2["epochs"]}_{params2["learning_rate"]}_{params2["batch_size"]}_{params2["optimizer"]}_{file_name}'
     else:
         file_name = f'{layer_name}_{file_name}'
-    file_path = os.path.join(folder_path, file_name)
+        
+    if folder_path is None:
+        file_path = file_name
+    else:
+        file_path = os.path.join(folder_path, file_name)
     return file_path
     
 def save_model_weights(model, 

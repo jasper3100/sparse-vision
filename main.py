@@ -116,16 +116,13 @@ def execute_project(model_name,
                             "sae_batch_size": sae_batch_size,
                             "eval_sparsity_threshold": eval_sparsity_threshold},)
 
-    start0 = time.process_time()
     # Step 0: Load data loader (so that when evaluating the output feature maps later on, they are in the same order
     # that was used to train the model in the first place)
     train_dataloader, val_dataloader, category_names, train_dataset_length = load_data(directory_path, dataset_name, batch_size)
     img_size = get_img_size(dataset_name)
-    print("Seconds taken to load data: ", time.process_time() - start0)
 
     # Step 1: Train model 
     if "1" in steps_to_execute:
-        #start1 = time.process_time()
         if model_name == 'resnet50':
             pass # since resnet50 is pretrained
         elif model_name == 'custom_mlp_1':  
@@ -141,14 +138,11 @@ def execute_project(model_name,
                             num_epochs=model_epochs,
                             name="model",
                             valid_dataloader=val_dataloader)
-            #print(prof)
             #print(prof.key_averages().table(sort_by="cuda_time_total"))
             training.save_model(model_weights_folder_path, params=model_params)
-        #print("Seconds taken to train model: ", time.process_time() - start1)
-
+        
     # Step 2: Evaluate model
     if "2" in steps_to_execute:
-        #start11 = time.process_time()
         model = load_pretrained_model(model_name,
                                     img_size,
                                     model_weights_folder_path,
@@ -167,11 +161,9 @@ def execute_project(model_name,
                         category_names,
                         model=model, 
                         device=device)
-        #print("Seconds taken to evaluate model: ", time.process_time() - start11)
-
+        
     # Step 3: Store Activations
     if "3" in steps_to_execute:
-        start2 = time.process_time()
         model = load_pretrained_model(model_name,
                                       img_size,
                                       model_weights_folder_path,
@@ -187,11 +179,9 @@ def execute_project(model_name,
                                                 params=model_params) 
         activations_handler.forward_pass()
         activations_handler.save_activations()
-        print("Seconds taken to store activations: ", time.process_time() - start2)
-
+        
     # Step 4: Train SAE on Stored Activations
     if "4" in steps_to_execute:
-        #start3 = time.process_time()
         feature_maps_dataset = IntermediateActivationsDataset(layer_name=layer_name, 
                                                             original_activations_folder_path=original_activations_folder_path,
                                                             train_dataset_length=train_dataset_length,
@@ -204,25 +194,23 @@ def execute_project(model_name,
         sae_val_dataloader = None
         sae_model = load_model(sae_model_name, sae_img_size, sae_expansion_factor)
         sae_model = sae_model.to(device)
-        #print("Seconds taken to train SAE: ", time.time() - start3)
         #'''
-        with torch.autograd.profiler.profile(use_cuda=True) as prof:
-            training_sae = Training(model=sae_model,
+        #with torch.autograd.profiler.profile(use_cuda=True) as prof:
+        training_sae = Training(model=sae_model,
                                 device=device,
                                 optimizer_name=sae_optimizer,
                                 criterion_name='sae_loss',
                                 learning_rate=sae_learning_rate,
                                 lambda_sparse=0.1)
-            training_sae.train(train_dataloader=sae_train_dataloader,
+        training_sae.train(train_dataloader=sae_train_dataloader,
                             num_epochs=sae_epochs,
                             name="sae",
                             valid_dataloader=sae_val_dataloader)
-        #print(prof)
-        print(prof.key_averages().table(sort_by="cuda_time_total"))
+        
+        #print(prof.key_averages().table(sort_by="cuda_time_total"))
         training_sae.save_model(sae_weights_folder_path, layer_name=layer_name, params=sae_params)
         #'''
-        #print("Seconds taken to train SAE: ", time.process_time() - start3)
-
+        
     # Step 5: 
     # - modify output of layer "layer_name" with trained SAE using a hook
     # - evaluate the model on this adjusted feature map 

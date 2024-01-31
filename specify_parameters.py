@@ -11,10 +11,10 @@ Step 4: train the SAE
 Step 5: store modified activations
 Step 6: evaluate modified model
 '''
-model_epochs = [5,10] #[1, 2]
-model_learning_rate = [0.1, 0.001] #[0.1, 0.2]
-batch_size = [32, 64]
-model_optimizer = ['sgd', 'adam']
+model_epochs = [10, 15] #[1, 2]
+model_learning_rate = [0.1, 0.5] #[0.1, 0.2]
+batch_size = [32, 64, 128]
+model_optimizer = ['sgd']
 sae_epochs = [1] #[1, 2]
 sae_learning_rate = [0.1]
 sae_batch_size = [32]

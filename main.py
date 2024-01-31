@@ -53,6 +53,7 @@ def get_vars(args, name):
     elif name=='gridsearch':
         return args.model_name, args.sae_model_name, args.dataset_name, args.layer_name, args.sae_expansion_factor, args.directory_path, args.metrics, args.eval_sparsity_threshold, args.run_group_ID
 
+# not sure if this signal_handler is of any use but...
 def signal_handler(sig, frame):
     # Handle cleanup actions here
     print("Received signal {}, cleaning up...".format(sig))
@@ -93,7 +94,7 @@ def execute_project(model_name,
         device = torch.device('cpu')
         print('Using CPU')
 
-    run_ID = get_file_path(layer_name=layer_name, params=model_params, params2=sae_params)
+    run_ID = get_file_path(layer_name=layer_name, params=model_params, params2=sae_params, file_name=run_group_ID)
 
     wandb.login()
     wandb.init(project="master-thesis",
@@ -101,6 +102,7 @@ def execute_project(model_name,
                 group=run_group_ID,
                 #job_type="train", can specify job type for adding description
                 config={"run_ID": run_ID,
+                        "run_group_ID": run_group_ID,
                         "steps_to_execute": steps_to_execute,
                         "model_name": model_name,
                         "sae_model_name": sae_model_name,

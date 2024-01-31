@@ -53,13 +53,6 @@ def get_vars(args, name):
     elif name=='gridsearch':
         return args.model_name, args.sae_model_name, args.dataset_name, args.layer_name, args.sae_expansion_factor, args.directory_path, args.metrics, args.eval_sparsity_threshold, args.run_group_ID
 
-# not sure if this signal_handler is of any use but...
-def signal_handler(sig, frame):
-    # Handle cleanup actions here
-    print("Received signal {}, cleaning up...".format(sig))
-    wandb.finish()  # Ensure that Weights & Biases logging is properly finished
-    sys.exit(0)
-
 def execute_project(model_name, 
                     sae_model_name, 
                     dataset_name, 
@@ -96,30 +89,32 @@ def execute_project(model_name,
 
     run_ID = get_file_path(layer_name=layer_name, params=model_params, params2=sae_params, file_name=run_group_ID)
 
-    wandb.login()
-    wandb.init(project="master-thesis",
-                name=run_ID,
-                group=run_group_ID,
-                #job_type="train", can specify job type for adding description
-                config={"run_ID": run_ID,
-                        "run_group_ID": run_group_ID,
-                        "steps_to_execute": steps_to_execute,
-                        "model_name": model_name,
-                        "sae_model_name": sae_model_name,
-                        "dataset_name": dataset_name,
-                        "layer_name": layer_name,
-                        "sae_expansion_factor": sae_expansion_factor,
-                        "directory_path": directory_path,
-                        "metrics": metrics,
-                        "model_epochs": model_epochs,
-                        "model_learning_rate": model_learning_rate,
-                        "model_optimizer": model_optimizer,
-                        "sae_epochs": sae_epochs,
-                        "sae_learning_rate": sae_learning_rate,
-                        "sae_optimizer": sae_optimizer,
-                        "batch_size": batch_size,
-                        "sae_batch_size": sae_batch_size,
-                        "eval_sparsity_threshold": eval_sparsity_threshold},)
+    # steps 3 and 5 (storing feature maps do not require logging to W&B)
+    if any(x in steps_to_execute for x in ['1', '2', '4', '6']):
+        wandb.login()
+        wandb.init(project="master-thesis",
+                    name=run_ID,
+                    group=run_group_ID,
+                    #job_type="train", can specify job type for adding description
+                    config={"run_ID": run_ID,
+                            "run_group_ID": run_group_ID,
+                            "steps_to_execute": steps_to_execute,
+                            "model_name": model_name,
+                            "sae_model_name": sae_model_name,
+                            "dataset_name": dataset_name,
+                            "layer_name": layer_name,
+                            "sae_expansion_factor": sae_expansion_factor,
+                            "directory_path": directory_path,
+                            "metrics": metrics,
+                            "model_epochs": model_epochs,
+                            "model_learning_rate": model_learning_rate,
+                            "model_optimizer": model_optimizer,
+                            "sae_epochs": sae_epochs,
+                            "sae_learning_rate": sae_learning_rate,
+                            "sae_optimizer": sae_optimizer,
+                            "batch_size": batch_size,
+                            "sae_batch_size": sae_batch_size,
+                            "eval_sparsity_threshold": eval_sparsity_threshold},)
 
     start0 = time.process_time()
     # Step 0: Load data loader (so that when evaluating the output feature maps later on, they are in the same order
@@ -287,12 +282,9 @@ def execute_project(model_name,
         print("Seconds taken to evaluate modified model: ", time.process_time() - start5)
 
     
-    #wandb.finish()
+    wandb.finish()
 
 if __name__ == '__main__':
-    # Register the signal handler
-    signal.signal(signal.SIGTERM, signal_handler)
-    signal.signal(signal.SIGINT, signal_handler)
     args = parse_arguments(name='main')
     variables = get_vars(args, name='main')
     execute_project(*variables)

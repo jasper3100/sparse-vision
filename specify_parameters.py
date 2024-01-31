@@ -2,7 +2,7 @@ import itertools
 
 # Specify here which parameters to iterate over
 
-steps_to_execute = [1,2]
+steps_to_execute = [3]
 '''
 Step 1: train the model
 Step 2: evalute model
@@ -11,7 +11,7 @@ Step 4: train the SAE
 Step 5: store modified activations
 Step 6: evaluate modified model
 '''
-model_epochs = [15, 20, 30] #[1, 2]
+model_epochs = [30] #[1, 2]
 model_learning_rate = [0.1] #[0.1, 0.2]
 batch_size = [32]
 model_optimizer = ['sgd']

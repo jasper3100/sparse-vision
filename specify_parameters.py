@@ -2,7 +2,7 @@ import itertools
 
 # Specify here which parameters to iterate over
 
-steps_to_execute = [3]
+steps_to_execute = [4]
 '''
 Step 1: train the model
 Step 2: evalute model
@@ -15,9 +15,9 @@ model_epochs = [30] #[1, 2]
 model_learning_rate = [0.1] #[0.1, 0.2]
 batch_size = [32]
 model_optimizer = ['sgd']
-sae_epochs = [1] #[1, 2]
-sae_learning_rate = [0.1]
-sae_batch_size = [32]
+sae_epochs = [5,10,15] #[1, 2]
+sae_learning_rate = [0.1,0.001,0.01]
+sae_batch_size = [32,64]
 sae_optimizer = ['adam']
 
 # Concatenate the list of numbers as strings and convert it to an integer

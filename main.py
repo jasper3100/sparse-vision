@@ -6,7 +6,7 @@ import wandb
 
 from activations_handler import ActivationsHandler
 from training import Training
-from utils import get_img_size, load_data, load_pretrained_model, load_model, print_model_accuracy, log_image_table, show_classification_with_images
+from utils import get_img_size, load_data, load_pretrained_model, load_model, print_model_accuracy, log_image_table, show_classification_with_images, get_file_path
 from dataloaders.intermediate_feature_map_dataset import IntermediateActivationsDataset
 from torch.utils.data import DataLoader
 from evaluate_feature_maps import evaluate_feature_maps
@@ -85,14 +85,15 @@ def execute_project(model_name,
         device = torch.device('cpu')
         print('Using CPU')
 
-    print(run_group_ID)
+    run_ID = get_file_path(layer_name=layer_name, params=model_params, params2=sae_params)
 
     wandb.login()
     wandb.init(project="master-thesis",
-                #name="run",
+                name=run_ID,
                 group=run_group_ID,
                 #job_type="train", can specify job type for adding description
-                config={"steps_to_execute": steps_to_execute,
+                config={"run_ID": run_ID,
+                        "steps_to_execute": steps_to_execute,
                         "model_name": model_name,
                         "sae_model_name": sae_model_name,
                         "dataset_name": dataset_name,

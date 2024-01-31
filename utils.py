@@ -41,9 +41,11 @@ def get_img_size(dataset_name):
     else:
         raise ValueError(f"Unsupported dataset: {dataset_name}")
     
-def get_file_path(folder_path, layer_name=None, params=None, file_name=None):
-    if params is not None:
+def get_file_path(folder_path, layer_name=None, params=None, file_name=None, params2=None):
+    if params is not None and params2 is None:
         file_name = f'{layer_name}_{params["epochs"]}_{params["learning_rate"]}_{params["batch_size"]}_{params["optimizer"]}_{file_name}'
+    elif params is not None and params2 is not None:
+        file_name = f'{layer_name}_{params["epochs"]}_{params["learning_rate"]}_{params["batch_size"]}_{params["optimizer"]}_{params2["epochs"]}_{params2["learning_rate"]}_{params2["batch_size"]}_{params2["optimizer"]}_{file_name}'
     else:
         file_name = f'{layer_name}_{file_name}'
     file_path = os.path.join(folder_path, file_name)

@@ -58,12 +58,14 @@ def intermediate_feature_maps_similarity(module_names,
             L2_dist_mean_list.append(L2_dist_mean)
             L2_dist_std_list.append(L2_dist_std)
 
+    wandb.Table(columns=["Layer", "L2 distance mean", "L2 distance std"], data=[[module_names[i], L2_dist_mean_list[i], L2_dist_std_list[i]] for i in range(len(module_names))])
+
     for i in range(len(module_names)):
         if cosine_similarity:
-            wandb.log({f"cosine_similarity_{module_names[i]}": similarity_mean_list[i]})
+            #wandb.log({f"cosine_similarity_{module_names[i]}": similarity_mean_list[i]})
             print(f"Layer: {module_names[i]} | Cosine similarity mean: {similarity_mean_list[i]} +/- {similarity_std_list[i]}")
         if L2_distance: 
-            wandb.log({f"L2_distance_{module_names[i]}": L2_dist_mean_list[i]})
+            #wandb.log({f"L2_distance_{module_names[i]}": L2_dist_mean_list[i]})
             print(f"Layer: {module_names[i]} | L2 distance mean of normalized feature maps: {L2_dist_mean_list[i]} +/- {L2_dist_std_list[i]}")
         
 def get_feature_map_last_layer(module_names, folder_path, params):
@@ -128,36 +130,38 @@ def evaluate_feature_maps(original_activations_folder_path,
         all_targets = []
         batch_idx = 0
 
-        start_time = time.time()
-        start_cpu_time = time.process_time()
+        #start_time = time.time()
+        #start_cpu_time = time.process_time()
         for _, target in train_dataloader:
             batch_idx += 1
             all_targets.append(target)
             if batch_idx == num_batches:
                 break
         target = torch.cat(all_targets, dim=0)
-        print(target.shape)
+        #print(target.shape)
         original_accuracy = get_accuracy(original_output, target)
         adjusted_accuracy = get_accuracy(adjusted_output, target)
-        end_time = time.time()
-        end_cpu_time = time.process_time()
-        print(f"Time elapsed: {end_time - start_time:.4f} seconds")
-        print(f"CPU time elapsed: {end_cpu_time - start_cpu_time:.4f} seconds")
+        #end_time = time.time()
+        #end_cpu_time = time.process_time()
+        #print(f"Time elapsed: {end_time - start_time:.4f} seconds")
+        #print(f"CPU time elapsed: {end_cpu_time - start_cpu_time:.4f} seconds")
         print(f"Train accuracy of original model: {100*original_accuracy:.4f}%")
-        wandb.log({"train_accuracy_original_model": 100*original_accuracy})
+        #wandb.log({"train_accuracy_original_model": 100*original_accuracy})
         print(f"Train accuracy of modified model: {100*adjusted_accuracy:.4f}%")
-        wandb.log({"train_accuracy_modified_model": 100*adjusted_accuracy})
+        #wandb.log({"train_accuracy_modified_model": 100*adjusted_accuracy})
+        wandb.Table(columns=["Model", "Train accuracy"], data=[["Original model", 100*original_accuracy], ["Modified model", 100*adjusted_accuracy]])
 
     if metrics is None or 'sparsity' in metrics:
         original_sparsity_file_path = get_file_path(original_activations_folder_path, layer_name=layer_name, params=model_params, file_name='sparsity.txt')
         adjusted_sparsity_file_path = get_file_path(adjusted_activations_folder_path, layer_name=layer_name, params=sae_params, file_name='sparsity.txt')
         original_sparsity = get_stored_number(original_sparsity_file_path)
         print(f"sparsity of the {layer_name} layer output: {100*original_sparsity:.4f}%")
-        wandb.log({f"sparsity_layer_{layer_name}_output": 100*original_sparsity})
+        #wandb.log({f"sparsity_layer_{layer_name}_output": 100*original_sparsity})
         adjusted_sparsity = get_stored_number(adjusted_sparsity_file_path)
         print(f"sparsity of the SAE encoder output, i.e., the augmented {layer_name} layer output: {100*adjusted_sparsity:.4f}%")
-        wandb.log({f"sparsity_sae_encoder_output_layer_{layer_name}": 100*adjusted_sparsity})
+        #wandb.log({f"sparsity_sae_encoder_output_layer_{layer_name}": 100*adjusted_sparsity})
         # sparsity is mean sparsity over all samples (in training data)
+        wandb.Table(columns=["Layer", "Sparsity"], data=[[layer_name, 100*original_sparsity], [f"SAE encoder output layer {layer_name}", 100*adjusted_sparsity]])
 
     if metrics is None or 'visualize_classifications' in metrics:
         log_image_table(train_dataloader,

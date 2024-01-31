@@ -58,7 +58,8 @@ def intermediate_feature_maps_similarity(module_names,
             L2_dist_mean_list.append(L2_dist_mean)
             L2_dist_std_list.append(L2_dist_std)
 
-    wandb.Table(columns=["Layer", "L2 distance mean", "L2 distance std"], data=[[module_names[i], L2_dist_mean_list[i], L2_dist_std_list[i]] for i in range(len(module_names))])
+    table_similarity = wandb.Table(columns=["Layer", "L2 distance mean", "L2 distance std"], data=[[module_names[i], L2_dist_mean_list[i], L2_dist_std_list[i]] for i in range(len(module_names))])
+    wandb.log({"L2 distance": table_similarity})
 
     for i in range(len(module_names)):
         if cosine_similarity:

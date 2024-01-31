@@ -87,8 +87,6 @@ def kl_divergence(input, target):
     '''
     Compute the KL divergence between two probability distributions.
     '''
-    print(torch.log(input))
-    print(torch.log(input+1e-8))
     return F.kl_div(torch.log(input+1e-8), target+1e-8, reduction='batchmean')
     # equivalent to: (target * (torch.log(target) - torch.log(input))).sum() / target.size(0)
 
@@ -112,10 +110,10 @@ def evaluate_feature_maps(original_activations_folder_path,
 
     if metrics is None or 'kld' in metrics:
         kld = kl_divergence(adjusted_output, original_output)
-        #wandb.log({"kld": kld})
+        wandb.log({"kld": kld})
         print(f"KL divergence between original model's output and modified model's output: {kld:.4f}")
         pass
-    '''
+    
     if metrics is None or 'percentage_same_classification' in metrics:
         perc = percentage_same_classification(original_output, adjusted_output)
         wandb.log({"percentage_same_classification": perc})
@@ -174,12 +172,12 @@ def evaluate_feature_maps(original_activations_folder_path,
                         class_names,
                         output=original_output, 
                         output_2=adjusted_output)
-    '''
-    '''
+    
+        '''
         show_classification_with_images(train_dataloader, 
                                         class_names,
                                         folder_path=evaluation_results_folder_path,
                                         layer_name=layer_name,
                                         output=original_output, 
                                         output_2=adjusted_output)
-    '''
+        '''

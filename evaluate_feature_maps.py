@@ -87,6 +87,7 @@ def kl_divergence(input, target):
     '''
     Compute the KL divergence between two probability distributions.
     '''
+    # we add a small constant to avoid having log(0)
     return F.kl_div(torch.log(input+1e-8), target+1e-8, reduction='batchmean')
     # equivalent to: (target * (torch.log(target) - torch.log(input))).sum() / target.size(0)
 

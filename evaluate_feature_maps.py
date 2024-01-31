@@ -149,7 +149,8 @@ def evaluate_feature_maps(original_activations_folder_path,
         #wandb.log({"train_accuracy_original_model": 100*original_accuracy})
         print(f"Train accuracy of modified model: {100*adjusted_accuracy:.4f}%")
         #wandb.log({"train_accuracy_modified_model": 100*adjusted_accuracy})
-        wandb.Table(columns=["Model", "Train accuracy"], data=[["Original model", 100*original_accuracy], ["Modified model", 100*adjusted_accuracy]])
+        table_accuracy = wandb.Table(columns=["Model", "Train accuracy"], data=[["Original model", 100*original_accuracy], ["Modified model", 100*adjusted_accuracy]])
+        wandb.log({"train_accuracy": table_accuracy})
 
     if metrics is None or 'sparsity' in metrics:
         original_sparsity_file_path = get_file_path(original_activations_folder_path, layer_name=layer_name, params=model_params, file_name='sparsity.txt')
@@ -161,7 +162,8 @@ def evaluate_feature_maps(original_activations_folder_path,
         print(f"sparsity of the SAE encoder output, i.e., the augmented {layer_name} layer output: {100*adjusted_sparsity:.4f}%")
         #wandb.log({f"sparsity_sae_encoder_output_layer_{layer_name}": 100*adjusted_sparsity})
         # sparsity is mean sparsity over all samples (in training data)
-        wandb.Table(columns=["Layer", "Sparsity"], data=[[layer_name, 100*original_sparsity], [f"SAE encoder output layer {layer_name}", 100*adjusted_sparsity]])
+        table_sparsity = wandb.Table(columns=["Layer", "Sparsity"], data=[[layer_name, 100*original_sparsity], [f"SAE encoder output layer {layer_name}", 100*adjusted_sparsity]])
+        wandb.log({"sparsity": table_sparsity})
 
     if metrics is None or 'visualize_classifications' in metrics:
         log_image_table(train_dataloader,

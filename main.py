@@ -3,8 +3,6 @@ import argparse
 import time
 import torch
 import wandb
-import signal
-import sys
 
 from activations_handler import ActivationsHandler
 from training import Training

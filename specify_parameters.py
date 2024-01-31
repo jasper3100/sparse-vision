@@ -15,9 +15,9 @@ model_epochs = [30] #[1, 2]
 model_learning_rate = [0.1] #[0.1, 0.2]
 batch_size = [32]
 model_optimizer = ['sgd']
-sae_epochs = [5,10,15] #[1, 2]
-sae_learning_rate = [0.1,0.001,0.01]
-sae_batch_size = [32,64]
+sae_epochs = [10,15] #[1, 2]
+sae_learning_rate = [0.001,0.0001]
+sae_batch_size = [64]
 sae_optimizer = ['adam']
 
 # Concatenate the list of numbers as strings and convert it to an integer

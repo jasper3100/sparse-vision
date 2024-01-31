@@ -3,6 +3,8 @@ import argparse
 import time
 import torch
 import wandb
+import signal
+import sys
 
 from activations_handler import ActivationsHandler
 from training import Training
@@ -50,6 +52,12 @@ def get_vars(args, name):
         return args.model_name, args.sae_model_name, args.dataset_name, args.layer_name, args.sae_expansion_factor, args.directory_path, args.metrics, args.eval_sparsity_threshold, args.run_group_ID, args.steps_to_execute, args.model_epochs, args.model_learning_rate, args.model_optimizer, args.sae_epochs, args.sae_learning_rate, args.sae_optimizer, args.batch_size, args.sae_batch_size
     elif name=='gridsearch':
         return args.model_name, args.sae_model_name, args.dataset_name, args.layer_name, args.sae_expansion_factor, args.directory_path, args.metrics, args.eval_sparsity_threshold, args.run_group_ID
+
+def signal_handler(sig, frame):
+    # Handle cleanup actions here
+    print("Received signal {}, cleaning up...".format(sig))
+    wandb.finish()  # Ensure that Weights & Biases logging is properly finished
+    sys.exit(0)
 
 def execute_project(model_name, 
                     sae_model_name, 
@@ -276,9 +284,13 @@ def execute_project(model_name,
                               layer_name=layer_name) 
         print("Seconds taken to evaluate modified model: ", time.process_time() - start5)
 
-    wandb.finish()
+    
+    #wandb.finish()
 
 if __name__ == '__main__':
+    # Register the signal handler
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
     args = parse_arguments(name='main')
     variables = get_vars(args, name='main')
     execute_project(*variables)

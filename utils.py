@@ -42,7 +42,8 @@ def get_img_size(dataset_name):
         raise ValueError(f"Unsupported dataset: {dataset_name}")
     
 def get_file_path(folder_path=None, layer_name=None, params=None, file_name=None, params2=None):
-    os.makedirs(folder_path, exist_ok=True) # create the folder
+    if folder_path is not None:
+        os.makedirs(folder_path, exist_ok=True) # create the folder
     
     if params is not None and params2 is None:
         file_name = f'{layer_name}_{params["epochs"]}_{params["learning_rate"]}_{params["batch_size"]}_{params["optimizer"]}_{file_name}'
@@ -158,7 +159,7 @@ def store_feature_maps(activations, folder_path, params=None):
             file_path = get_file_path(folder_path, layer_name=name, params=params, file_name='activations.h5')
             # Store activations to an HDF5 file
             with h5py.File(file_path, 'w') as h5_file:
-                h5_file.create_dataset('data', data=activation.numpy())
+                h5_file.create_dataset('data', data=activation.cpu().numpy())
 
 def load_feature_map(file_path):
     with h5py.File(file_path, 'r') as h5_file:

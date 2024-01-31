@@ -206,19 +206,19 @@ def execute_project(model_name,
         sae_model = sae_model.to(device)
         #print("Seconds taken to train SAE: ", time.time() - start3)
         #'''
-        #with torch.autograd.profiler.profile(use_cuda=True) as prof:
-        training_sae = Training(model=sae_model,
+        with torch.autograd.profiler.profile(use_cuda=True) as prof:
+            training_sae = Training(model=sae_model,
                                 device=device,
                                 optimizer_name=sae_optimizer,
                                 criterion_name='sae_loss',
                                 learning_rate=sae_learning_rate,
                                 lambda_sparse=0.1)
-        training_sae.train(train_dataloader=sae_train_dataloader,
+            training_sae.train(train_dataloader=sae_train_dataloader,
                             num_epochs=sae_epochs,
                             name="sae",
                             valid_dataloader=sae_val_dataloader)
         #print(prof)
-        #print(prof.key_averages().table(sort_by="cuda_time_total"))
+        print(prof.key_averages().table(sort_by="cuda_time_total"))
         training_sae.save_model(sae_weights_folder_path, layer_name=layer_name, params=sae_params)
         #'''
         #print("Seconds taken to train SAE: ", time.process_time() - start3)

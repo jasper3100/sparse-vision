@@ -23,7 +23,7 @@ class Training:
     def train_epoch(self, dataloader):
         self.model.train()
         total_loss = 0.0
-        #idx = 0
+        idx = 0
         for data in dataloader:
             #print(data.shape)
             if isinstance(data, (list, tuple)) and len(data) == 2:
@@ -32,18 +32,18 @@ class Training:
                 inputs, targets = inputs.to(self.device), targets.to(self.device)
                 outputs = self.model(inputs)
                 loss = self.criterion(outputs, targets)
-                #idx += 1
-                #if idx == 10:
-                #    break
+                idx += 1
+                if idx == 10:
+                    break
             elif isinstance(data, torch.Tensor):
                 # if the dataloader doesn't contain targets, then we use
                 # the inputs as targets (f.e. autoencoder reconstruction loss)
                 inputs = data.to(self.device)
                 outputs = self.model(inputs)
                 loss = self.criterion(outputs, inputs)
-                #idx += 1
-                #if idx == 10:
-                #    break
+                idx += 1
+                if idx == 10:
+                    break
             else:
                 raise ValueError("Unexpected data format from dataloader")
             

@@ -104,11 +104,17 @@ class ActivationsHandler:
         # Storing the number of batches is useful if we want to use less batches than the 
         # total number of batches for debugging purposes
         num_batches = batch_idx
-        file_path = get_file_path(self.folder_path, self.layer_name, self.params, 'num_batches.txt')
+        file_path = get_file_path(folder_path=self.folder_path, 
+                                  layer_name=self.layer_name, 
+                                  params=self.params, 
+                                  file_name='num_batches.txt')
         save_number(num_batches, file_path)
 
         sparsity = 1 - self.activated_units / self.total_units
-        file_path = get_file_path(self.folder_path, self.layer_name, self.params, 'sparsity.txt')
+        file_path = get_file_path(folder_path=self.folder_path, 
+                                  layer_name=self.layer_name, 
+                                  params=self.params, 
+                                  file_name='sparsity.txt')
         save_number(sparsity, file_path)
 
     def save_activations(self):

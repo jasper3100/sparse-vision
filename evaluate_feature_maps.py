@@ -59,7 +59,7 @@ def intermediate_feature_maps_similarity(module_names,
             L2_dist_std_list.append(L2_dist_std)
 
     table_similarity = wandb.Table(columns=["Layer", "L2 distance mean", "L2 distance std"], data=[[module_names[i], L2_dist_mean_list[i], L2_dist_std_list[i]] for i in range(len(module_names))])
-    wandb.log({"L2 distance": table_similarity})
+    wandb.log({"L2 distance": table_similarity}, commit=False)
 
     for i in range(len(module_names)):
         if cosine_similarity:
@@ -87,7 +87,9 @@ def kl_divergence(input, target):
     '''
     Compute the KL divergence between two probability distributions.
     '''
-    return F.kl_div(torch.log(input), target, reduction='batchmean')
+    print(torch.log(input))
+    print(torch.log(input+1e-8))
+    return F.kl_div(torch.log(input+1e-8), target+1e-8, reduction='batchmean')
     # equivalent to: (target * (torch.log(target) - torch.log(input))).sum() / target.size(0)
 
 def evaluate_feature_maps(original_activations_folder_path,
@@ -110,9 +112,10 @@ def evaluate_feature_maps(original_activations_folder_path,
 
     if metrics is None or 'kld' in metrics:
         kld = kl_divergence(adjusted_output, original_output)
-        wandb.log({"kld": kld})
+        #wandb.log({"kld": kld})
         print(f"KL divergence between original model's output and modified model's output: {kld:.4f}")
-
+        pass
+    '''
     if metrics is None or 'percentage_same_classification' in metrics:
         perc = percentage_same_classification(original_output, adjusted_output)
         wandb.log({"percentage_same_classification": perc})
@@ -151,7 +154,7 @@ def evaluate_feature_maps(original_activations_folder_path,
         print(f"Train accuracy of modified model: {100*adjusted_accuracy:.4f}%")
         #wandb.log({"train_accuracy_modified_model": 100*adjusted_accuracy})
         table_accuracy = wandb.Table(columns=["Model", "Train accuracy"], data=[["Original model", 100*original_accuracy], ["Modified model", 100*adjusted_accuracy]])
-        wandb.log({"train_accuracy": table_accuracy})
+        wandb.log({"train_accuracy": table_accuracy}, commit=False)
 
     if metrics is None or 'sparsity' in metrics:
         original_sparsity_file_path = get_file_path(original_activations_folder_path, layer_name=layer_name, params=model_params, file_name='sparsity.txt')
@@ -164,18 +167,19 @@ def evaluate_feature_maps(original_activations_folder_path,
         #wandb.log({f"sparsity_sae_encoder_output_layer_{layer_name}": 100*adjusted_sparsity})
         # sparsity is mean sparsity over all samples (in training data)
         table_sparsity = wandb.Table(columns=["Layer", "Sparsity"], data=[[layer_name, 100*original_sparsity], [f"SAE encoder output layer {layer_name}", 100*adjusted_sparsity]])
-        wandb.log({"sparsity": table_sparsity})
+        wandb.log({"sparsity": table_sparsity}, commit=False)
 
     if metrics is None or 'visualize_classifications' in metrics:
         log_image_table(train_dataloader,
                         class_names,
                         output=original_output, 
                         output_2=adjusted_output)
-        '''
+    '''
+    '''
         show_classification_with_images(train_dataloader, 
                                         class_names,
                                         folder_path=evaluation_results_folder_path,
                                         layer_name=layer_name,
                                         output=original_output, 
                                         output_2=adjusted_output)
-        '''
+    '''

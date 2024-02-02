@@ -23,12 +23,15 @@ class CustomMLP1(nn.Module):
         self.fc2 = nn.Linear(256, 256)
         self.act2 = nn.ReLU()
         self.fc3 = nn.Linear(256, 10)
-        self.sm = nn.Softmax(dim=1)
+        #self.sm = nn.Softmax(dim=1)
 
     def forward(self, x):
         # flatten the input
         x = x.view(-1, self.prod_size)
         x = self.act1(self.fc1(x))
         x = self.act2(self.fc2(x))
-        x = self.sm(self.fc3(x))
+        #x = self.sm(self.fc3(x))
+        # don't use softmax as last layer when using CrossEntropyLoss as loss
+        # function because it expects unnormalized input
+        x = self.fc3(x)
         return x

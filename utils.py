@@ -16,6 +16,7 @@ from models.custom_mlp_1 import CustomMLP1
 from models.sae_conv import SaeConv
 from models.sae_mlp import SaeMLP
 from losses.sparse_loss import SparseLoss
+from supplementary.dataset_stats import print_dataset_stats
 
 def get_optimizer(optimizer_name, model, learning_rate):
     if optimizer_name == 'adam':
@@ -38,19 +39,29 @@ def get_img_size(dataset_name):
         return (3, 64, 64)
     elif dataset_name == 'cifar_10':
         return (3, 32, 32)
+    elif dataset_name == 'mnist':   
+        return (1, 28, 28)
     else:
         raise ValueError(f"Unsupported dataset: {dataset_name}")
     
-def get_file_path(folder_path=None, layer_name=None, params=None, file_name=None, params2=None):
+def get_file_path(folder_path=None, layer_names=None, params=None, file_name=None, params2=None):
+    '''
+    layer_names expects a list of layer(s)
+    '''
     if folder_path is not None:
         os.makedirs(folder_path, exist_ok=True) # create the folder
+
+    if layer_names is None:
+        pass
+    else:
+        layer_names = '_'.join(layer_names)
     
     if params is not None and params2 is None:
-        file_name = f'{layer_name}_{params["epochs"]}_{params["learning_rate"]}_{params["batch_size"]}_{params["optimizer"]}_{file_name}'
+        file_name = f'{layer_names}_{params["epochs"]}_{params["learning_rate"]}_{params["batch_size"]}_{params["optimizer"]}_{file_name}'
     elif params is not None and params2 is not None:
-        file_name = f'{layer_name}_{params["epochs"]}_{params["learning_rate"]}_{params["batch_size"]}_{params["optimizer"]}_{params2["epochs"]}_{params2["learning_rate"]}_{params2["batch_size"]}_{params2["optimizer"]}_{file_name}'
+        file_name = f'{layer_names}_{params["epochs"]}_{params["learning_rate"]}_{params["batch_size"]}_{params["optimizer"]}_{params2["epochs"]}_{params2["learning_rate"]}_{params2["batch_size"]}_{params2["optimizer"]}_{file_name}'
     else:
-        file_name = f'{layer_name}_{file_name}'
+        file_name = f'{layer_names}_{file_name}'
 
     if folder_path is None:
         file_path = file_name
@@ -60,10 +71,10 @@ def get_file_path(folder_path=None, layer_name=None, params=None, file_name=None
     
 def save_model_weights(model, 
                        folder_path, 
-                       layer_name=None, # layer_name is used for SAE models, because SAE is trained on activations of a specific layer
+                       layer_names=None, # layer_name is used for SAE models, because SAE is trained on activations of a specific layer
                        params=None):
     os.makedirs(folder_path, exist_ok=True) # create folder if it doesn't exist
-    file_path = get_file_path(folder_path, layer_name, params, 'model_weights.pth')
+    file_path = get_file_path(folder_path, layer_names, params, 'model_weights.pth')
     torch.save(model.state_dict(), file_path)
     print(f"Successfully stored model weights in {file_path}")
 
@@ -71,10 +82,10 @@ def load_pretrained_model(model_name,
                         img_size, 
                         folder_path,
                         sae_expansion_factor=None, # only needed for SAE models
-                        layer_name=None,# only needed for SAE models, which are trained on activations of a specific layer
+                        layer_names=None,# only needed for SAE models, which are trained on activations of a specific layer
                         params=None):  
     model = load_model(model_name, img_size, sae_expansion_factor)
-    file_path = get_file_path(folder_path, layer_name, params, 'model_weights.pth')
+    file_path = get_file_path(folder_path, layer_names, params, 'model_weights.pth')
     model.load_state_dict(torch.load(file_path))
     model.eval()
     return model
@@ -124,6 +135,16 @@ def load_data(directory_path, dataset_name, batch_size):
 
         transform = transforms.Compose([
             transforms.ToTensor(),
+            # Cifar images have values in [0,1]. We scale them to be in [-1,1].
+            # Some thoughts on why [-1,1] is better than [0,1]:
+            # https://datascience.stackexchange.com/questions/54296/should-input-images-be-normalized-to-1-to-1-or-0-to-1
+            # We can verify that using the values (0.5,0.5,0.5),(0.5,0.5,0.5) will yield data in [-1,1]:
+            # verify using: print_dataset_stats(train_dataset)
+            # to call this function, in this script, do:
+            # directory_path = r'C:\Users\Jasper\Downloads\Master thesis\Code'
+            # load_data(directory_path=directory_path, dataset_name='cifar_10', batch_size=32)
+            # Theoretical explanation: [0,1] --> (0 - 0.5)/0.5 = -1 and (1 - 0.5)/0.5 = 1
+            # instead, using the mean and std instead, will yield normalized data (mean=0, std=1) but not in [-1,1]
             transforms.Normalize((0.5,0.5,0.5),(0.5,0.5,0.5))
         ])
 
@@ -141,9 +162,35 @@ def load_data(directory_path, dataset_name, batch_size):
         # on the contrary: len(train_dataloader) returns the number of batches
 
         return train_dataloader, val_dataloader, category_names, train_dataset_length
+    
+    elif dataset_name == 'mnist':
+        root_dir='datasets/mnist'
+        # if root_dir does not exist, download the dataset
+        root_dir=os.path.join(directory_path, root_dir)
+        download = not os.path.exists(root_dir)
+        if not os.path.exists(root_dir):
+            os.makedirs(root_dir, exist_ok=True)
 
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,),(0.5,))
+        ])
+
+        train_dataset = torchvision.datasets.MNIST(root_dir, train=True, download=download, transform=transform)
+        train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
+        val_dataset = torchvision.datasets.MNIST(root_dir, train=False, download=download, transform=transform)
+        val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+        
+        category_names = train_dataset.classes
+        train_dataset_length = len(train_dataset)
+
+        return train_dataloader, val_dataloader, category_names, train_dataset_length
+    
     else:
         raise ValueError(f"Unsupported dataset: {dataset_name}")
+    
+directory_path =r'C:\Users\Jasper\Downloads\Master thesis\Code'
+load_data(directory_path=directory_path, dataset_name='mnist', batch_size=32)
 
 def store_feature_maps(activations, folder_path, params=None):
     os.makedirs(folder_path, exist_ok=True) # create the folder
@@ -156,7 +203,7 @@ def store_feature_maps(activations, folder_path, params=None):
         if activation.nelement() == 0:
             raise ValueError(f"Activation of layer {name} is empty")
         else:
-            file_path = get_file_path(folder_path, layer_name=name, params=params, file_name='activations.h5')
+            file_path = get_file_path(folder_path, layer_names=[name], params=params, file_name='activations.h5')
             # Store activations to an HDF5 file
             with h5py.File(file_path, 'w') as h5_file:
                 h5_file.create_dataset('data', data=activation.cpu().numpy())
@@ -195,7 +242,7 @@ def get_classifications(output, category_names=None):
 def show_classification_with_images(train_dataloader,
                                     class_names, 
                                     folder_path=None,
-                                    layer_name=None,
+                                    layer_names=None,
                                     model=None,
                                     device=None,
                                     output=None,
@@ -205,7 +252,7 @@ def show_classification_with_images(train_dataloader,
     This function either works with available model output or the model can be used to generate the output.
     '''
     os.makedirs(folder_path, exist_ok=True)
-    file_path = get_file_path(folder_path, layer_name, params, 'classif_visual_original.png')
+    file_path = get_file_path(folder_path, layer_names, params, 'classif_visual_original.png')
     
     n = 10  # show only the first n images, 
     # for showing all images in the batch use len(predicted_classes)
@@ -216,11 +263,12 @@ def show_classification_with_images(train_dataloader,
 
     if model is not None:
         output = model(input_images)
+        output = F.softmax(output, dim=1)
     
     scores, predicted_classes, _ = get_classifications(output, class_names)
     if output_2 is not None:
         scores_2, predicted_classes_2, _ = get_classifications(output_2, class_names)
-        file_path = get_file_path(folder_path, layer_name, params, 'classif_visual_original_modified.png')
+        file_path = get_file_path(folder_path, layer_names, params, 'classif_visual_original_modified.png')
     
     fig, axes = plt.subplots(1, n + 1, figsize=(20, 3))
 
@@ -262,6 +310,7 @@ def log_image_table(train_dataloader,
 
     if model is not None:
         output = model(images)
+        output = F.softmax(output, dim=1)
     
     scores, predicted_classes, _ = get_classifications(output, class_names)
     if output_2 is not None:
@@ -273,11 +322,11 @@ def log_image_table(train_dataloader,
                                                                                         scores, 
                                                                                         predicted_classes_2, 
                                                                                         scores_2):
-            img = image / 2 + 0.5
-            img = np.transpose(img.cpu().numpy(), (1,2,0))
+            img = image / 2 + 0.5 # moves data from [-1,1] to [0,1] i.e. we assume here that original data was in [0,1]
+            img = np.transpose(img.cpu().numpy(), (1,2,0)) # WHAT EXACTLY IS THIS LINE DOING??? CHECK IF IT MAKES SENSE FOR ALL DATASETS...
             score = 100*score.item()
             score_2 = 100*score_2.item()
-            table.add_data(wandb.Image(image),
+            table.add_data(wandb.Image(img),
                             class_names[target_id],
                             predicted_class,
                             score,
@@ -293,65 +342,95 @@ def log_image_table(train_dataloader,
             img = image / 2 + 0.5 # unnormalize the image
             img = np.transpose(img.cpu().numpy(), (1,2,0))
             score = 100*score.item()
-            table.add_data(wandb.Image(image), 
+            table.add_data(wandb.Image(img), 
                             class_names[target_id], 
                             predicted_class, 
                             score)#*score.detach().numpy())
         wandb.log({"original_predictions_table":table}, commit=False)
-    
 
-def print_model_accuracy(model, device, train_dataloader):
-    correct_predictions = 0
-    total_samples = 0
-    for input, target in train_dataloader:
-        input, target = input.to(device), target.to(device)
-        output = model(input)
-        _, _, class_ids = get_classifications(output)
-        correct_predictions += (class_ids == target).sum().item()
-        total_samples += target.size(0)
-    accuracy = correct_predictions / total_samples
-    print(f'Train accuracy: {accuracy * 100:.2f}%')
-    wandb.log({"model_train_accuracy": accuracy})
-
-    ''' # Alternative: seems to be equally fast
-    num_batches = 1563 #int(get_stored_number(original_activations_folder_path, 'num_batches.txt'))
-    all_targets = []
-    all_outputs = []
-    batch_idx = 0
-
-    for input, target in train_dataloader:
-        input, target = input.to(device), target.to(device)
-        batch_idx += 1
-        output = model(input)
-        all_targets.append(target)
-        all_outputs.append(output)
-        if batch_idx == num_batches:
-                break
-    target = torch.cat(all_targets, dim=0)
-    output = torch.cat(all_outputs, dim=0)
-    #print(target.shape)
-    accuracy = get_accuracy(output, target)
-    print(f'Train accuracy: {accuracy * 100:.2f}%')
-    '''
-
-def save_number(x, file_path):
+def save_numbers(numbers, file_path):
+    # input can be a tuple or a list of numbers
     with open(file_path, 'w') as f:
-        f.write(str(x))
+        # Convert to a comma-separated string
+        numbers_str = ','.join(map(str, numbers))
+        f.write(numbers_str)
 
-def get_stored_number(file_path):
+def get_stored_numbers(file_path):
     with open(file_path, 'r') as file:
-        x = float(file.read())
-    return x 
+        # Read the string from the file and split it into a list of strings
+        numbers_str = file.read()
+        # Convert the list of strings to a list of floats
+        numbers = list(map(float, numbers_str.split(',')))
+    return numbers
 
-def measure_sparsity(x, threshold):
+def measure_activating_units(x, threshold):
     """
-    Measure the sparsity of a tensor x. Usually, the output of the SAE encoder
+    Measure the number of activating units. Usually, the output of the SAE encoder
     went through a ReLU and thus x.abs() = x, but we apply the absolute value here
-    regardless for cases where no ReLU was applied. To compute the sparsity one has to
-    do: 1 - (number of activating units / total number of units)
+    regardless for cases where no ReLU was applied.
     """
     return (x.abs() > threshold).sum().item(), x.nelement()
 
-def get_accuracy(output, target):
+def compute_sparsity(activating_units, total_units, expansion_factor=None):
+    if expansion_factor is not None:
+        # If we are in the augmented layer (i.e. the output of SAE encoder), then 
+        # we compute the sparsity relative to the size of the original layer
+        number_of_units_in_original_layer = total_units / expansion_factor
+        return 1 - (activating_units / number_of_units_in_original_layer)
+    else:
+        return 1 - (activating_units / total_units)
+
+def calculate_accuracy(output, target):
     _, _, class_ids = get_classifications(output)
     return (class_ids == target).sum().item() / target.size(0)
+
+def get_target_output(device, train_dataloader, model=None, original_activations_folder_path=None, layer_names=None, model_params=None):
+    '''
+    If no model is provided, then only target is returned; otherwise target, output
+    Model_params has to be model_params and not sae_params, because the batch number is stored with model_params used for its file path
+    '''
+    # if we want to use less batches than the total number of batches for debugging purposes, we can specify it here
+    if original_activations_folder_path is None:
+        num_batches = len(train_dataloader)
+    else:
+        batch_file_path = get_file_path(original_activations_folder_path, layer_names=layer_names, params=model_params, file_name='num_batches.txt')
+        num_batches = int(get_stored_numbers(batch_file_path)[0])
+    
+    all_targets = []
+    all_outputs = []
+    batch_idx = 0
+    for input, target in train_dataloader:
+        input, target = input.to(device), target.to(device)
+        batch_idx += 1
+        if model is not None:
+            output = model(input)
+            all_outputs.append(output)
+        all_targets.append(target)
+        if batch_idx == num_batches:
+            break
+    target = torch.cat(all_targets, dim=0)
+
+    if model is not None:
+        output = torch.cat(all_outputs, dim=0)
+        return target, output
+    else:
+        return target
+
+def get_model_accuracy(model, 
+                       device, 
+                       train_dataloader, 
+                       original_activations_folder_path=None, 
+                       layer_names=None, 
+                       model_params=None, 
+                       wandb_status=False):
+    target, output = get_target_output(device, 
+                                        train_dataloader,
+                                        model=model,  
+                                        original_activations_folder_path=original_activations_folder_path,
+                                        layer_names=layer_names,
+                                        model_params=model_params)
+    output = F.softmax(output, dim=1)
+    accuracy = calculate_accuracy(output, target)
+    print(f'Train accuracy: {accuracy * 100:.2f}%')
+    if wandb_status:
+        wandb.log({"model_train_accuracy": accuracy})

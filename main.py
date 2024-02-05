@@ -25,13 +25,13 @@ def parse_arguments(name=None):
     parser.add_argument('--layer_names', nargs='+', type=str, default=['model.layer1[0].conv3'], help='Specify the layer names')
     # Example command: python main.py --layer_names model.layer1[0].conv3 model.layer1[0].conv2
     parser.add_argument('--directory_path', type=str, default=r'C:\Users\Jasper\Downloads\Master thesis\Code', help='Specify the directory path')
-    parser.add_argument('--metrics', nargs='+', default=['kld', 'percentage_same_classification', 'intermediate_feature_maps_similarity', 'train_accuracy', 'visualize_classifications', 'sparsity', 'polysemanticity_level'], help='Specify the metrics to print')
+    #parser.add_argument('--metrics', nargs='+', default=['kld', 'percentage_same_classification', 'intermediate_feature_maps_similarity', 'train_accuracy', 'visualize_classifications', 'sparsity', 'polysemanticity_level'], help='Specify the metrics to print')
     parser.add_argument('--run_group_ID', type=str, default='main', help='ID of group of runs for W&B')
     parser.add_argument('--wandb_status', type=str, default='True', help='Specify whether to use W&B')
 
     # if we are in main.py, and not in main_gridsearch.py
     if name=='main':
-        parser.add_argument('--steps_to_execute', type=str, default='123456', help='Specify which steps to execute')
+        parser.add_argument('--steps_to_execute', type=str, default='1234567', help='Specify which steps to execute')
         parser.add_argument('--model_epochs', type=int, default=5, help='Specify the model epochs')
         parser.add_argument('--model_learning_rate', type=float, default=0.1, help='Specify the model learning rate')
         parser.add_argument('--model_optimizer', type=str, default='sgd', help='Specify the model optimizer')
@@ -52,16 +52,16 @@ def parse_arguments(name=None):
 
 def get_vars(args, name):
     if name=='main':
-        return args.model_name, args.sae_model_name, args.dataset_name, args.layer_names, args.directory_path, args.metrics, args.run_group_ID, eval(args.wandb_status), args.steps_to_execute, args.model_epochs, args.model_learning_rate, args.model_optimizer, args.sae_epochs, args.sae_learning_rate, args.sae_optimizer, args.batch_size, args.sae_batch_size, args.sae_lambda_sparse, args.sae_expansion_factor, args.activation_threshold
+        return args.model_name, args.sae_model_name, args.dataset_name, args.layer_names, args.directory_path, args.run_group_ID, eval(args.wandb_status), args.steps_to_execute, args.model_epochs, args.model_learning_rate, args.model_optimizer, args.sae_epochs, args.sae_learning_rate, args.sae_optimizer, args.batch_size, args.sae_batch_size, args.sae_lambda_sparse, args.sae_expansion_factor, args.activation_threshold
     elif name=='gridsearch':
-        return args.model_name, args.sae_model_name, args.dataset_name, args.layer_names, args.directory_path, args.metrics, args.run_group_ID, eval(args.wandb_status)
+        return args.model_name, args.sae_model_name, args.dataset_name, args.layer_names, args.directory_path, args.run_group_ID, eval(args.wandb_status)
 
 def execute_project(model_name, 
                     sae_model_name, 
                     dataset_name, 
                     layer_names, 
                     directory_path, 
-                    metrics, 
+                    #metrics, 
                     run_group_ID,
                     wandb_status,
                     steps_to_execute, 
@@ -95,10 +95,11 @@ def execute_project(model_name,
         device = torch.device('cpu')
         print('Using CPU')
 
+    run_group_ID = steps_to_execute + "_" + run_group_ID
     run_ID = get_file_path(layer_names=layer_names, params=model_params, params2=sae_params, file_name=run_group_ID)
 
-    # steps 3 and 5 (storing feature maps do not require logging to W&B)
-    if wandb_status and any(x in steps_to_execute for x in ['1', '2', '4', '6']):
+    # steps 3 and 6 (storing feature maps do not require logging to W&B)
+    if wandb_status and any(x in steps_to_execute for x in ['1', '2', '4', '5', '7']):
         wandb.login()
         wandb.init(project="master-thesis",
                     name=run_ID,
@@ -113,7 +114,7 @@ def execute_project(model_name,
                             "layer_names": layer_names,
                             "sae_expansion_factor": sae_expansion_factor,
                             "directory_path": directory_path,
-                            "metrics": metrics,
+                            #"metrics": metrics,
                             "model_epochs": model_epochs,
                             "model_learning_rate": model_learning_rate,
                             "model_optimizer": model_optimizer,
@@ -128,6 +129,7 @@ def execute_project(model_name,
     # Step 0: Load data loader (so that when evaluating the output feature maps later on, they are in the same order
     # that was used to train the model in the first place)
     train_dataloader, val_dataloader, category_names, train_dataset_length = load_data(directory_path, dataset_name, batch_size)
+    num_classes = len(category_names)
     img_size = get_img_size(dataset_name)
 
     # Step 1: Train model 
@@ -139,13 +141,13 @@ def execute_project(model_name,
             model = model.to(device)
             #with torch.autograd.profiler.profile(use_cuda=True) as prof:
             training = Training(model=model,
+                                model_name=model_name,
                                 device=device,
                                 optimizer_name=model_optimizer,
                                 criterion_name='cross_entropy',
                                 learning_rate=model_learning_rate)
             training.train(train_dataloader=train_dataloader,
                             num_epochs=model_epochs,
-                            name="model",
                             wandb_status=wandb_status,
                             valid_dataloader=val_dataloader)
             #print(prof.key_averages().table(sort_by="cuda_time_total"))
@@ -214,26 +216,37 @@ def execute_project(model_name,
         #'''
         #with torch.autograd.profiler.profile(use_cuda=True) as prof:
         training_sae = Training(model=sae_model,
+                                model_name=sae_model_name,
                                 device=device,
                                 optimizer_name=sae_optimizer,
                                 criterion_name='sae_loss',
                                 learning_rate=sae_learning_rate,
-                                lambda_sparse=sae_lambda_sparse)
+                                lambda_sparse=sae_lambda_sparse,
+                                dataloader_2=train_dataloader,
+                                num_classes=num_classes,
+                                activation_threshold=activation_threshold,
+                                expansion_factor=sae_expansion_factor)
         training_sae.train(train_dataloader=sae_train_dataloader,
                             num_epochs=sae_epochs,
-                            name="sae",
                             wandb_status=wandb_status,
-                            valid_dataloader=sae_val_dataloader)
-        
+                            valid_dataloader=sae_val_dataloader,
+                            train_dataset_length=train_dataset_length,
+                            folder_path=evaluation_results_folder_path,
+                            layer_names=layer_names,
+                            params=sae_params)
         #print(prof.key_averages().table(sort_by="cuda_time_total"))
         training_sae.save_model(sae_weights_folder_path, layer_names=layer_names, params=sae_params)
         #'''
+
+    # Step 5: Evaluate SAE
+    if "5" in steps_to_execute:
+        get_sae_losses(evaluation_results_folder_path, layer_names, sae_params, wandb_status)
         
-    # Step 5: 
+    # Step 6: 
     # - modify output of layer "layer_names" with trained SAE using a hook
     # - evaluate the model on this adjusted feature map 
     # - store activations of this modified model
-    if "5" in steps_to_execute:
+    if "6" in steps_to_execute:
         start4 = time.process_time()
         # we instantiate this dataset here only for getting sae_img_size
         feature_maps_dataset = IntermediateActivationsDataset(layer_names=layer_names, 
@@ -267,8 +280,8 @@ def execute_project(model_name,
         activations_handler_modify.save_activations()
         print("Seconds taken to modify and store activations: ", time.process_time() - start4)
     
-    # Step 6: Evaluate how "similar" the modified model is to the original model
-    if "6" in steps_to_execute:
+    # Step 7: Evaluate how "similar" the modified model is to the original model
+    if "7" in steps_to_execute:
         start5 = time.process_time()
         model = load_pretrained_model(model_name,
                                       img_size,
@@ -282,14 +295,15 @@ def execute_project(model_name,
                               wandb_status,
                               evaluation_results_folder_path=evaluation_results_folder_path,
                               class_names=category_names,
-                              metrics=metrics,
+                              #metrics=metrics,
                               model=model, 
                               device=device,
                               train_dataloader=train_dataloader,
                               layer_names=layer_names,
                               train_dataset_length=train_dataset_length,
                               encoder_output_folder_path=encoder_output_folder_path,
-                              activation_threshold=activation_threshold) 
+                              activation_threshold=activation_threshold,
+                              num_classes=num_classes) 
         print("Seconds taken to evaluate modified model: ", time.process_time() - start5)
 
     

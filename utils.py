@@ -10,6 +10,7 @@ import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 import wandb
+import csv
 
 from dataloaders.tiny_imagenet import TinyImageNetDataset, TinyImageNetPaths
 from models.custom_mlp_1 import CustomMLP1
@@ -371,14 +372,16 @@ def measure_activating_units(x, threshold):
     """
     return (x.abs() > threshold).sum().item(), x.nelement()
 
-def compute_sparsity(activating_units, total_units, expansion_factor=None):
+def compute_sparsity(activating_units, total_units, dataset_length, expansion_factor=None):
+    mean_activated_units = int(activating_units/dataset_length)
+    mean_total_units = int(total_units/dataset_length)
     if expansion_factor is not None:
         # If we are in the augmented layer (i.e. the output of SAE encoder), then 
         # we compute the sparsity relative to the size of the original layer
         number_of_units_in_original_layer = total_units / expansion_factor
-        return 1 - (activating_units / number_of_units_in_original_layer)
+        return 1 - (activating_units / number_of_units_in_original_layer), mean_activated_units, mean_total_units
     else:
-        return 1 - (activating_units / total_units)
+        return 1 - (activating_units / total_units), mean_activated_units, mean_total_units
 
 def calculate_accuracy(output, target):
     _, _, class_ids = get_classifications(output)
@@ -434,3 +437,103 @@ def get_model_accuracy(model,
     print(f'Train accuracy: {accuracy * 100:.2f}%')
     if wandb_status:
         wandb.log({"model_train_accuracy": accuracy})
+
+def store_sae_losses(file_path, lambda_sparse, expansion_factor, train_rec_loss, train_scaled_l1_loss):
+    file_exists = os.path.exists(file_path)
+    columns = ["lambda_sparse", "expansion_factor", "rec_loss", "l1_loss"]
+    if not file_exists:
+        with open(file_path, 'w', newline='') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=columns)
+            writer.writeheader()
+            writer.writerow({columns[0]: lambda_sparse, columns[1]: expansion_factor, columns[2]: train_rec_loss, columns[3]: train_scaled_l1_loss})
+    else:
+        # Read the existing CSV file
+        with open(file_path, 'r', newline='') as csvfile:
+            reader = csv.DictReader(csvfile, fieldnames=columns)
+            rows = list(reader)
+            # Check if the combination of lambda_sparse, expansion_factor already exists
+            combination_exists = any(row["lambda_sparse"] == str(lambda_sparse) and row["expansion_factor"] == str(expansion_factor) for row in rows)
+
+            # If the combination exists, update rec_loss and l1_loss
+            if combination_exists:
+                for row in rows:
+                    if row["lambda_sparse"] == str(lambda_sparse) and row["expansion_factor"] == str(expansion_factor):
+                        row["rec_loss"] = str(train_rec_loss)
+                        row["l1_loss"] = str(train_scaled_l1_loss)
+                        break
+            else:
+                # If the combination doesn't exist, add a new row
+                rows.append({"lambda_sparse": str(lambda_sparse), "expansion_factor": str(expansion_factor), "rec_loss": str(train_rec_loss), "l1_loss": str(train_scaled_l1_loss)})
+
+        # Write the updated data back to the CSV file
+        with open(file_path, 'w', newline='') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=columns)
+            writer.writerows(rows)
+
+import pandas as pd
+
+def get_sae_losses(folder_path, layer_names, params, wandb_status):
+    '''
+    This function reads the rec_loss and l1_loss for different lambda_sparse and expansion_factor values
+    from a stored CSV file and visualizes them.
+    '''
+    file_path = get_file_path(folder_path=folder_path,
+                                layer_names=layer_names,
+                                params=params,
+                                file_name='sae_train_losses.csv')
+    df = pd.read_csv(file_path)
+
+    # Create a 2x2 subplot grid
+    fig, axs = plt.subplots(2, 2, figsize=(12, 10))
+
+    for expansion_factor_value, expansion_factor_group in df.groupby('expansion_factor'):
+        # Plot rec_loss over lambda_sparse with data points
+        axs[0, 0].plot(expansion_factor_group['lambda_sparse'], expansion_factor_group['rec_loss'], label=f"Factor {expansion_factor_value}")
+        axs[0, 0].scatter(expansion_factor_group['lambda_sparse'], expansion_factor_group['rec_loss'], label='_nolegend_')
+        # Plot l1_loss over lambda_sparse with data points
+        axs[1, 0].plot(expansion_factor_group['lambda_sparse'], expansion_factor_group['l1_loss'], label=f"Factor {expansion_factor_value}")
+        axs[1, 0].scatter(expansion_factor_group['lambda_sparse'], expansion_factor_group['l1_loss'], label='_nolegend_')
+
+    axs[0, 0].set_xlabel("Lambda Sparse")
+    axs[0, 0].set_ylabel("Rec Loss")
+    axs[0, 0].set_title("Rec Loss over Lambda Sparse")
+    axs[0, 0].legend(title="Expansion Factor", labels=df['expansion_factor'].unique(), loc='upper left')
+    axs[0, 0].set_xticks(df['lambda_sparse'].unique())
+
+    axs[1, 0].set_xlabel("Lambda Sparse")
+    axs[1, 0].set_ylabel("L1 Loss")
+    axs[1, 0].set_title("L1 Loss over Lambda Sparse")
+    axs[1, 0].legend(title="Expansion Factor", labels=df['expansion_factor'].unique(), loc='upper left')
+    axs[1, 0].set_xticks(df['lambda_sparse'].unique())
+     
+    for lambda_sparse_value, lambda_sparse_group in df.groupby('lambda_sparse'):
+        # Plot rec_loss over expansion_factor with data points
+        axs[0, 1].plot(lambda_sparse_group['expansion_factor'], lambda_sparse_group['rec_loss'], label=f"Lambda Sparse {lambda_sparse_value}")
+        axs[0, 1].scatter(lambda_sparse_group['expansion_factor'], lambda_sparse_group['rec_loss'], label='_nolegend_')
+        # Plot l1_loss over expansion_factor with data points
+        axs[1, 1].plot(lambda_sparse_group['expansion_factor'], lambda_sparse_group['l1_loss'], label=f"Lambda Sparse {lambda_sparse_value}")
+        axs[1, 1].scatter(lambda_sparse_group['expansion_factor'], lambda_sparse_group['l1_loss'], label='_nolegend_')
+
+    axs[0, 1].set_xlabel("Expansion Factor")
+    axs[0, 1].set_ylabel("Rec Loss")
+    axs[0, 1].set_title("Rec Loss over Expansion Factor")
+    axs[0, 1].legend(title="Lambda Sparse", labels=df['lambda_sparse'].unique(), loc='upper left')
+    axs[0, 1].set_xticks(df['expansion_factor'].unique())
+
+    axs[1, 1].set_xlabel("Expansion Factor")
+    axs[1, 1].set_ylabel("L1 Loss")
+    axs[1, 1].set_title("L1 Loss over Expansion Factor")
+    axs[1, 1].legend(title="Lambda Sparse", labels=df['lambda_sparse'].unique(), loc='upper left')
+    axs[1, 1].set_xticks(df['expansion_factor'].unique())
+
+    # Adjust layout and save the figure
+    plt.tight_layout()
+    png_path = get_file_path(folder_path=folder_path,
+                            layer_names=layer_names,
+                            params=params,
+                            file_name='sae_train_losses_plot.png')
+    plt.savefig(png_path, dpi=300)
+    plt.close()
+
+    if wandb_status:
+        wandb.log({"sae_train_losses": wandb.Image("combined_plots.png")}, commit=False)

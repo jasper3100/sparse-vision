@@ -213,6 +213,11 @@ def execute_project(model_name,
         sae_val_dataloader = None
         sae_model = load_model(sae_model_name, sae_img_size, sae_expansion_factor)
         sae_model = sae_model.to(device)
+        # we create another train_dataloader with sae_batch_size so that we can compute the polysemanticity level 
+        train_dataloader_2, _, _, _ = load_data(directory_path, dataset_name, sae_batch_size)
+        # We ensure (based on the labels of the first batch) that train_dataloader and train_dataloader_2 are in the same order
+        if not torch.equal(next(iter(train_dataloader))[1], next(iter(train_dataloader_2))[1]):
+            raise ValueError("The labels of the first batch of train_dataloader and train_dataloader_2 are not the same")
         #'''
         #with torch.autograd.profiler.profile(use_cuda=True) as prof:
         training_sae = Training(model=sae_model,
@@ -305,7 +310,6 @@ def execute_project(model_name,
                               activation_threshold=activation_threshold,
                               num_classes=num_classes) 
         print("Seconds taken to evaluate modified model: ", time.process_time() - start5)
-
     
     wandb.finish()
 

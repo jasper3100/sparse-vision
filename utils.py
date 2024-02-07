@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import wandb
 import csv
+import pandas as pd
 
 from dataloaders.tiny_imagenet import TinyImageNetDataset, TinyImageNetPaths
 from models.custom_mlp_1 import CustomMLP1
@@ -47,7 +48,7 @@ def get_img_size(dataset_name):
     
 def get_file_path(folder_path=None, layer_names=None, params=None, file_name=None, params2=None):
     '''
-    layer_names expects a list of layer(s)
+    layer_names expects a list of layer(s), params and params2 expect a dictionary of parameters
     '''
     if folder_path is not None:
         os.makedirs(folder_path, exist_ok=True) # create the folder
@@ -56,11 +57,14 @@ def get_file_path(folder_path=None, layer_names=None, params=None, file_name=Non
         pass
     else:
         layer_names = '_'.join(layer_names)
-    
+
     if params is not None and params2 is None:
-        file_name = f'{layer_names}_{params["epochs"]}_{params["learning_rate"]}_{params["batch_size"]}_{params["optimizer"]}_{file_name}'
+        params_values = [str(value) for value in params.values()]
+        file_name = f'{layer_names}_{"_".join(params_values)}_{file_name}'
     elif params is not None and params2 is not None:
-        file_name = f'{layer_names}_{params["epochs"]}_{params["learning_rate"]}_{params["batch_size"]}_{params["optimizer"]}_{params2["epochs"]}_{params2["learning_rate"]}_{params2["batch_size"]}_{params2["optimizer"]}_{file_name}'
+        params_values = [str(value) for value in params.values()]
+        params2_values = [str(value) for value in params2.values()]
+        file_name = f'{layer_names}_{"_".join(params_values)}_{"_".join(params2_values)}_{file_name}'
     else:
         file_name = f'{layer_names}_{file_name}'
 
@@ -121,8 +125,6 @@ def load_data(directory_path, dataset_name, batch_size):
 
         tiny_imagenet_paths = TinyImageNetPaths(root_dir, download=False)
         category_names = tiny_imagenet_paths.get_all_category_names()
-
-        return train_dataloader, val_dataloader, category_names
     
     elif dataset_name == 'cifar_10':
         root_dir='datasets/cifar-10'
@@ -158,11 +160,6 @@ def load_data(directory_path, dataset_name, batch_size):
         # the classes are: ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
         #first_few_labels = [train_dataset.targets[i] for i in range(5)]
         #print("Predefined labels:", first_few_labels)
-
-        train_dataset_length = len(train_dataset) # alternatively: train_dataset.__len__()
-        # on the contrary: len(train_dataloader) returns the number of batches
-
-        return train_dataloader, val_dataloader, category_names, train_dataset_length
     
     elif dataset_name == 'mnist':
         root_dir='datasets/mnist'
@@ -182,17 +179,18 @@ def load_data(directory_path, dataset_name, batch_size):
         val_dataset = torchvision.datasets.MNIST(root_dir, train=False, download=download, transform=transform)
         val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
         
-        category_names = train_dataset.classes
-        train_dataset_length = len(train_dataset)
-
-        return train_dataloader, val_dataloader, category_names, train_dataset_length
-    
+        category_names = train_dataset.classes    
     else:
         raise ValueError(f"Unsupported dataset: {dataset_name}")
     
-directory_path =r'C:\Users\Jasper\Downloads\Master thesis\Code'
-load_data(directory_path=directory_path, dataset_name='mnist', batch_size=32)
+    train_dataset_length = len(train_dataset) # alternatively: train_dataset.__len__()
+    num_classes = len(category_names)
+    num_batches = len(train_dataloader)
+    img_size = get_img_size(dataset_name)
+    
+    return train_dataloader, val_dataloader, category_names, train_dataset_length, num_classes, num_batches, img_size
 
+    
 def store_feature_maps(activations, folder_path, params=None):
     os.makedirs(folder_path, exist_ok=True) # create the folder
 
@@ -208,6 +206,27 @@ def store_feature_maps(activations, folder_path, params=None):
             # Store activations to an HDF5 file
             with h5py.File(file_path, 'w') as h5_file:
                 h5_file.create_dataset('data', data=activation.cpu().numpy())
+
+def store_batch_feature_maps(activation, num_samples, name, folder_path, params=None):
+    os.makedirs(folder_path, exist_ok=True) # create the folder
+
+    # if activation is empty, we give error message
+    if activation.nelement() == 0:
+        raise ValueError(f"Activation of layer {name} is empty")
+    else:
+        file_path = get_file_path(folder_path, layer_names=[name], params=params, file_name='activations.h5')
+        # Store activations to an HDF5 file
+        with h5py.File(file_path, 'a') as h5_file:
+            # check if the dataset already exists
+            if 'data' not in h5_file:
+                # initialize the dataset with a predefined size
+                h5_file.create_dataset('data', shape=(num_samples,) + activation.shape[1:])#, dtype=activation.dtype)
+                next_position = 0
+            else:
+                # determine the next available position
+                next_position = h5_file['data'].shape[0]
+
+            h5_file['data'][next_position:next_position + activation.shape[0]] = activation.cpu().numpy()
 
 def load_feature_map(file_path):
     with h5py.File(file_path, 'r') as h5_file:
@@ -295,6 +314,7 @@ def show_classification_with_images(train_dataloader,
     plt.savefig(file_path)
     plt.close()
     #plt.show()
+    print(f"Successfully stored classification visualizations in {file_path}")
 
 def log_image_table(train_dataloader,
                     class_names, 
@@ -387,18 +407,10 @@ def calculate_accuracy(output, target):
     _, _, class_ids = get_classifications(output)
     return (class_ids == target).sum().item() / target.size(0)
 
-def get_target_output(device, train_dataloader, model=None, original_activations_folder_path=None, layer_names=None, model_params=None):
+def get_target_output(device, train_dataloader, model=None, num_batches=None):
     '''
     If no model is provided, then only target is returned; otherwise target, output
-    Model_params has to be model_params and not sae_params, because the batch number is stored with model_params used for its file path
     '''
-    # if we want to use less batches than the total number of batches for debugging purposes, we can specify it here
-    if original_activations_folder_path is None:
-        num_batches = len(train_dataloader)
-    else:
-        batch_file_path = get_file_path(original_activations_folder_path, layer_names=layer_names, params=model_params, file_name='num_batches.txt')
-        num_batches = int(get_stored_numbers(batch_file_path)[0])
-    
     all_targets = []
     all_outputs = []
     batch_idx = 0
@@ -425,20 +437,23 @@ def get_model_accuracy(model,
                        original_activations_folder_path=None, 
                        layer_names=None, 
                        model_params=None, 
-                       wandb_status=False):
-    target, output = get_target_output(device, 
-                                        train_dataloader,
-                                        model=model,  
-                                        original_activations_folder_path=original_activations_folder_path,
-                                        layer_names=layer_names,
-                                        model_params=model_params)
+                       wandb_status=False,
+                       num_batches=None):
+    target, output = get_target_output(device,train_dataloader,model=model,num_batches=num_batches)
     output = F.softmax(output, dim=1)
     accuracy = calculate_accuracy(output, target)
     print(f'Train accuracy: {accuracy * 100:.2f}%')
     if wandb_status:
         wandb.log({"model_train_accuracy": accuracy})
 
-def store_sae_losses(file_path, lambda_sparse, expansion_factor, train_rec_loss, train_scaled_l1_loss):
+def store_sae_losses(folder_path, layer_names, params, lambda_sparse, expansion_factor, train_rec_loss, train_scaled_l1_loss):
+    # remove lambda_sparse and expansion_factor from params, because we want a uniform file name 
+    # for all lambda_sparse and expansion_factor values
+    params = {key: value for key, value in params.items() if key not in ['lambda_sparse', 'expansion_factor']}
+    file_path = get_file_path(folder_path=folder_path,
+                            layer_names=layer_names,
+                            params=params,
+                            file_name='sae_train_losses.csv')
     file_exists = os.path.exists(file_path)
     columns = ["lambda_sparse", "expansion_factor", "rec_loss", "l1_loss"]
     if not file_exists:
@@ -469,14 +484,16 @@ def store_sae_losses(file_path, lambda_sparse, expansion_factor, train_rec_loss,
         with open(file_path, 'w', newline='') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=columns)
             writer.writerows(rows)
-
-import pandas as pd
+    print(f"Successfully stored SAE train losses in {file_path}")
 
 def get_sae_losses(folder_path, layer_names, params, wandb_status):
     '''
     This function reads the rec_loss and l1_loss for different lambda_sparse and expansion_factor values
     from a stored CSV file and visualizes them.
     '''
+    # remove lambda_sparse and expansion_factor from params, because we want a uniform file name 
+    # for all lambda_sparse and expansion_factor values
+    params = {key: value for key, value in params.items() if key not in ['lambda_sparse', 'expansion_factor']}
     file_path = get_file_path(folder_path=folder_path,
                                 layer_names=layer_names,
                                 params=params,
@@ -486,7 +503,9 @@ def get_sae_losses(folder_path, layer_names, params, wandb_status):
     # Create a 2x2 subplot grid
     fig, axs = plt.subplots(2, 2, figsize=(12, 10))
 
-    for expansion_factor_value, expansion_factor_group in df.groupby('expansion_factor'):
+    # Sort the dataframe by lambda_sparse so that the line connects the data points in ascending order
+    df_lambda_sparse = df.sort_values(by='lambda_sparse')
+    for expansion_factor_value, expansion_factor_group in df_lambda_sparse.groupby('expansion_factor'):
         # Plot rec_loss over lambda_sparse with data points
         axs[0, 0].plot(expansion_factor_group['lambda_sparse'], expansion_factor_group['rec_loss'], label=f"Factor {expansion_factor_value}")
         axs[0, 0].scatter(expansion_factor_group['lambda_sparse'], expansion_factor_group['rec_loss'], label='_nolegend_')
@@ -497,16 +516,17 @@ def get_sae_losses(folder_path, layer_names, params, wandb_status):
     axs[0, 0].set_xlabel("Lambda Sparse")
     axs[0, 0].set_ylabel("Rec Loss")
     axs[0, 0].set_title("Rec Loss over Lambda Sparse")
-    axs[0, 0].legend(title="Expansion Factor", labels=df['expansion_factor'].unique(), loc='upper left')
-    axs[0, 0].set_xticks(df['lambda_sparse'].unique())
+    axs[0, 0].legend(title="Expansion Factor", labels=df_lambda_sparse['expansion_factor'].unique(), loc='upper left')
+    axs[0, 0].set_xticks(df_lambda_sparse['lambda_sparse'].unique())
 
     axs[1, 0].set_xlabel("Lambda Sparse")
     axs[1, 0].set_ylabel("L1 Loss")
     axs[1, 0].set_title("L1 Loss over Lambda Sparse")
-    axs[1, 0].legend(title="Expansion Factor", labels=df['expansion_factor'].unique(), loc='upper left')
-    axs[1, 0].set_xticks(df['lambda_sparse'].unique())
-     
-    for lambda_sparse_value, lambda_sparse_group in df.groupby('lambda_sparse'):
+    axs[1, 0].legend(title="Expansion Factor", labels=df_lambda_sparse['expansion_factor'].unique(), loc='upper left')
+    axs[1, 0].set_xticks(df_lambda_sparse['lambda_sparse'].unique())
+    
+    df_expansion_factor = df.sort_values(by='expansion_factor')
+    for lambda_sparse_value, lambda_sparse_group in df_expansion_factor.groupby('lambda_sparse'):
         # Plot rec_loss over expansion_factor with data points
         axs[0, 1].plot(lambda_sparse_group['expansion_factor'], lambda_sparse_group['rec_loss'], label=f"Lambda Sparse {lambda_sparse_value}")
         axs[0, 1].scatter(lambda_sparse_group['expansion_factor'], lambda_sparse_group['rec_loss'], label='_nolegend_')
@@ -517,14 +537,14 @@ def get_sae_losses(folder_path, layer_names, params, wandb_status):
     axs[0, 1].set_xlabel("Expansion Factor")
     axs[0, 1].set_ylabel("Rec Loss")
     axs[0, 1].set_title("Rec Loss over Expansion Factor")
-    axs[0, 1].legend(title="Lambda Sparse", labels=df['lambda_sparse'].unique(), loc='upper left')
-    axs[0, 1].set_xticks(df['expansion_factor'].unique())
+    axs[0, 1].legend(title="Lambda Sparse", labels=df_expansion_factor['lambda_sparse'].unique(), loc='upper left')
+    axs[0, 1].set_xticks(df_expansion_factor['expansion_factor'].unique())
 
     axs[1, 1].set_xlabel("Expansion Factor")
     axs[1, 1].set_ylabel("L1 Loss")
     axs[1, 1].set_title("L1 Loss over Expansion Factor")
-    axs[1, 1].legend(title="Lambda Sparse", labels=df['lambda_sparse'].unique(), loc='upper left')
-    axs[1, 1].set_xticks(df['expansion_factor'].unique())
+    axs[1, 1].legend(title="Lambda Sparse", labels=df_expansion_factor['lambda_sparse'].unique(), loc='upper left')
+    axs[1, 1].set_xticks(df_expansion_factor['expansion_factor'].unique())
 
     # Adjust layout and save the figure
     plt.tight_layout()
@@ -535,5 +555,7 @@ def get_sae_losses(folder_path, layer_names, params, wandb_status):
     plt.savefig(png_path, dpi=300)
     plt.close()
 
-    if wandb_status:
-        wandb.log({"sae_train_losses": wandb.Image("combined_plots.png")}, commit=False)
+    print(f"Successfully stored SAE train losses plot in {png_path}")
+
+    #if wandb_status:
+    #    wandb.log({"sae_train_losses": wandb.Image(png_path)}, commit=False)

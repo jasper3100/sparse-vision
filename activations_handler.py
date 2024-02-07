@@ -1,6 +1,6 @@
 import torch 
 
-from utils import store_feature_maps, get_module_names, measure_activating_units, save_numbers, get_file_path
+from utils import *
 
 class ActivationsHandler:
     '''
@@ -20,7 +20,9 @@ class ActivationsHandler:
                  activation_threshold,
                  params,
                  sae_model=None,
-                 encoder_output_folder_path=None):
+                 encoder_output_folder_path=None,
+                 dataset_length=None,
+                 prof=None):
         self.model = model
         self.device = device
         self.train_dataloader = train_dataloader
@@ -31,6 +33,8 @@ class ActivationsHandler:
         self.params = params
         self.sae_model = sae_model
         self.encoder_output_folder_path = encoder_output_folder_path
+        self.dataset_length = dataset_length
+        self.prof = prof
 
         self.activations = {} # placeholder to store activations
         self.sparsity = {} # placeholder to store sparsity values
@@ -41,7 +45,7 @@ class ActivationsHandler:
         if self.sae_model is not None and name in self.layer_names:
             # input to the model = intermediate feature map outputted by a certain layer of the base model
             # shape of input to the model: [channels, height, width] --> no batch dimension
-            encoder_output, out = self.sae_model(output) # sae_model returns encoder_output, decoder_output
+            encoder_output, decoder_output = self.sae_model(output) # sae_model returns encoder_output, decoder_output
 
             # we measure the sparsity of the higher-dim. layer of the SAE, which shall be sparse
             activated_units, total_units = measure_activating_units(encoder_output, self.activation_threshold) 
@@ -54,7 +58,7 @@ class ActivationsHandler:
 
             #if not torch.equal(out, output):
             #    print(f"Successfully modified output of layer {name} for one batch of data")
-            output = out
+            output = decoder_output
         elif self.sae_model is None and name in self.layer_names: 
             # When passing the data through the original model we measure the sparsity of the output of the
             # specified layer so that we can compare it with the sparsity of the SAE higher dim. layer
@@ -62,11 +66,19 @@ class ActivationsHandler:
         else:
             pass
 
-        # store the activations of all layers
+        # store the activations of layer 'name' for the current batch, this takes 39 seconds for MNIST
+        #store_batch_feature_maps(output, self.dataset_length, name, self.folder_path, self.params)
+        ''' # the cat operation takes a long time, overall 93 seconds for MNIST
         if name not in self.activations:
             self.activations[name] = output 
         else:
             self.activations[name] = torch.cat((self.activations[name], output), dim=0)
+        '''
+
+        # store the activations, this takes 28 seconds for MNIST
+        if name not in self.activations:
+            self.activations[name] = []
+        self.activations[name].append(output)
 
         # store the sparsity info of all layers in the provided list of layer names
         if name in self.layer_names:
@@ -86,7 +98,7 @@ class ActivationsHandler:
         #self.model.layer1[0].conv3.register_forward_hook(lambda module, inp, out, name='model.layer1[0].conv3': self.hook(module, inp, out, name))
         # if I do this in ResNet50: m = getattr(module, 'layer1[0].conv3') --> not an attribute of the model
 
-    def forward_pass(self):
+    def forward_pass(self, num_batches=None):
         # Once we perform the forward pass, the hook will store the activations 
         # (and modify the output of the specified layer if desired)
         # As we iterate over batches, the activations will be appended to the dictionary
@@ -98,21 +110,21 @@ class ActivationsHandler:
                 if isinstance(batch, (list, tuple)) and len(batch) == 2:
                     inputs, _ = batch
                     #print(inputs.shape, targets.shape)
-                    inputs = inputs.to(self.device)
-                    self.model(inputs)
-                    #batch_idx += 1
-                    #if batch_idx == 10:
-                    #    break
-                elif isinstance(batch, torch.Tensor):
+                elif isinstance(inputs, torch.Tensor):
                     # if the dataloader doesn't contain targets, then we use
                     # the inputs as targets (f.e. autoencoder reconstruction loss)
-                    inputs = batch.to(self.device)
-                    self.model(inputs)
-                    #batch_idx += 1
-                    #if batch_idx == 10:
-                    #    break
+                    pass
                 else:
                     raise ValueError("Unexpected data format from dataloader")
+                
+                inputs = inputs.to(self.device)
+                self.model(inputs)
+                batch_idx += 1
+                # do a profiler step if a profiler is provided
+                if self.prof is not None:
+                    self.prof.step()
+                if batch_idx == num_batches:
+                    break
             ''' # Alternatively
             if self.dataset_name == 'tiny_imagenet':
                 for batch in self.train_dataloader:
@@ -133,15 +145,6 @@ class ActivationsHandler:
             else:
                 raise ValueError(f"Unsupported dataset: {self.dataset_name}")
             '''
-        # Storing the number of batches is useful if we want to use less batches than the 
-        # total number of batches for debugging purposes
-        num_batches = batch_idx
-        file_path = get_file_path(folder_path=self.folder_path, 
-                                  layer_names=self.layer_names, 
-                                  params=self.params, 
-                                  file_name='num_batches.txt')
-        save_numbers([num_batches], file_path)
-
         # store the sparsity information
         for name in self.sparsity.keys():
             activated_units, total_units = self.sparsity[name]
@@ -152,12 +155,16 @@ class ActivationsHandler:
             save_numbers((activated_units, total_units), file_path)
 
     def save_activations(self):
+
+        for name in self.activations.keys():
+            self.activations[name] = torch.cat(self.activations[name], dim=0)
+
         store_feature_maps(self.activations, self.folder_path, params=self.params)
         # also save the encoder output of the SAE here
         store_feature_maps(self.encoder_output, self.encoder_output_folder_path, params=self.params)
 
         if self.sae_model is not None:
-            print(f"Successfully stored modified features. In particular, the features of layers {self.layer_names}")
+            print(f"Successfully stored modified features.")
             # If I want to specify the shape I could f.e. iterate: for name in self.layer_names: self.activations[name].shape}
         else:
-            print(f"Successfully stored original features. In particular, the features of layers {self.layer_names}")
+            print(f"Successfully stored original features.")

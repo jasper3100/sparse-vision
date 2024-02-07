@@ -13,6 +13,5 @@ model_weights/
 model_weights*
 evaluation_results/
 evaluation_results*
-parameters.txt
 wandb/
 encoder_output/

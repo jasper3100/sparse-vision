@@ -147,7 +147,8 @@ def evaluate_feature_maps(original_activations_folder_path,
                           train_dataset_length=None,
                           encoder_output_folder_path=None,
                           activation_threshold=None,
-                          num_classes=None):
+                          num_classes=None,
+                          num_batches=None):
     if len(layer_names) > 1:
         raise ValueError("So far, only one layer can be specified for evaluation")
         # TO-DO!!!
@@ -162,11 +163,7 @@ def evaluate_feature_maps(original_activations_folder_path,
     print(adjusted_output.shape)
     print(original_output.shape)
 
-    target = get_target_output(device, 
-                                train_dataloader, 
-                                original_activations_folder_path=original_activations_folder_path,
-                                layer_names=layer_names,
-                                model_params=model_params)
+    target = get_target_output(device, train_dataloader, num_batches=num_batches)
     #print(target.shape)
 
     kld = kl_divergence(adjusted_output, original_output)

@@ -21,7 +21,6 @@ def parse_arguments(name=None):
     # command-line arguments
     parser.add_argument('--model_name', type=str, default='resnet50', help='Specify the model name')
     parser.add_argument('--sae_model_name', type=str, default='sae_mlp', help='Specify the sae model name')
-    parser.add_argument('--dataset_name', type=str, default='tiny_imagenet', help='Specify the dataset name')
     parser.add_argument('--layer_names', nargs='+', type=str, default=['model.layer1[0].conv3'], help='Specify the layer names')
     # Example command: python main.py --layer_names model.layer1[0].conv3 model.layer1[0].conv2
     parser.add_argument('--directory_path', type=str, default=r'C:\Users\Jasper\Downloads\Master thesis\Code', help='Specify the directory path')
@@ -43,6 +42,7 @@ def parse_arguments(name=None):
         parser.add_argument('--sae_lambda_sparse', type=float, default=0.1, help='Specify the lambda sparse')
         parser.add_argument('--sae_expansion_factor', type=int, default=2, help='Specify the expansion factor')
         parser.add_argument('--activation_threshold', type=float, default=0.1, help='Specify the activation threshold')
+        parser.add_argument('--dataset_name', type=str, default='tiny_imagenet', help='Specify the dataset name')
         # NEED TO DECIDE SOMEHOW WHEN A NEURON WOULD BE COUNTED AS ACTIVATED... MAYBE RELATIVE TO THE MAGNITUDE OF ALL ACTIVATIONS???
     elif name=='gridsearch':
         pass
@@ -52,16 +52,14 @@ def parse_arguments(name=None):
 
 def get_vars(args, name):
     if name=='main':
-        return args.model_name, args.sae_model_name, args.dataset_name, args.layer_names, args.directory_path, args.run_group_ID, eval(args.wandb_status), args.steps_to_execute, args.model_epochs, args.model_learning_rate, args.model_optimizer, args.sae_epochs, args.sae_learning_rate, args.sae_optimizer, args.batch_size, args.sae_batch_size, args.sae_lambda_sparse, args.sae_expansion_factor, args.activation_threshold
+        return args.model_name, args.sae_model_name, args.layer_names, args.directory_path, args.run_group_ID, eval(args.wandb_status), args.steps_to_execute, args.model_epochs, args.model_learning_rate, args.model_optimizer, args.sae_epochs, args.sae_learning_rate, args.sae_optimizer, args.batch_size, args.sae_batch_size, args.sae_lambda_sparse, args.sae_expansion_factor, args.activation_threshold, args.dataset_name
     elif name=='gridsearch':
-        return args.model_name, args.sae_model_name, args.dataset_name, args.layer_names, args.directory_path, args.run_group_ID, eval(args.wandb_status)
+        return args.model_name, args.sae_model_name, args.layer_names, args.directory_path, args.run_group_ID, eval(args.wandb_status)
 
 def execute_project(model_name, 
                     sae_model_name, 
-                    dataset_name, 
                     layer_names, 
                     directory_path, 
-                    #metrics, 
                     run_group_ID,
                     wandb_status,
                     steps_to_execute, 
@@ -75,7 +73,8 @@ def execute_project(model_name,
                     sae_batch_size,
                     sae_lambda_sparse,
                     sae_expansion_factor,
-                    activation_threshold):
+                    activation_threshold,
+                    dataset_name):
     # These parameter dictionaries are used for creating file names, f.e., to store model weights, feature maps, etc. Hence, include any parameter here that you would like to 
     # be included in the file names to better use and identify files, model_name and dataset_name are already considered
     model_params = {'epochs': model_epochs, 'learning_rate': model_learning_rate, 'batch_size': batch_size, 'optimizer': model_optimizer, 'activation_threshold': activation_threshold}
@@ -124,13 +123,11 @@ def execute_project(model_name,
                             "batch_size": batch_size,
                             "sae_batch_size": sae_batch_size,
                             "sae_lambda_sparse": sae_lambda_sparse,
-                            "activation_threshold": activation_threshold},)
+                            "activation_threshold": activation_threshold})
 
-    # Step 0: Load data loader (so that when evaluating the output feature maps later on, they are in the same order
-    # that was used to train the model in the first place)
-    train_dataloader, val_dataloader, category_names, train_dataset_length = load_data(directory_path, dataset_name, batch_size)
-    num_classes = len(category_names)
-    img_size = get_img_size(dataset_name)
+    # Step 0: Load data loader once for all steps
+    train_dataloader, val_dataloader, category_names, train_dataset_length, num_classes, num_batches, img_size = load_data(directory_path, dataset_name, batch_size)
+    # num_batches can be set to a different value if we want to limit the number of batches (which can be used wherever desired)
 
     # Step 1: Train model 
     if "1" in steps_to_execute:
@@ -166,7 +163,8 @@ def execute_project(model_name,
                            original_activations_folder_path=original_activations_folder_path,
                            layer_names=layer_names,
                            model_params=model_params,
-                           wandb_status=wandb_status)
+                           wandb_status=wandb_status,
+                           num_batches=num_batches)
         if wandb_status:
             log_image_table(train_dataloader,
                 category_names,
@@ -183,21 +181,36 @@ def execute_project(model_name,
         
     # Step 3: Store Activations
     if "3" in steps_to_execute:
+        '''
+        def trace_handler(p):
+            output = p.key_averages().table(sort_by="self_cuda_time_total", row_limit=10)
+            print(output)
+            p.export_chrome_trace("/tmp/trace_" + str(p.step_num) + ".json")
+        #alternatively, torch.autograd.profiler.profile(...)
+        with torch.profiler.profile(use_cuda=True,
+                                             schedule=torch.profiler.schedule(skip_first=10,wait=5,warmup=1,active=2),
+                                             on_trace_ready=trace_handler) as prof:
+        # for detailed instructions, see: https://pytorch.org/tutorials/recipes/recipes/profiler_recipe.html
+        '''
+        #with torch.autograd.profiler.profile(use_cuda=True) as prof:
         model = load_pretrained_model(model_name,
-                                      img_size,
-                                      model_weights_folder_path,
-                                      params=model_params)
+                                    img_size,
+                                    model_weights_folder_path,
+                                    params=model_params)
         model = model.to(device)
         activations_handler = ActivationsHandler(model = model, 
-                                                 device=device,
+                                                device=device,
                                                 train_dataloader=train_dataloader,
                                                 layer_names = layer_names, 
                                                 dataset_name = dataset_name,
                                                 folder_path=original_activations_folder_path,
                                                 activation_threshold=activation_threshold,
-                                                params=model_params) 
-        activations_handler.forward_pass()
+                                                params=model_params, 
+                                                encoder_output_folder_path=encoder_output_folder_path,
+                                                dataset_length=train_dataset_length) 
+        activations_handler.forward_pass(num_batches=num_batches)
         activations_handler.save_activations()
+        #print(prof.key_averages().table(sort_by="cuda_time_total"))
         
     # Step 4: Train SAE on Stored Activations
     if "4" in steps_to_execute:
@@ -214,9 +227,10 @@ def execute_project(model_name,
         sae_model = load_model(sae_model_name, sae_img_size, sae_expansion_factor)
         sae_model = sae_model.to(device)
         # we create another train_dataloader with sae_batch_size so that we can compute the polysemanticity level 
-        train_dataloader_2, _, _, _ = load_data(directory_path, dataset_name, sae_batch_size)
+        train_dataloader_2, _, _, _, _, _, _ = load_data(directory_path, dataset_name, sae_batch_size)
         # We ensure (based on the labels of the first batch) that train_dataloader and train_dataloader_2 are in the same order
-        if not torch.equal(next(iter(train_dataloader))[1], next(iter(train_dataloader_2))[1]):
+        if not torch.equal(next(iter(train_dataloader))[1][:min(sae_batch_size, batch_size)], next(iter(train_dataloader_2))[1][:min(sae_batch_size, batch_size)]):
+            print(next(iter(train_dataloader))[1][:min(sae_batch_size, batch_size)], next(iter(train_dataloader_2))[1][:min(sae_batch_size, batch_size)])
             raise ValueError("The labels of the first batch of train_dataloader and train_dataloader_2 are not the same")
         #'''
         #with torch.autograd.profiler.profile(use_cuda=True) as prof:
@@ -227,7 +241,7 @@ def execute_project(model_name,
                                 criterion_name='sae_loss',
                                 learning_rate=sae_learning_rate,
                                 lambda_sparse=sae_lambda_sparse,
-                                dataloader_2=train_dataloader,
+                                dataloader_2=train_dataloader_2,
                                 num_classes=num_classes,
                                 activation_threshold=activation_threshold,
                                 expansion_factor=sae_expansion_factor)
@@ -308,7 +322,8 @@ def execute_project(model_name,
                               train_dataset_length=train_dataset_length,
                               encoder_output_folder_path=encoder_output_folder_path,
                               activation_threshold=activation_threshold,
-                              num_classes=num_classes) 
+                              num_classes=num_classes,
+                              num_batches=num_batches) 
         print("Seconds taken to evaluate modified model: ", time.process_time() - start5)
     
     wandb.finish()

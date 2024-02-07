@@ -14,7 +14,7 @@ class SparseLoss(nn.Module):
         # Calculate L1 regularization on hidden layer activations, 
         # i.e. output of encoder, to encourage sparsity
         l1_loss = torch.mean(torch.abs(encoded))
-        return reconstruction_loss, self.lambda_sparse*l1_loss
+        return reconstruction_loss, l1_loss
     
 '''
 #Alternatively (is this better?)

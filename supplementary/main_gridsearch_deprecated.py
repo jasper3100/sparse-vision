@@ -1,6 +1,6 @@
 import itertools
 
-from main import execute_project, get_vars, parse_arguments
+from old_main_with_individual_steps import execute_project, get_vars, parse_arguments
 
 # Example command line:
 # python gridsearch_main.py --model_name custom_mlp_1 --dataset_name cifar_10 --layer_name fc1 --directory_path '/lustre/home/jtoussaint/master_thesis/'

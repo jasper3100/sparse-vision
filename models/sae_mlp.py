@@ -27,10 +27,10 @@ class SaeMLP(nn.Module):
         # HOW INTERPRETABLE THE INTERMEDIATE FEATURES ARE I SUPPOSE()
         self.bias = nn.Parameter(torch.ones(1))
         self.encoder = nn.Sequential(
-            nn.Linear(self.prod_size, self.prod_size*expansion_factor, bias=True),
+            nn.Linear(self.prod_size, int(self.prod_size*expansion_factor), bias=True),
             nn.ReLU()
         )
-        self.decoder = nn.Linear(self.prod_size*expansion_factor, self.prod_size, bias=True)
+        self.decoder = nn.Linear(int(self.prod_size*expansion_factor), self.prod_size, bias=True)
 
     def forward(self, x):
         x = x + self.bias

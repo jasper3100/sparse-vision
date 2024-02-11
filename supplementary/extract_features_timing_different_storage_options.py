@@ -7,7 +7,7 @@ import time
 
 # TO-DO: IMPORT THESE THINGS PROPERLY
 
-from main import layer_name, activations_folder_path
+from old_main_with_individual_steps import layer_name, activations_folder_path
 #..main import layer_name, activations_folder_path, activations_file_path
 from model import model, weights
 from data import input_data

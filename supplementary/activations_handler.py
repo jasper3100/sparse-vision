@@ -52,9 +52,8 @@ class ActivationsHandler:
 
             # we store the encoder output for later analysis
             if name not in self.encoder_output:
-                self.encoder_output[name] = encoder_output
-            else:
-                self.encoder_output[name] = torch.cat((self.encoder_output[name], encoder_output), dim=0)
+                self.encoder_output[name] = []
+            self.encoder_output[name].append(encoder_output)
 
             #if not torch.equal(out, output):
             #    print(f"Successfully modified output of layer {name} for one batch of data")
@@ -158,6 +157,9 @@ class ActivationsHandler:
 
         for name in self.activations.keys():
             self.activations[name] = torch.cat(self.activations[name], dim=0)
+
+        for name in self.encoder_output.keys():
+            self.encoder_output[name] = torch.cat(self.encoder_output[name], dim=0)
 
         store_feature_maps(self.activations, self.folder_path, params=self.params)
         # also save the encoder output of the SAE here

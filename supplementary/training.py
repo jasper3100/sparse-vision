@@ -43,7 +43,7 @@ class Training:
             total_l1_loss = 0.0
 
             if self.dataloader_2 is None:
-                for data in dataloader:
+                for data in dataloader: # for one batch in dataloader do:
                     if isinstance(data, torch.Tensor) and 'sae' in self.model_name:
                         # if the dataloader doesn't contain targets, then we use
                         # the inputs as targets (f.e. autoencoder reconstruction loss)
@@ -113,22 +113,34 @@ class Training:
               valid_dataset_length=None, 
               folder_path=None,
               layer_names=None,
-              params=None):
+              sae_params_1=None):
         print('Training started.')
         for epoch in range(num_epochs):
+            # Before training, we first perform one inference pass to log the loss value (and the other
+            # values that are being tracked when we train the SAE, see below) before training.
+            # The logged values should be the same for all model configurations (learning rate, batch size etc)
+            # Visually, this means that in the plots of those quantities will start in the same point. 
+            # Otherwise, the first entry corresponds to the value after the first epoch, and we don't see how 
+            # the value changed between the start and the end of the first epoch, which might be quite insightful.
+            # When we evaluate the model, i.e., we use the valid_dataloader, is_train=False by default.
+            if epoch==0:
+                is_train=False
+            else:
+                is_train=True
+
             if self.dataloader_2 is None and valid_dataloader is None:
-                train_loss, train_rec_loss, train_l1_loss = self.epoch(train_dataloader, is_train=True)
+                train_loss, train_rec_loss, train_l1_loss = self.epoch(train_dataloader, is_train=is_train)
                 if wandb_status:
                     wandb.log({f"{self.model_name}_train_loss": train_loss})
                 print(f'Epoch {epoch + 1}/{num_epochs} -> Train Loss: {train_loss:.4f}')
             elif self.dataloader_2 is None and valid_dataloader is not None:
-                train_loss, train_rec_loss, train_l1_loss = self.epoch(train_dataloader, is_train=True)
+                train_loss, train_rec_loss, train_l1_loss = self.epoch(train_dataloader, is_train=is_train)
                 valid_loss, val_rec_loss, val_l1_loss = self.epoch(valid_dataloader, is_train=False)
                 if wandb_status:
                     wandb.log({f"{self.model_name}_train_loss": train_loss, f"{self.model_name}_val_loss": valid_loss})
                 print(f'Epoch {epoch + 1}/{num_epochs} -> Train Loss: {train_loss:.4f}, Valid Loss: {valid_loss:.4f}')
             elif self.dataloader_2 is not None and valid_dataloader is None and 'sae' in self.model_name:
-                train_loss, mean_active_classes_per_neuron, std_active_classes_per_neuron, activated_units, total_units, train_rec_loss, train_l1_loss = self.epoch(train_dataloader, is_train=True)
+                train_loss, mean_active_classes_per_neuron, std_active_classes_per_neuron, activated_units, total_units, train_rec_loss, train_l1_loss = self.epoch(train_dataloader, is_train=is_train)
                 train_sae_sparsity, train_sae_mean_activated_units, train_sae_mean_total_units = compute_sparsity(activated_units, total_units, train_dataset_length)
                 if wandb_status:
                     wandb.log({f"{self.model_name}_train_loss": train_loss,
@@ -145,7 +157,7 @@ class Training:
                       f'Train SAE mean activated units: {train_sae_mean_activated_units},',
                       f'Train SAE mean total units: {train_sae_mean_total_units}')
             elif self.dataloader_2 is not None and valid_dataloader is not None and 'sae' in self.model_name:
-                train_loss, train_mean_active_classes_per_neuron, train_std_active_classes_per_neuron, train_activated_units, train_total_units, train_rec_loss, train_l1_loss = self.epoch(train_dataloader, is_train=True)
+                train_loss, train_mean_active_classes_per_neuron, train_std_active_classes_per_neuron, train_activated_units, train_total_units, train_rec_loss, train_l1_loss = self.epoch(train_dataloader, is_train=is_train)
                 valid_loss, val_mean_active_classes_per_neuron, val_std_active_classes_per_neuron, val_activated_units, val_total_units, val_rec_loss, val_l1_loss = self.epoch(valid_dataloader, is_train=False)
                 train_sae_sparsity, train_sae_mean_activated_units, train_sae_mean_total_units = compute_sparsity(train_activated_units, train_total_units, train_dataset_length)
                 val_sae_sparsity, val_sae_mean_activated_units, val_sae_mean_total_units = compute_sparsity(val_activated_units, val_total_units, valid_dataset_length)
@@ -184,7 +196,7 @@ class Training:
 
         if 'sae' in self.model_name:
             # We store the train_rec_loss and train_l1_loss from the last epoch
-            store_sae_losses(folder_path, layer_names, params, self.lambda_sparse, self.expansion_factor, train_rec_loss, train_l1_loss)
+            store_sae_losses(folder_path, layer_names, sae_params_1, self.lambda_sparse, self.expansion_factor, train_rec_loss, train_l1_loss)
 
     def save_model(self, weights_folder_path, layer_names=None, params=None):
         # layer_name is used for SAE models, because SAE is trained on activations

@@ -1,0 +1,1 @@
+custom_mlp_1,sae_mlp,['fc1'],C:\Users\Jasper\Downloads\Master thesis\Code,False,1,0.001,adam,64,0.1,cifar_10,True

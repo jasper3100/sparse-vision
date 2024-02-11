@@ -4,7 +4,7 @@ import h5py
 # FIX IMPORTS!!! FROM PARENT DIRECTORY
 
 from sae import SparseAutoencoder
-from main import expansion_factor, sae_weights_file_path, activations_file_path
+from old_main_with_individual_steps import expansion_factor, sae_weights_file_path, activations_file_path
 
 if __name__ == '__main__':
 

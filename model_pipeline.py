@@ -1,7 +1,6 @@
 import torch 
 
 from utils import *
-from evaluate_feature_maps import *
 from get_sae_image_size import GetSaeImgSize
 
 class ModelPipeline:
@@ -174,11 +173,21 @@ class ModelPipeline:
             self.activations[(name,model_key)].append(output)
 
         # store the sparsity info of current layer
-        activated_units, total_units = measure_activating_units(output, self.activation_threshold)
+        dead_neurons, activated_units, total_units = measure_activating_units(output, self.activation_threshold)
         if (name,model_key) not in self.sparsity:
             self.sparsity[(name, model_key)] = (activated_units, total_units)
         else:
-            self.sparsity[(name, model_key)] = (self.sparsity[(name,model_key)][0] + activated_units, self.sparsity[(name,model_key)][1] + total_units)
+            self.sparsity[(name, model_key)] = (self.sparsity[(name,model_key)][0] + activated_units, 
+                                                self.sparsity[(name,model_key)][1] + total_units)
+        
+        if (name,model_key) not in self.dead_neurons:
+            self.dead_neurons[(name, model_key)] = dead_neurons
+        else:
+            # dead_neurons is of the form [True,False,False,True,...] with size of the respective layer, where "True" stands for dead
+            # neuron and "False" stands for "active" neuron. We have the previous dead_neurons entry and a new one. A neuron 
+            # is counted as dead if it was dead before and is still dead, otherwise it is counted as "active". 
+            # This can be achieved through pointwise multiplication.
+            self.dead_neurons[(name, model_key)] = self.dead_neurons[(name,model_key)] * dead_neurons
 
         # store the relative sparsity of current layer
         if model_key == 'sae':
@@ -372,7 +381,7 @@ class ModelPipeline:
                     raise ValueError("Activations has the wrong shape for evaluating feature similarity.")
 
 
-    def deploy_model(self, num_epochs, wandb_status):
+    def deploy_model(self, num_epochs, dead_neurons_epochs, wandb_status):
         if self.use_sae and self.train_sae:
             print("Starting SAE training...")
             num_epochs += 1 # since we use the first epoch for inference to calculate 
@@ -384,6 +393,9 @@ class ModelPipeline:
             num_epochs += 1
         else:
             print("Starting inference through the original model...")
+
+        dead_neurons_epochs_counter = 0
+        self.dead_neurons = {}
 
         for epoch in range(num_epochs):
             if (self.train_sae and epoch==0) or (self.use_sae and not self.train_sae):
@@ -404,14 +416,41 @@ class ModelPipeline:
                 train_original_model=True
             else: 
                 raise ValueError("Parameters are not set correctly.")
-
-            self.epoch_forward_pass(use_sae=use_sae, train_sae=train_sae, train_original_model=train_original_model)
-            # the above method has no return values but it updates the class attributes, such as self.activations
             
+            if dead_neurons_epochs_counter == dead_neurons_epochs:
+                # count the number of dead neurons and report them (if number dead neurons is not None)
+                # for each key in self.dead_neurons, count the number of "True"'s
+                number_dead_neurons = compute_number_dead_neurons(self.dead_neurons)
+                self.dead_neurons = {}
+            elif dead_neurons_epochs_counter == 2*dead_neurons_epochs:
+                # re-initialize weights of dead neurons in the SAE (recall that the base model 
+                # is assumed to be given and frozen). In particular, HOW IS IT DONE??? CHECK DICTIONARY LEARNIGN PAPER 
+                # BY ANTHROPIC
+                # Then, we let those neurons participate
+                # in training for dead_neurons_epochs
+                # TO DO !!!!!!!
+                number_dead_neurons = compute_number_dead_neurons(self.dead_neurons)
+                dead_neurons_epochs_counter = 0
+                self.dead_neurons = {}
+            else:
+                number_dead_neurons = None
+            dead_neurons_epochs_counter += 1
+
+            self.epoch_forward_pass(use_sae=use_sae, 
+                                    train_sae=train_sae, 
+                                    train_original_model=train_original_model)
+            # the above method has no return values but it updates the class attributes, such as self.activations
+
             print("---------------------------")
             print(f"Epoch {epoch+1}/{num_epochs} | Model loss: {self.model_loss:.4f} | Model accuracy: {self.accuracy:.4f}")
+            if self.use_sae:
+                print(f"SAE loss: {self.sae_loss:.4f} | SAE rec. loss: {self.sae_rec_loss:.4f} | SAE l1 loss: {self.sae_l1_loss:.4f} | KLD: {self.kld:.4f} | Perc same classifications: {self.perc_same_classification:.4f}")
             if wandb_status:
                 wandb.log({"Model loss": self.model_loss, "model accuracy": self.accuracy}, step=epoch, commit=False)
+                if self.use_sae:
+                    wandb.log({"SAE loss": self.sae_loss, "SAE rec. loss": self.sae_rec_loss, "SAE l1 loss": self.sae_l1_loss, "KLD": self.kld, "Perc same classifications": self.perc_same_classification}, step=epoch, commit=False)
+                
+            # We show per model layer evaluation metrics 
             for name in self.sparsity.keys(): 
             # the names are the same for the polysemanticity and relative sparsity dictionaries
             # hence, it suffices to iterate over the keys of the sparsity dictionary
@@ -423,24 +462,30 @@ class ModelPipeline:
                     entity = "modified model"
                 # for now, only print/log results for the specified layer and the last layer, which is 'fc3'
                 if name[0] in self.layer_names or name[0] == 'fc3':
-                    print(f"Activated/total units; {entity}, layer {name[0]}: {self.sparsity[name][0]:.4f} | {self.sparsity[name][1]:.4f}")
-                    print(f"Relative sparsity; {entity}, layer {name[0]}: {self.relative_sparsity[name]:.4f}")
-                    print(f"Mean and std of active classes per neuron; {entity}, layer {name[0]}: {self.polysemanticity[name][0]:.4f} | {self.polysemanticity[name][1]:.4f}")
+                    print("-------")
+                    print(f"{entity}, Layer {name[0]}")
+                    print(f"Activated/total units: {self.sparsity[name][0]:.4f} | {self.sparsity[name][1]:.4f}")
+                    print(f"Relative sparsity: {self.relative_sparsity[name]:.4f}")
+                    print(f"Mean and std of active classes per neuron: {self.polysemanticity[name][0]:.4f} | {self.polysemanticity[name][1]:.4f}")
+                    if self.use_sae: 
+                        print(f"Mean and std of feature similarity (L2 loss) between modified and original model: {self.activation_similarity[name[0]][0]:.4f} | {self.activation_similarity[name[0]][1]:.4f}")
+                    if number_dead_neurons is not None:
+                        print(f"Number of dead neurons: {number_dead_neurons[name]:.4f}")
                     if wandb_status:
                         wandb.log({f"Relative sparsity; {entity}, layer {name[0]}": self.relative_sparsity[name]}, step=epoch, commit=False)
                         wandb.log({f"Mean active classes per neuron; {entity}, layer {name[0]}": self.polysemanticity[name][0]}, step=epoch, commit=False)
                         wandb.log({f"Std active classes per neuron; {entity}, layer {name[0]}": self.polysemanticity[name][1]}, step=epoch, commit=False)
-            if self.use_sae:
-                print(f"SAE loss: {self.sae_loss:.4f} | SAE rec. loss: {self.sae_rec_loss:.4f} | SAE l1 loss: {self.sae_l1_loss:.4f} | KLD: {self.kld:.4f} | Perc same classifications: {self.perc_same_classification:.4f}")
-                print(f"Mean and std of feature similarity (L2 loss) between modified and original model; {entity}, layer {name[0]}: {self.activation_similarity[name[0]][0]:.4f} | {self.activation_similarity[name[0]][1]:.4f}")
-                if wandb_status:
-                    wandb.log({"SAE loss": self.sae_loss, "SAE rec. loss": self.sae_rec_loss, "SAE l1 loss": self.sae_l1_loss, "KLD": self.kld, "Perc same classifications": self.perc_same_classification}, step=epoch, commit=False)
-                    wandb.log({f"Mean feature similarity (L2 loss) between modified and original model; {entity}, layer {name[0]}": self.activation_similarity[name][0]}, step=epoch, commit=False)
-                    wandb.log({f"Std feature similarity (L2 loss) between modified and original model; {entity}, layer {name[0]}": self.activation_similarity[name][1]}, step=epoch, commit=False)
+                        if self.use_sae:
+                            wandb.log({f"Mean feature similarity (L2 loss) between modified and original model; {entity}, layer {name[0]}": self.activation_similarity[name][0]}, step=epoch, commit=False)
+                            wandb.log({f"Std feature similarity (L2 loss) between modified and original model; {entity}, layer {name[0]}": self.activation_similarity[name][1]}, step=epoch, commit=False)
+                        if number_dead_neurons is not None:
+                            wandb.log({f"Number of dead neurons; {entity}, layer {name[0]}": number_dead_neurons[name]}, step=epoch, commit=False)
+ 
             if wandb_status:
                 wandb.log({}, commit=True) # commit the above logs
         
         print("---------------------------")
+        
         if self.use_sae:
             if self.train_sae:
                 print("SAE training completed.")
@@ -449,7 +494,7 @@ class ModelPipeline:
             else:  
                 print("Inference through the modified model completed.")
             # We store the sae_rec_loss and sae_l1_loss from the last epoch
-            store_sae_losses(self.evaluation_results_folder_path, self.layer_names, self.sae_params_1, self.sae_lambda_sparse, self.sae_expansion_factor, self.sae_rec_loss, self.sae_l1_loss)
+            store_sae_eval_results(self.evaluation_results_folder_path, self.layer_names, self.sae_params_1, self.sae_lambda_sparse, self.sae_expansion_factor, self.sae_rec_loss, self.sae_l1_loss, self.relative_sparsity)
         elif self.train_original_model:
             print("Training of the original model completed.")
             # store original model weights

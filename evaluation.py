@@ -15,21 +15,21 @@ class Evaluation:
         self.sae_params_1 = sae_params_1
         self.evaluation_results_folder_path = evaluation_results_folder_path
         
-    def get_sae_losses(self):
+    def get_sae_eval_results(self):
         '''
-        This function reads the rec_loss and l1_loss for different lambda_sparse and expansion_factor values
-        from a stored CSV file and visualizes them.
+        This function reads SAE eval results (such as rec_loss, l1_loss, relative sparsity of SAE encoder output)
+        for different lambda_sparse and expansion_factor values from a stored CSV file and visualizes them.
         '''
         # remove lambda_sparse and expansion_factor from params, because we want a uniform file name 
         # for all lambda_sparse and expansion_factor values
         file_path = get_file_path(folder_path=self.evaluation_results_folder_path,
                                     layer_names=self.layer_names,
                                     params=self.sae_params_1,
-                                    file_name='sae_train_losses.csv')
+                                    file_name='sae_eval_results.csv')
         df = pd.read_csv(file_path)
 
-        # Create a 2x2 subplot grid
-        fig, axs = plt.subplots(2, 2, figsize=(12, 10))
+        # Create a 2x3 subplot grid
+        fig, axs = plt.subplots(2, 3, figsize=(18, 10))
 
         # Sort the dataframe by lambda_sparse so that the line connects the data points in ascending order
         df_lambda_sparse = df.sort_values(by='lambda_sparse')
@@ -74,16 +74,34 @@ class Evaluation:
         axs[1, 1].legend(title="Lambda Sparse", labels=df_expansion_factor['lambda_sparse'].unique(), loc='upper left')
         axs[1, 1].set_xticks(df_expansion_factor['expansion_factor'].unique())
 
+        #df_rel_sparsity = df.sort_values(by='rel_sparsity')
+        # Plot rec_loss over rel_sparsity
+        axs[0, 2].plot(df['rel_sparsity'], df['rec_loss'])# label='_nolegend_')
+        axs[0, 2].scatter(df['rel_sparsity'], df['rec_loss'])#, label='_nolegend_')
+        # Plot l1_loss over rel_sparsity
+        axs[1, 2].plot(df['rel_sparsity'], df['l1_loss'])# label='_nolegend_')
+        axs[1, 2].scatter(df['rel_sparsity'], df['l1_loss'])#, label='_nolegend_')
+
+        axs[0, 2].set_xlabel(f"Relative sparsity of SAE encoder output on layer {self.layer_names[0]}")
+        axs[0, 2].set_ylabel("Rec Loss")
+        axs[0, 2].set_title("Rec Loss over relative sparsity")
+        axs[0, 2].set_xticks(df['rel_sparsity'].unique())
+
+        axs[1, 2].set_xlabel(f"Relative sparsity of SAE encoder output on layer {self.layer_names[0]}")
+        axs[1, 2].set_ylabel("L1 Loss")
+        axs[1, 2].set_title("L1 Loss over relative sparsity")
+        axs[1, 2].set_xticks(df['rel_sparsity'].unique())
+
         # Adjust layout and save the figure
         plt.tight_layout()
         png_path = get_file_path(folder_path=self.evaluation_results_folder_path,
                                 layer_names=self.layer_names,
                                 params=self.sae_params_1,
-                                file_name='sae_train_losses_plot.png')
+                                file_name='sae_eval_results_plot.png')
         plt.savefig(png_path, dpi=300)
         plt.close()
 
-        print(f"Successfully stored SAE train losses plot in {png_path}")
+        print(f"Successfully stored SAE eval results plot in {png_path}")
 
         if self.wandb_status:
-            wandb.log({f"sae_train_losses_{self.sae_params_1}": wandb.Image(png_path)}, commit=False)
+            wandb.log({f"sae_eval_results_{self.sae_params_1}": wandb.Image(png_path)}, commit=False)

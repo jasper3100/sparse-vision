@@ -30,7 +30,8 @@ class ExecuteProject:
                 compute_feature_similarity=None,
                 model_criterion_name=None,
                 sae_criterion_name=None,
-                run_group_ID=None):
+                run_group_ID=None,
+                dead_neurons_epochs=None):
         self.model_name = model_name
         self.sae_model_name = sae_model_name
         self.layer_names = ast.literal_eval(layer_names) # turn the string ['fc1'] into an actual list
@@ -58,12 +59,17 @@ class ExecuteProject:
         self.model_criterion_name = model_criterion_name
         self.sae_criterion_name = sae_criterion_name
         self.run_group_ID = run_group_ID
+        self.dead_neurons_epochs = dead_neurons_epochs
 
         # These parameter dictionaries are used for creating file names, f.e., to store model weights, feature maps, etc. Hence, include any parameter here that you would like to 
         # be included in the file names to better use and identify files, model_name and dataset_name are already considered
         self.model_params = {'epochs': model_epochs, 'learning_rate': model_learning_rate, 'batch_size': batch_size, 'optimizer': model_optimizer_name, 'activation_threshold': activation_threshold}
-        self.sae_params = {'epochs': sae_epochs, 'learning_rate': sae_learning_rate, 'batch_size': sae_batch_size, 'optimizer': sae_optimizer_name, 'expansion_factor': sae_expansion_factor, 'lambda_sparse': sae_lambda_sparse, 'activation_threshold': activation_threshold}
-        self.sae_params_1 = {'epochs': sae_epochs, 'learning_rate': sae_learning_rate, 'batch_size': sae_batch_size, 'optimizer': sae_optimizer_name, 'activation_threshold': activation_threshold}
+        self.sae_params = {'epochs': sae_epochs, 'learning_rate': sae_learning_rate, 'batch_size': sae_batch_size, 'optimizer': sae_optimizer_name, 'expansion_factor': sae_expansion_factor, 
+                           'lambda_sparse': sae_lambda_sparse, 'activation_threshold': activation_threshold, 'dead_neurons_epochs': dead_neurons_epochs}
+        # sae_params but without lambda_sparse and expansion_factor --> is used to create files collecting results varying over these two parameters
+        self.sae_params_1 = self.sae_params.copy()
+        self.sae_params_1.pop('lambda_sparse', None)
+        self.sae_params_1.pop('expansion_factor', None)
 
         self.model_weights_folder_path, self.sae_weights_folder_path, self.activations_folder_path, self.evaluation_results_folder_path = get_folder_paths(self.directory_path, self.model_name, self.dataset_name, self.sae_model_name)
 
@@ -121,7 +127,8 @@ class ExecuteProject:
                                 "store_activations": self.store_activations,
                                 "compute_feature_similarity": self.compute_feature_similarity,
                                 "model_criterion_name": self.model_criterion_name,
-                                "sae_criterion_name": self.sae_criterion_name})
+                                "sae_criterion_name": self.sae_criterion_name,
+                                "dead_neurons_epochs": self.dead_neurons_epochs})
 
     def model_pipeline(self):
         pipeline = ModelPipeline(device=self.device,
@@ -154,6 +161,7 @@ class ExecuteProject:
                                     sae_params=self.sae_params,
                                     sae_params_1=self.sae_params_1)
         pipeline.deploy_model(num_epochs=self.model_epochs, 
+                              dead_neurons_epochs=self.dead_neurons_epochs,
                             wandb_status=self.wandb_status)
                             
     def evaluation(self):
@@ -161,4 +169,4 @@ class ExecuteProject:
                                 wandb_status=self.wandb_status,
                                 sae_params_1=self.sae_params_1,
                                 evaluation_results_folder_path=self.evaluation_results_folder_path)
-        evaluation.get_sae_losses()
+        evaluation.get_sae_eval_results()

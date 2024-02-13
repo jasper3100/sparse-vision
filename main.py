@@ -9,6 +9,9 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description="Setting parameters")
     # command-line arguments
     parser.add_argument('--execution_location', type=str, help='Specify where to run the code')
+    parser.add_argument('--run_pipeline', action='store_true', help='Run the model pipeline') 
+    # action='store_true' means that if the flag is present, the value is True, otherwise False
+    parser.add_argument('--run_evaluation', action='store_true', help='Run the evaluation')
     parser.add_argument('--model_name', type=str, help='Specify the model name')
     parser.add_argument('--sae_model_name', type=str, help='Specify the sae model name')
     parser.add_argument('--layer_names', type=str, help='Specify the layer names')
@@ -35,10 +38,7 @@ def parse_arguments():
     parser.add_argument('--compute_feature_similarity', type=str)
     parser.add_argument('--model_criterion_name', type=str)
     parser.add_argument('--sae_criterion_name', type=str)
-    # if we are running the code on the cluster we can specify whether to run pipeline and/or evaluation
-    # MAKE THIS PARAMETER A BOOLEAN FLAG!!!
-    parser.add_argument('--run_pipeline', type=str)
-    parser.add_argument('--run_evaluation', type=str)
+    parser.add_argument('--dead_neurons_epochs', type=int)
     return parser.parse_args()
 
 if __name__ == '__main__':
@@ -80,6 +80,7 @@ if __name__ == '__main__':
                                                 compute_feature_similarity=parameters[21],
                                                 model_criterion_name=parameters[22],
                                                 sae_criterion_name=parameters[23],
+                                                dead_neurons_epochs=parameters[24],
                                                 run_group_ID=run_group_ID)
                 execute_project.model_pipeline()
 
@@ -88,7 +89,7 @@ if __name__ == '__main__':
         with open('parameters_eval.txt', 'r') as file:
             for line in file:
                 parameters_2 = [param for param in line.strip().split(',')]
-                use_sae = parameters_2[-1]
+                use_sae = parameters_2[-2]
                 if eval(use_sae):
                     # Make sure the order of parameters coincides with the one in
                     # parameters_eval.txt (see specify_parameters.py)
@@ -103,6 +104,8 @@ if __name__ == '__main__':
                                                     sae_batch_size=parameters_2[8],
                                                     activation_threshold=parameters_2[9],
                                                     dataset_name=parameters_2[10],
+                                                    # parameters_2[11] is use_sae
+                                                    dead_neurons_epochs=parameters_2[12],
                                                     run_group_ID=run_group_ID)
                     execute_project.evaluation()
 
@@ -111,47 +114,51 @@ if __name__ == '__main__':
         
     elif args.execution_location == 'cluster':
         print("Run code on cluster")
+
         if args.run_pipeline:
-            execute_project = ExecuteProject(args.model_name,
-                                            args.sae_model_name,
-                                            args.layer_names,
-                                            args.steps_to_execute,
-                                            args.directory_path,
-                                            args.wandb_status,
-                                            args.model_epochs,
-                                            args.model_learning_rate,
-                                            args.batch_size,
-                                            args.model_optimizer_name,
-                                            args.sae_epochs,
-                                            args.sae_learning_rate,
-                                            args.sae_optimizer_name,
-                                            args.sae_batch_size,
-                                            args.sae_lambda_sparse,
-                                            args.sae_expansion_factor,
-                                            args.activation_threshold,
-                                            args.dataset_name,
-                                            args.use_sae,
-                                            args.train_sae,
-                                            args.train_original_model,
-                                            args.store_activations,
-                                            args.compute_feature_similarity,
-                                            args.model_criterion_name,
-                                            args.sae_criterion_name,
-                                            args.run_group_ID)
+            execute_project = ExecuteProject(model_name=args.model_name,
+                                            sae_model_name=args.sae_model_name,
+                                            layer_names=args.layer_names,
+                                            directory_path=args.directory_path,
+                                            wandb_status=args.wandb_status,
+                                            model_epochs=args.model_epochs,
+                                            model_learning_rate=args.model_learning_rate,
+                                            batch_size=args.batch_size,
+                                            model_optimizer_name=args.model_optimizer_name,
+                                            sae_epochs=args.sae_epochs,
+                                            sae_learning_rate=args.sae_learning_rate,
+                                            sae_optimizer_name=args.sae_optimizer_name,
+                                            sae_batch_size=args.sae_batch_size,
+                                            sae_lambda_sparse=args.sae_lambda_sparse,
+                                            sae_expansion_factor=args.sae_expansion_factor,
+                                            activation_threshold=args.activation_threshold,
+                                            dataset_name=args.dataset_name,
+                                            use_sae=args.use_sae,
+                                            train_sae=args.train_sae,
+                                            train_original_model=args.train_original_model,
+                                            store_activations=args.store_activations,
+                                            compute_feature_similarity=args.compute_feature_similarity,
+                                            model_criterion_name=args.model_criterion_name,
+                                            sae_criterion_name=args.sae_criterion_name,
+                                            dead_neurons_epochs=args.dead_neurons_epochs,
+                                            run_group_ID=args.run_group_ID)
             execute_project.model_pipeline()
-        if args.run_evaluation:
-            execute_project = ExecuteProject(args.model_name,
-                                            args.sae_model_name,
-                                            args.layer_names,
-                                            args.directory_path,
-                                            args.wandb_status,
-                                            args.sae_epochs,
-                                            args.sae_learning_rate,
-                                            args.sae_optimizer_name,
-                                            args.sae_batch_size,
-                                            args.activation_threshold,
-                                            args.dataset_name,
-                                            args.run_group_ID)
+
+        if args.run_evaluation and args.use_sae:
+            # if we only use (or train) the original model, we currently do not perform post-hoc evaluation
+            execute_project = ExecuteProject(model_name=args.model_name,
+                                            sae_model_name=args.sae_model_name,
+                                            layer_names=args.layer_names,
+                                            directory_path=args.directory_path,
+                                            wandb_status=args.wandb_status,
+                                            sae_epochs=args.sae_epochs,
+                                            sae_learning_rate=args.sae_learning_rate,
+                                            sae_optimizer_name=args.sae_optimizer_name,
+                                            sae_batch_size=args.sae_batch_size,
+                                            activation_threshold=args.activation_threshold,
+                                            dataset_name=args.dataset_name,
+                                            dead_neurons_epochs=args.dead_neurons_epochs,
+                                            run_group_ID=args.run_group_ID)    
             execute_project.evaluation()
         if args.wandb_status == 'True':
             wandb.finish()

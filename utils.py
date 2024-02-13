@@ -387,18 +387,26 @@ def measure_activating_units(x, threshold):
     went through a ReLU and thus x.abs() = x, but we apply the absolute value here
     regardless for cases where no ReLU was applied.
     """
-    return (x.abs() > threshold).sum().item(), x.nelement()
+    dead_units_all_batches = x.abs() < threshold # get the indices of the neurons below the threshold
+    dead_units = torch.prod(dead_units_all_batches, dim=0) # we collapse the batch dimension. In particular,
+    # dead_units_all_batches is of shape [batch size, number of units in layer]. We multiply the 
+    # rows element-wise, so that we get a tensor of shape [number of units in layer], where each
+    # element is True if the unit is dead in all batches, and False otherwise.
+
+    total_number_units = x.nelement()
+    number_active_units = total_number_units - dead_units_all_batches.sum().item()
+
+    return dead_units, number_active_units, total_number_units
+
 
 def compute_sparsity(activating_units, total_units, dataset_length, expansion_factor=None):
-    mean_activated_units = int(activating_units/dataset_length)
-    mean_total_units = int(total_units/dataset_length)
     if expansion_factor is not None:
         # If we are in the augmented layer (i.e. the output of SAE encoder), then 
         # we compute the sparsity relative to the size of the original layer
         number_of_units_in_original_layer = total_units / expansion_factor
-        return 1 - (activating_units / number_of_units_in_original_layer) #, mean_activated_units, mean_total_units
+        return 1 - (activating_units / number_of_units_in_original_layer) 
     else:
-        return 1 - (activating_units / total_units) #, mean_activated_units, mean_total_units
+        return 1 - (activating_units / total_units) 
 
 def calculate_accuracy(output, target):
     _, _, class_ids = get_classifications(output)
@@ -443,20 +451,36 @@ def get_model_accuracy(model,
     if wandb_status:
         wandb.log({"model_train_accuracy": accuracy})
 
-def store_sae_losses(folder_path, layer_names, params, lambda_sparse, expansion_factor, train_rec_loss, train_scaled_l1_loss):
+def store_sae_eval_results(folder_path, 
+                            layer_names, 
+                            params, 
+                            lambda_sparse, 
+                            expansion_factor, 
+                            train_rec_loss, 
+                            train_scaled_l1_loss, 
+                            relative_sparsity):
     # remove lambda_sparse and expansion_factor from params, because we want a uniform file name 
     # for all lambda_sparse and expansion_factor values
     file_path = get_file_path(folder_path=folder_path,
                             layer_names=layer_names,
                             params=params,
-                            file_name='sae_train_losses.csv')
+                            file_name='sae_eval_results.csv')
     file_exists = os.path.exists(file_path)
-    columns = ["lambda_sparse", "expansion_factor", "rec_loss", "l1_loss"]
+    columns = ["lambda_sparse", "expansion_factor", "rec_loss", "l1_loss", "rel_sparsity"]
+
+    # We get the relative sparsity of the encoder output
+    for name in layer_names:
+        rel_sparsity = relative_sparsity[name, "sae"]
+
     if not file_exists:
         with open(file_path, 'w', newline='') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=columns)
             writer.writeheader()
-            writer.writerow({columns[0]: lambda_sparse, columns[1]: expansion_factor, columns[2]: train_rec_loss, columns[3]: train_scaled_l1_loss})
+            writer.writerow({columns[0]: lambda_sparse, 
+                             columns[1]: expansion_factor, 
+                             columns[2]: train_rec_loss, 
+                             columns[3]: train_scaled_l1_loss, 
+                             columns[4]: rel_sparsity})
     else:
         # Read the existing CSV file
         with open(file_path, 'r', newline='') as csvfile:
@@ -465,22 +489,27 @@ def store_sae_losses(folder_path, layer_names, params, lambda_sparse, expansion_
             # Check if the combination of lambda_sparse, expansion_factor already exists
             combination_exists = any(row["lambda_sparse"] == str(lambda_sparse) and row["expansion_factor"] == str(expansion_factor) for row in rows)
 
-            # If the combination exists, update rec_loss and l1_loss
+            # If the combination exists, update rec_loss, l1_loss, relative sparsity
             if combination_exists:
                 for row in rows:
                     if row["lambda_sparse"] == str(lambda_sparse) and row["expansion_factor"] == str(expansion_factor):
                         row["rec_loss"] = str(train_rec_loss)
                         row["l1_loss"] = str(train_scaled_l1_loss)
+                        row["rel_sparsity"] = str(rel_sparsity)
                         break
             else:
                 # If the combination doesn't exist, add a new row
-                rows.append({"lambda_sparse": str(lambda_sparse), "expansion_factor": str(expansion_factor), "rec_loss": str(train_rec_loss), "l1_loss": str(train_scaled_l1_loss)})
+                rows.append({"lambda_sparse": str(lambda_sparse), 
+                             "expansion_factor": str(expansion_factor), 
+                             "rec_loss": str(train_rec_loss), 
+                             "l1_loss": str(train_scaled_l1_loss),
+                             "rel_sparsity": str(rel_sparsity)})
 
         # Write the updated data back to the CSV file
         with open(file_path, 'w', newline='') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=columns)
             writer.writerows(rows)
-    print(f"Successfully stored SAE train losses in {file_path}")
+    print(f"Successfully stored SAE eval results with lamda_sparse and expansion_factor in {file_path}")
 
 def get_folder_paths(directory_path, model_name, dataset_name, sae_model_name):
     model_weights_folder_path = os.path.join(directory_path, 'model_weights', model_name, dataset_name)
@@ -488,3 +517,51 @@ def get_folder_paths(directory_path, model_name, dataset_name, sae_model_name):
     activations_folder_path = os.path.join(directory_path, 'feature_maps', model_name, dataset_name)
     evaluation_results_folder_path = os.path.join(directory_path, 'evaluation_results', model_name, dataset_name)
     return model_weights_folder_path, sae_weights_folder_path, activations_folder_path, evaluation_results_folder_path
+
+
+def polysemanticity_level(encoder_output, target, num_classes, activation_threshold):
+    '''
+    Returns mean and standard deviation of the number of active classes per neuron 
+    in the augmented layer.    
+    '''
+    # targets is of the form [6,9,9,1,2,...], i.e., it contains the target class indices
+    # target shape [number of samples n]
+    #n = target.shape[0]
+    # encoder_output.shape [number of samples n, number of neurons in augmented layer d]
+    d = encoder_output.shape[1]
+
+    # Create a binary mask for values above the activation_threshold
+    above_threshold = encoder_output > activation_threshold
+    # We create a matrix of size [d,num_classes] where each row i, contains for a certain
+    # dimension i of all activations, the number of times a class j has an activation
+    # above the threshold.
+    counting_matrix = torch.zeros(d, num_classes)
+    above_threshold = above_threshold.to(counting_matrix.dtype)  # Convert to the same type
+    counting_matrix.index_add_(1, target, above_threshold.t())
+    # The code is equivalent to the below for loop (which is too slow though)
+    '''
+    for i in range(n):
+        for j in range(d):
+            counting_matrix[j, target[i]] += encoder_output[i, j] > activation_threshold
+    '''
+
+    # Now, for each row i (each dimension i of the activations), we count the number of distinct positive integers, i.e.,
+    # the number of classes that have an activation above the threshold
+    # .bool() turns every non-zero element into a 1, and every zero into a 0
+    distinct_counts = torch.sum(counting_matrix.bool(), dim=1)
+
+    # We calculate the mean and standard deviation of the number of classes, that one neuron is active on
+    mean_distinct_counts = distinct_counts.float().mean().item()
+    std_distinct_counts = distinct_counts.float().std().item()
+
+    return mean_distinct_counts, std_distinct_counts
+
+def compute_number_dead_neurons(dead_neurons):
+    '''
+    dead_neurons is a dictionary of the form {(model_type,layer_name): [True,False,False,...]},
+    where 'True' means that the neuron is dead
+    '''
+    number_dead_neurons = {}
+    for key, tensor in dead_neurons.items():
+        number_dead_neurons[key] = tensor.sum().item()
+    return number_dead_neurons

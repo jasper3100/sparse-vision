@@ -196,7 +196,7 @@ class Training:
 
         if 'sae' in self.model_name:
             # We store the train_rec_loss and train_l1_loss from the last epoch
-            store_sae_losses(folder_path, layer_names, sae_params_1, self.lambda_sparse, self.expansion_factor, train_rec_loss, train_l1_loss)
+            store_sae_eval_results(folder_path, layer_names, sae_params_1, self.lambda_sparse, self.expansion_factor, train_rec_loss, train_l1_loss)
 
     def save_model(self, weights_folder_path, layer_names=None, params=None):
         # layer_name is used for SAE models, because SAE is trained on activations

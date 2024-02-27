@@ -31,7 +31,8 @@ class ExecuteProject:
                 model_criterion_name=None,
                 sae_criterion_name=None,
                 run_group_ID=None,
-                dead_neurons_epochs=None):
+                dead_neurons_epochs=None,
+                run_evaluation=None):
         self.model_name = model_name
         self.sae_model_name = sae_model_name
         self.layer_names = ast.literal_eval(layer_names) # turn the string ['fc1'] into an actual list
@@ -59,7 +60,9 @@ class ExecuteProject:
         self.model_criterion_name = model_criterion_name
         self.sae_criterion_name = sae_criterion_name
         self.run_group_ID = run_group_ID
-        self.dead_neurons_epochs = dead_neurons_epochs
+        self.dead_neurons_epochs = int(dead_neurons_epochs)
+        self.run_evaluation = run_evaluation if run_evaluation is not None else None
+        # WHEN ADDING A NEW PARAMETER HERE DONT FORGET TO TURN IT FROM STRING INTO THE DESIRED DATA FORMAT EVALUATE IT, i.e., int(x), float(x), eval(x), etc.
 
         # These parameter dictionaries are used for creating file names, f.e., to store model weights, feature maps, etc. Hence, include any parameter here that you would like to 
         # be included in the file names to better use and identify files, model_name and dataset_name are already considered
@@ -82,16 +85,25 @@ class ExecuteProject:
 
         if self.train_sae:
             id = "train_sae"
-        elif self.use_sae:
+        elif self.use_sae and not self.run_evaluation:
             id = "modified_model"
         elif self.train_original_model:
-            id = "original_model"
-        else:
             id = "train_original_model"
+        elif self.use_sae and self.run_evaluation: 
+            id = "sae_evaluation"
+        else:
+            id = "original_model"
 
         self.run_group_ID = id + "_" + self.dataset_name + "_" + self.run_group_ID
-        self.run_ID = get_file_path(layer_names=self.layer_names, params=self.model_params, params2=self.sae_params, file_name=self.run_group_ID)
-
+        if self.use_sae:
+            self.run_ID = get_file_path(layer_names=self.layer_names, params=self.model_params, params2=self.sae_params, file_name=self.run_group_ID)
+            # we use the appropriate number of epochs in pipeline.deploy_model()
+            self.num_epochs = self.sae_epochs
+        else:
+            # if we only use the original model, the sae parameters are not included in the run ID & file names
+            self.run_ID = get_file_path(layer_names=self.layer_names, params=self.model_params, file_name=self.run_group_ID)
+            self.num_epochs = self.model_epochs
+            
         # load data loader
         self.train_dataloader, self.val_dataloader, self.category_names, self.img_size = load_data(self.directory_path, self.dataset_name, self.batch_size)
         # num_batches can be set to a different value if we want to limit the number of batches (which can be used wherever desired)
@@ -124,6 +136,7 @@ class ExecuteProject:
                                 "use_sae": self.use_sae,
                                 "train_sae": self.train_sae,
                                 "train_original_model": self.train_original_model,
+                                "run_evaluation": self.run_evaluation,
                                 "store_activations": self.store_activations,
                                 "compute_feature_similarity": self.compute_feature_similarity,
                                 "model_criterion_name": self.model_criterion_name,
@@ -160,7 +173,7 @@ class ExecuteProject:
                                     sae_learning_rate=self.sae_learning_rate,
                                     sae_params=self.sae_params,
                                     sae_params_1=self.sae_params_1)
-        pipeline.deploy_model(num_epochs=self.model_epochs, 
+        pipeline.deploy_model(num_epochs=self.num_epochs, 
                               dead_neurons_epochs=self.dead_neurons_epochs,
                             wandb_status=self.wandb_status)
                             

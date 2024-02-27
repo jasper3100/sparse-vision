@@ -55,7 +55,6 @@ if __name__ == '__main__':
         with open('parameters.txt', 'r') as file:
             for line in file:
                 parameters = [param for param in line.strip().split(',')]
-                #execute_project = ExecuteProject(*parameters, run_group_ID)
                 execute_project = ExecuteProject(model_name=parameters[0],
                                                 sae_model_name=parameters[1],
                                                 layer_names=parameters[2],
@@ -104,11 +103,13 @@ if __name__ == '__main__':
                                                     sae_batch_size=parameters_2[8],
                                                     activation_threshold=parameters_2[9],
                                                     dataset_name=parameters_2[10],
-                                                    # parameters_2[11] is use_sae
+                                                    use_sae = parameters_2[11],
+                                                    run_evaluation=True,
                                                     dead_neurons_epochs=parameters_2[12],
                                                     run_group_ID=run_group_ID)
                     execute_project.evaluation()
 
+        # if we used wandb logging, we need to finish the run
         if parameters[4]=='True' or parameters_2[4]=='True':
             wandb.finish()
         
@@ -157,6 +158,8 @@ if __name__ == '__main__':
                                             sae_batch_size=args.sae_batch_size,
                                             activation_threshold=args.activation_threshold,
                                             dataset_name=args.dataset_name,
+                                            use_sae=args.use_sae,
+                                            run_evaluation=args.run_evaluation,
                                             dead_neurons_epochs=args.dead_neurons_epochs,
                                             run_group_ID=args.run_group_ID)    
             execute_project.evaluation()

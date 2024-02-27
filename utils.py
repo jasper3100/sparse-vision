@@ -366,6 +366,66 @@ def log_image_table(train_dataloader,
                             score)#*score.detach().numpy())
         wandb.log({"original_predictions_table":table}, commit=False)
 
+def plot_active_classes_per_neuron(number_active_classes_per_neuron, 
+                                   layer_names, 
+                                   num_classes,
+                                   folder_path=None, 
+                                   params=None, 
+                                   wandb_status=None):
+    # for now, only show results for the specified layer and the last layer, which is 'fc3'
+    # 2 rows for the 2 layers we're considering, and 3 columns for the 3 types of models (original, modified, sae)
+    fig, axes = plt.subplots(2, 3, figsize=(15, 10))
+    fig.suptitle('Number of active classes per neuron')
+
+    number_bins = 20
+    bin_width = num_classes / number_bins
+    # Set bin edges, we start from a small constant > 0 because we create a separate bin
+    # for zero values (dead neurons) to distinguish between dead neurons and ultra sparse neurons
+    # For example, if num_classes = 10 --> bin_width = 0.5 --> bin edges: [epsilon, 0.5), [0.5, 1.0), ...
+    bins1 = np.array([np.finfo(float).eps, bin_width])
+    bins2 = np.arange(bin_width, num_classes+0.0001, bin_width) 
+    # adding some small value to end point because otherwise np.arange does not include the end point
+    bins = np.concatenate((bins1, bins2))
+
+    for name in number_active_classes_per_neuron.keys():
+        if name[0] in layer_names or name[0] == 'fc3':
+            if name[0] == 'fc3':
+                row = 1
+            else:
+                row = 0
+            if name[1] == 'original':
+                col = 0
+            elif name[1] == 'modified':
+                col = 1
+            elif name[1] == 'sae':
+                col = 2
+
+            axes[row, col].hist(number_active_classes_per_neuron[name].cpu().numpy(), bins=bins, color='blue')
+            axes[row, col].set_title(f'Layer: {name[0]}, Model: {name[1]}')
+            axes[row, col].set_xlabel('Number of active classes')
+            axes[row, col].set_ylabel('Number of neurons')
+            # set a custom tick label of the tick at x=np.finfo(float).eps
+            x_ticks = axes[row, col].get_xticks()
+            axes[row, col].set_xticks(np.append(x_ticks, (0, -0.5))) # add a tick at x=0 and x=-0.5
+            axes[row, col].set_xticklabels([str(int(x)) for x in x_ticks] + [r' $\epsilon$', '0']) # label at x=0 is epsilon and at x=-0.5 is 0
+
+            # Add a red bar for values equal to zero (dead neurons)
+            dead_neurons = (number_active_classes_per_neuron[name].cpu().numpy() == 0).sum()
+            axes[row, col].bar(-0.25, dead_neurons, color='red', width=0.5, label=f'{dead_neurons} dead neurons')
+            axes[row, col].legend(loc='upper right')
+
+    plt.subplots_adjust(wspace=0.7)  # Adjust space between images
+    
+    if wandb_status:
+        wandb.log({"active_classes_per_neuron":wandb.Image(plt)})
+    else:
+        os.makedirs(folder_path, exist_ok=True)
+        file_path = get_file_path(folder_path, layer_names, params, 'active_classes_per_neuron.png')
+        plt.savefig(file_path)
+        plt.close()
+        print(f"Successfully stored active classes per neuron plot in {file_path}")
+
+
 def save_numbers(numbers, file_path):
     # input can be a tuple or a list of numbers
     with open(file_path, 'w') as f:
@@ -381,32 +441,34 @@ def get_stored_numbers(file_path):
         numbers = list(map(float, numbers_str.split(',')))
     return numbers
 
-def measure_activating_units(x, threshold):
+def measure_activating_neurons(x, threshold):
     """
-    Measure the number of activating units. Usually, the output of the SAE encoder
-    went through a ReLU and thus x.abs() = x, but we apply the absolute value here
-    regardless for cases where no ReLU was applied.
+    Measure the number of activating neurons.
     """
-    dead_units_all_batches = x.abs() < threshold # get the indices of the neurons below the threshold
-    dead_units = torch.prod(dead_units_all_batches, dim=0) # we collapse the batch dimension. In particular,
-    # dead_units_all_batches is of shape [batch size, number of units in layer]. We multiply the 
-    # rows element-wise, so that we get a tensor of shape [number of units in layer], where each
-    # element is True if the unit is dead in all batches, and False otherwise.
+    inactive_neurons = x < threshold # get the indices of the neurons below the threshold
+    
+    inactive_neurons = torch.prod(inactive_neurons, dim=0) # we collapse the batch size dimension. In particular,
+    # inactive_neurons is of shape [batch size (samples in batch), number of neurons in layer]. We multiply the 
+    # rows element-wise, so that we get a tensor of shape [number of neurons in layer], where each
+    # element is True if the neuron is dead in all batches, and False otherwise.
 
-    total_number_units = x.nelement()
-    number_active_units = total_number_units - dead_units_all_batches.sum().item()
+    # the below quantity is summed over all samples in one batch
+    number_active_neurons = (x >= threshold).sum().item()
 
-    return dead_units, number_active_units, total_number_units
+    # get the total number of neurons in the layer, i.e. the second dimension of x
+    number_total_neurons = x.shape[1]
+
+    return inactive_neurons, number_active_neurons, number_total_neurons
 
 
-def compute_sparsity(activating_units, total_units, dataset_length, expansion_factor=None):
+def compute_sparsity(activating_neurons, total_neurons, expansion_factor=None):
     if expansion_factor is not None:
         # If we are in the augmented layer (i.e. the output of SAE encoder), then 
         # we compute the sparsity relative to the size of the original layer
-        number_of_units_in_original_layer = total_units / expansion_factor
-        return 1 - (activating_units / number_of_units_in_original_layer) 
+        number_of_neurons_in_original_layer = total_neurons / expansion_factor
+        return 1 - (activating_neurons / number_of_neurons_in_original_layer) 
     else:
-        return 1 - (activating_units / total_units) 
+        return 1 - (activating_neurons / total_neurons) 
 
 def calculate_accuracy(output, target):
     _, _, class_ids = get_classifications(output)
@@ -519,10 +581,10 @@ def get_folder_paths(directory_path, model_name, dataset_name, sae_model_name):
     return model_weights_folder_path, sae_weights_folder_path, activations_folder_path, evaluation_results_folder_path
 
 
-def polysemanticity_level(encoder_output, target, num_classes, activation_threshold):
+def active_classes_per_neuron_aux(encoder_output, target, num_classes, activation_threshold):
     '''
-    Returns mean and standard deviation of the number of active classes per neuron 
-    in the augmented layer.    
+    Return a matrix showing for each neuron and each class, how often the neuron was active on a sample
+    of that class over one batch. 
     '''
     # targets is of the form [6,9,9,1,2,...], i.e., it contains the target class indices
     # target shape [number of samples n]
@@ -531,30 +593,27 @@ def polysemanticity_level(encoder_output, target, num_classes, activation_thresh
     d = encoder_output.shape[1]
 
     # Create a binary mask for values above the activation_threshold
-    above_threshold = encoder_output > activation_threshold
-    # We create a matrix of size [d,num_classes] where each row i, contains for a certain
+    above_threshold = encoder_output >= activation_threshold
+    # We create a matrix of size [row = d, column = num_classes] where each row i, contains for a certain
     # dimension i of all activations, the number of times a class j has an activation
     # above the threshold.
     counting_matrix = torch.zeros(d, num_classes)
     above_threshold = above_threshold.to(counting_matrix.dtype)  # Convert to the same type
     counting_matrix.index_add_(1, target, above_threshold.t())
-    # The code is equivalent to the below for loop (which is too slow though)
+    # The code is equivalent to the below for loop, which is too slow though but easier to understand
     '''
     for i in range(n):
         for j in range(d):
-            counting_matrix[j, target[i]] += encoder_output[i, j] > activation_threshold
+            counting_matrix[j, target[i]] += encoder_output[i, j] >= activation_threshold
     '''
 
-    # Now, for each row i (each dimension i of the activations), we count the number of distinct positive integers, i.e.,
-    # the number of classes that have an activation above the threshold
+    # If we just want to get the number of classes that each neuron is active without caring about which classes and how
+    # often a neuron was active on it, we can do the following: For each row i (each dimension i of the activations), 
+    # we count the number of distinct positive integers, i.e., the number of classes that have an activation above the threshold
     # .bool() turns every non-zero element into a 1, and every zero into a 0
-    distinct_counts = torch.sum(counting_matrix.bool(), dim=1)
+    # torch.sum(counting_matrix.bool(), dim=1)
 
-    # We calculate the mean and standard deviation of the number of classes, that one neuron is active on
-    mean_distinct_counts = distinct_counts.float().mean().item()
-    std_distinct_counts = distinct_counts.float().std().item()
-
-    return mean_distinct_counts, std_distinct_counts
+    return counting_matrix
 
 def compute_number_dead_neurons(dead_neurons):
     '''

@@ -31,6 +31,7 @@ class Evaluation:
         # Create a 2x3 subplot grid
         fig, axs = plt.subplots(2, 3, figsize=(18, 10))
 
+        ############################### COLUMN 1 ##################################################################
         # Sort the dataframe by lambda_sparse so that the line connects the data points in ascending order
         df_lambda_sparse = df.sort_values(by='lambda_sparse')
         for expansion_factor_value, expansion_factor_group in df_lambda_sparse.groupby('expansion_factor'):
@@ -53,6 +54,7 @@ class Evaluation:
         axs[1, 0].legend(title="Expansion Factor", labels=df_lambda_sparse['expansion_factor'].unique(), loc='upper left')
         axs[1, 0].set_xticks(df_lambda_sparse['lambda_sparse'].unique())
         
+        ############################### COLUMN 2 ##################################################################
         df_expansion_factor = df.sort_values(by='expansion_factor')
         for lambda_sparse_value, lambda_sparse_group in df_expansion_factor.groupby('lambda_sparse'):
             # Plot rec_loss over expansion_factor with data points
@@ -74,22 +76,26 @@ class Evaluation:
         axs[1, 1].legend(title="Lambda Sparse", labels=df_expansion_factor['lambda_sparse'].unique(), loc='upper left')
         axs[1, 1].set_xticks(df_expansion_factor['expansion_factor'].unique())
 
-        #df_rel_sparsity = df.sort_values(by='rel_sparsity')
-        # Plot rec_loss over rel_sparsity
-        axs[0, 2].plot(df['rel_sparsity'], df['rec_loss'])# label='_nolegend_')
-        axs[0, 2].scatter(df['rel_sparsity'], df['rec_loss'])#, label='_nolegend_')
-        # Plot l1_loss over rel_sparsity
-        axs[1, 2].plot(df['rel_sparsity'], df['l1_loss'])# label='_nolegend_')
-        axs[1, 2].scatter(df['rel_sparsity'], df['l1_loss'])#, label='_nolegend_')
+        ############################### COLUMN 3 ##################################################################
+        df_rel_sparsity = df.sort_values(by='rel_sparsity')
+        for expansion_factor_value, expansion_factor_group in df_rel_sparsity.groupby('expansion_factor'):
+            # Plot rec_loss over rel_sparsity with data points
+            axs[0, 2].plot(expansion_factor_group['rel_sparsity'], expansion_factor_group['rec_loss'], label=f"{expansion_factor_value}")
+            axs[0, 2].scatter(expansion_factor_group['rel_sparsity'], expansion_factor_group['rec_loss'], label='__nolegend__')
+            # Plot l1_loss over rel_sparsity with data points
+            axs[1, 2].plot(expansion_factor_group['rel_sparsity'], expansion_factor_group['l1_loss'], label=f"{expansion_factor_value}")
+            axs[1, 2].scatter(expansion_factor_group['rel_sparsity'], expansion_factor_group['l1_loss'], label='__nolegend__')
 
-        axs[0, 2].set_xlabel(f"Relative sparsity of SAE encoder output on layer {self.layer_names[0]}")
+        axs[0, 2].set_xlabel(f"Sparsity of SAE encoder output on layer {self.layer_names[0]}")
         axs[0, 2].set_ylabel("Rec Loss")
-        axs[0, 2].set_title("Rec Loss over relative sparsity")
+        axs[0, 2].set_title("Rec Loss over sparsity")
+        axs[0, 2].legend(title="Expansion Factor", loc='upper left')
         axs[0, 2].set_xticks(df['rel_sparsity'].unique())
 
-        axs[1, 2].set_xlabel(f"Relative sparsity of SAE encoder output on layer {self.layer_names[0]}")
+        axs[1, 2].set_xlabel(f"Sparsity of SAE encoder output on layer {self.layer_names[0]}")
         axs[1, 2].set_ylabel("L1 Loss")
-        axs[1, 2].set_title("L1 Loss over relative sparsity")
+        axs[1, 2].set_title("L1 Loss over sparsity")
+        axs[1, 2].legend(title="Expansion Factor", loc='upper left')
         axs[1, 2].set_xticks(df['rel_sparsity'].unique())
 
         # Adjust layout and save the figure

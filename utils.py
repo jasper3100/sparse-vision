@@ -11,10 +11,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import wandb
 import csv
-import pandas as pd
 
 from dataloaders.tiny_imagenet import TinyImageNetDataset, TinyImageNetPaths
-from models.custom_mlp_1 import CustomMLP1
+from models.custom_mlp import CustomMLP1, CustomMLP2
 from models.sae_conv import SaeConv
 from models.sae_mlp import SaeMLP
 from losses.sparse_loss import SparseLoss
@@ -22,17 +21,17 @@ from supplementary.dataset_stats import print_dataset_stats
 
 def get_optimizer(optimizer_name, model, learning_rate):
     if optimizer_name == 'adam':
-        return torch.optim.Adam(model.parameters(), lr=learning_rate)
+        return torch.optim.Adam(model.parameters(), lr=learning_rate, betas=(0,0.9999))
     elif optimizer_name == 'sgd':
         return torch.optim.SGD(model.parameters(), lr=learning_rate) # momentum= 0.9, weight_decay=1e-4)
     else:
         raise ValueError(f"Unsupported optimizer: {optimizer_name}")
 
-def get_criterion(criterion_name, lambda_sparse=None):
+def get_criterion(criterion_name, lambda_sparse=None, batch_size=None):
     if criterion_name == 'cross_entropy':
         return nn.CrossEntropyLoss()
     elif criterion_name == 'sae_loss':
-        return SparseLoss(lambda_sparse=lambda_sparse)
+        return SparseLoss(lambda_sparse=lambda_sparse, batch_size=batch_size)
     else:
         raise ValueError(f"Unsupported criterion: {criterion_name}")
     
@@ -100,6 +99,8 @@ def load_model(model_name, img_size=None, expansion_factor=None):
         return resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
     elif model_name == 'custom_mlp_1':
         return CustomMLP1(img_size)
+    elif model_name == 'custom_mlp_2':
+        return CustomMLP2(img_size)
     elif model_name == 'sae_conv':
         return SaeConv(img_size, expansion_factor)
     elif model_name == 'sae_mlp':
@@ -108,6 +109,13 @@ def load_model(model_name, img_size=None, expansion_factor=None):
         raise ValueError(f"Unsupported model: {model_name}")
 
 def load_data(directory_path, dataset_name, batch_size):
+    # shuffling the data during training has some advantages, during evaluation it's not necessary
+    train_shuffle=True
+    eval_shuffle=False
+    # we drop the last batch if it has less than batch_size samples (which might happen if the 
+    # dataset size is not divisible by batch_size). This ensures that when we average quantities over
+    # batches, we don't have to worry about the last batch being smaller than the others.
+    drop_last=True
     if dataset_name == 'tiny_imagenet':
         root_dir='datasets/tiny-imagenet-200'
         # if root_dir does not exist, download the dataset
@@ -116,12 +124,10 @@ def load_data(directory_path, dataset_name, batch_size):
         if not os.path.exists(root_dir):
             os.makedirs(root_dir, exist_ok=True)
 
-        # Data shuffling should be turned off here so that the activations that we store in the model without SAE
-        # are in the same order as the activations that we store in the model with SAE
         train_dataset = TinyImageNetDataset(root_dir, mode='train', preload=False, download=download)
-        train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
+        train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=train_shuffle, drop_last=drop_last)
         val_dataset = TinyImageNetDataset(root_dir, mode='val', preload=False, download=download)
-        val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+        val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=eval_shuffle, drop_last=drop_last)
 
         tiny_imagenet_paths = TinyImageNetPaths(root_dir, download=False)
         category_names = tiny_imagenet_paths.get_all_category_names()
@@ -152,9 +158,9 @@ def load_data(directory_path, dataset_name, batch_size):
         ])
 
         train_dataset = torchvision.datasets.CIFAR10(root_dir, train=True, download=download, transform=transform)
-        train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
+        train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=train_shuffle, drop_last=drop_last)
         val_dataset = torchvision.datasets.CIFAR10(root_dir, train=False, download=download, transform=transform)
-        val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+        val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=eval_shuffle, drop_last=drop_last)
         
         category_names = train_dataset.classes
         # the classes are: ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
@@ -175,9 +181,9 @@ def load_data(directory_path, dataset_name, batch_size):
         ])
 
         train_dataset = torchvision.datasets.MNIST(root_dir, train=True, download=download, transform=transform)
-        train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
+        train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=train_shuffle, drop_last=drop_last)
         val_dataset = torchvision.datasets.MNIST(root_dir, train=False, download=download, transform=transform)
-        val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+        val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=eval_shuffle, drop_last=drop_last)
         
         category_names = train_dataset.classes    
     else:
@@ -256,7 +262,7 @@ def get_classifications(output, category_names=None):
         category_list = None
     return scores, category_list, class_ids
 
-def show_classification_with_images(train_dataloader,
+def show_classification_with_images(dataloader,
                                     class_names, 
                                     folder_path=None,
                                     layer_names=None,
@@ -274,7 +280,7 @@ def show_classification_with_images(train_dataloader,
     n = 10  # show only the first n images, 
     # for showing all images in the batch use len(predicted_classes)
 
-    input_images, target_ids = next(iter(train_dataloader))  
+    input_images, target_ids = next(iter(dataloader))  
     input_images, target_ids = input_images[:n], target_ids[:n] # only show the first 10 images
     input_images, target_ids = input_images.to(device), target_ids.to(device)
 
@@ -313,7 +319,7 @@ def show_classification_with_images(train_dataloader,
     #plt.show()
     print(f"Successfully stored classification visualizations in {file_path}")
 
-def log_image_table(train_dataloader,
+def log_image_table(dataloader,
                     class_names, 
                     model=None,
                     device=None,
@@ -322,7 +328,7 @@ def log_image_table(train_dataloader,
     n = 10  # show only the first n images, 
     # for showing all images in the batch use len(predicted_classes)
 
-    images, target_ids = next(iter(train_dataloader))  
+    images, target_ids = next(iter(dataloader))  
     images, target_ids = images[:n], target_ids[:n] # only show the first 10 images
     images, target_ids = images.to(device), target_ids.to(device)
 
@@ -376,16 +382,7 @@ def plot_active_classes_per_neuron(number_active_classes_per_neuron,
     # 2 rows for the 2 layers we're considering, and 3 columns for the 3 types of models (original, modified, sae)
     fig, axes = plt.subplots(2, 3, figsize=(15, 10))
     fig.suptitle('Number of active classes per neuron')
-
-    number_bins = 20
-    bin_width = num_classes / number_bins
-    # Set bin edges, we start from a small constant > 0 because we create a separate bin
-    # for zero values (dead neurons) to distinguish between dead neurons and ultra sparse neurons
-    # For example, if num_classes = 10 --> bin_width = 0.5 --> bin edges: [epsilon, 0.5), [0.5, 1.0), ...
-    bins1 = np.array([np.finfo(float).eps, bin_width])
-    bins2 = np.arange(bin_width, num_classes+0.0001, bin_width) 
-    # adding some small value to end point because otherwise np.arange does not include the end point
-    bins = np.concatenate((bins1, bins2))
+    bins = np.arange(0, num_classes+1.01, 1)
 
     for name in number_active_classes_per_neuron.keys():
         if name[0] in layer_names or name[0] == 'fc3':
@@ -399,20 +396,12 @@ def plot_active_classes_per_neuron(number_active_classes_per_neuron,
                 col = 1
             elif name[1] == 'sae':
                 col = 2
-
-            axes[row, col].hist(number_active_classes_per_neuron[name].cpu().numpy(), bins=bins, color='blue')
+            axes[row, col].hist(number_active_classes_per_neuron[name].cpu().numpy(), bins=bins, color='blue', edgecolor='black')
             axes[row, col].set_title(f'Layer: {name[0]}, Model: {name[1]}')
             axes[row, col].set_xlabel('Number of active classes')
             axes[row, col].set_ylabel('Number of neurons')
-            # set a custom tick label of the tick at x=np.finfo(float).eps
-            x_ticks = axes[row, col].get_xticks()
-            axes[row, col].set_xticks(np.append(x_ticks, (0, -0.5))) # add a tick at x=0 and x=-0.5
-            axes[row, col].set_xticklabels([str(int(x)) for x in x_ticks] + [r' $\epsilon$', '0']) # label at x=0 is epsilon and at x=-0.5 is 0
-
-            # Add a red bar for values equal to zero (dead neurons)
-            dead_neurons = (number_active_classes_per_neuron[name].cpu().numpy() == 0).sum()
-            axes[row, col].bar(-0.25, dead_neurons, color='red', width=0.5, label=f'{dead_neurons} dead neurons')
-            axes[row, col].legend(loc='upper right')
+            axes[row, col].set_xticks(np.arange(0.5, num_classes+1, 1))
+            axes[row, col].set_xticklabels([str(int(x)) for x in range(num_classes+1)])
 
     plt.subplots_adjust(wspace=0.7)  # Adjust space between images
     
@@ -424,6 +413,52 @@ def plot_active_classes_per_neuron(number_active_classes_per_neuron,
         plt.savefig(file_path)
         plt.close()
         print(f"Successfully stored active classes per neuron plot in {file_path}")
+
+def plot_neuron_activation_density(active_classes_per_neuron, 
+                                   layer_names, 
+                                   num_samples,
+                                   folder_path=None, 
+                                   params=None, 
+                                   wandb_status=None):
+    # for now, only show results for the specified layer and the last layer, which is 'fc3'
+    # 2 rows for the 2 layers we're considering, and 3 columns for the 3 types of models (original, modified, sae)
+    fig, axes = plt.subplots(2, 3, figsize=(15, 10))
+    fig.suptitle('Neuron activation density')
+    bins = np.arange(0, 1.01, 0.05)
+
+    for name in active_classes_per_neuron.keys():
+        if name[0] in layer_names or name[0] == 'fc3':
+            if name[0] == 'fc3':
+                row = 1
+            else:
+                row = 0
+            if name[1] == 'original':
+                col = 0
+            elif name[1] == 'modified':
+                col = 1
+            elif name[1] == 'sae':
+                col = 2
+            
+            # For each row we sum up the entries in that row --> how often each neuron was active overall
+            how_often_neuron_was_active = torch.sum(active_classes_per_neuron[name], dim=1)
+            # active_classes_per_neuron is stored epoch-wise, thus we can normalize by the number of samples in one epoch
+            how_often_neuron_was_active = how_often_neuron_was_active / num_samples
+
+            axes[row, col].hist(how_often_neuron_was_active.cpu().numpy(), bins=bins, color='green', edgecolor='black')
+            axes[row, col].set_title(f'Layer: {name[0]}, Model: {name[1]}')
+            axes[row, col].set_xlabel('Percentage of samples on which a neuron is active')
+            axes[row, col].set_ylabel('Number of neurons')
+ 
+    plt.subplots_adjust(wspace=0.7)  # Adjust space between images
+    
+    if wandb_status:
+        wandb.log({"neuron_activation_density":wandb.Image(plt)})
+    else:
+        os.makedirs(folder_path, exist_ok=True)
+        file_path = get_file_path(folder_path, layer_names, params, 'neuron_activation_density.png')
+        plt.savefig(file_path)
+        plt.close()
+        print(f"Successfully stored neuron activation density plot in {file_path}")
 
 
 def save_numbers(numbers, file_path):
@@ -459,16 +494,6 @@ def measure_activating_neurons(x, threshold):
     number_total_neurons = x.shape[1]
 
     return inactive_neurons, number_active_neurons, number_total_neurons
-
-
-def compute_sparsity(activating_neurons, total_neurons, expansion_factor=None):
-    if expansion_factor is not None:
-        # If we are in the augmented layer (i.e. the output of SAE encoder), then 
-        # we compute the sparsity relative to the size of the original layer
-        number_of_neurons_in_original_layer = total_neurons / expansion_factor
-        return 1 - (activating_neurons / number_of_neurons_in_original_layer) 
-    else:
-        return 1 - (activating_neurons / total_neurons) 
 
 def calculate_accuracy(output, target):
     _, _, class_ids = get_classifications(output)
@@ -518,9 +543,12 @@ def store_sae_eval_results(folder_path,
                             params, 
                             lambda_sparse, 
                             expansion_factor, 
-                            train_rec_loss, 
-                            train_scaled_l1_loss, 
-                            relative_sparsity):
+                            rec_loss, 
+                            scaled_l1_loss, 
+                            nrmse_loss,
+                            rmse_loss,
+                            sparsity,
+                            sparsity_1):
     # remove lambda_sparse and expansion_factor from params, because we want a uniform file name 
     # for all lambda_sparse and expansion_factor values
     file_path = get_file_path(folder_path=folder_path,
@@ -528,26 +556,31 @@ def store_sae_eval_results(folder_path,
                             params=params,
                             file_name='sae_eval_results.csv')
     file_exists = os.path.exists(file_path)
-    columns = ["lambda_sparse", "expansion_factor", "rec_loss", "l1_loss", "rel_sparsity"]
-
+    columns = ["lambda_sparse", "expansion_factor", "rec_loss", "l1_loss", "nrmse_loss", "rmse_loss", "rel_sparsity", "rel_sparsity_1"]
+            
     # We get the relative sparsity of the encoder output
     for name in layer_names:
-        rel_sparsity = relative_sparsity[name, "sae"]
+        rel_sparsity = sparsity[name, "sae"]
+        rel_sparsity_1 = sparsity_1[name, "sae"]
 
     if not file_exists:
         with open(file_path, 'w', newline='') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=columns)
             writer.writeheader()
-            writer.writerow({columns[0]: lambda_sparse, 
-                             columns[1]: expansion_factor, 
-                             columns[2]: train_rec_loss, 
-                             columns[3]: train_scaled_l1_loss, 
-                             columns[4]: rel_sparsity})
+            writer.writerow({columns[0]: lambda_sparse,
+                            columns[1]: expansion_factor,
+                            columns[2]: rec_loss,
+                            columns[3]: scaled_l1_loss,
+                            columns[4]: nrmse_loss,
+                            columns[5]: rmse_loss,
+                            columns[6]: rel_sparsity,
+                            columns[7]: rel_sparsity_1})
     else:
         # Read the existing CSV file
         with open(file_path, 'r', newline='') as csvfile:
             reader = csv.DictReader(csvfile, fieldnames=columns)
             rows = list(reader)
+
             # Check if the combination of lambda_sparse, expansion_factor already exists
             combination_exists = any(row["lambda_sparse"] == str(lambda_sparse) and row["expansion_factor"] == str(expansion_factor) for row in rows)
 
@@ -555,17 +588,24 @@ def store_sae_eval_results(folder_path,
             if combination_exists:
                 for row in rows:
                     if row["lambda_sparse"] == str(lambda_sparse) and row["expansion_factor"] == str(expansion_factor):
-                        row["rec_loss"] = str(train_rec_loss)
-                        row["l1_loss"] = str(train_scaled_l1_loss)
+                        row["rec_loss"] = str(rec_loss)
+                        row["l1_loss"] = str(scaled_l1_loss)
+                        row["nrmse_loss"] = str(nrmse_loss)
+                        row["rmse_loss"] = str(rmse_loss)
                         row["rel_sparsity"] = str(rel_sparsity)
+                        if sparsity_1 is not None:
+                            row["rel_sparsity_1"] = str(rel_sparsity_1)
                         break
             else:
                 # If the combination doesn't exist, add a new row
                 rows.append({"lambda_sparse": str(lambda_sparse), 
                              "expansion_factor": str(expansion_factor), 
-                             "rec_loss": str(train_rec_loss), 
-                             "l1_loss": str(train_scaled_l1_loss),
-                             "rel_sparsity": str(rel_sparsity)})
+                             "rec_loss": str(rec_loss), 
+                             "l1_loss": str(scaled_l1_loss),
+                             "nrmse_loss": str(nrmse_loss),
+                             "rmse_loss": str(rmse_loss),
+                             "rel_sparsity": str(rel_sparsity),
+                             "rel_sparsity_1": str(rel_sparsity_1)})
 
         # Write the updated data back to the CSV file
         with open(file_path, 'w', newline='') as csvfile:
@@ -576,9 +616,9 @@ def store_sae_eval_results(folder_path,
 def get_folder_paths(directory_path, model_name, dataset_name, sae_model_name):
     model_weights_folder_path = os.path.join(directory_path, 'model_weights', model_name, dataset_name)
     sae_weights_folder_path = os.path.join(directory_path, 'model_weights', sae_model_name, dataset_name)
-    activations_folder_path = os.path.join(directory_path, 'feature_maps', model_name, dataset_name)
+    #activations_folder_path = os.path.join(directory_path, 'feature_maps', model_name, dataset_name)
     evaluation_results_folder_path = os.path.join(directory_path, 'evaluation_results', model_name, dataset_name)
-    return model_weights_folder_path, sae_weights_folder_path, activations_folder_path, evaluation_results_folder_path
+    return model_weights_folder_path, sae_weights_folder_path, evaluation_results_folder_path
 
 
 def active_classes_per_neuron_aux(encoder_output, target, num_classes, activation_threshold):
@@ -606,21 +646,227 @@ def active_classes_per_neuron_aux(encoder_output, target, num_classes, activatio
         for j in range(d):
             counting_matrix[j, target[i]] += encoder_output[i, j] >= activation_threshold
     '''
-
-    # If we just want to get the number of classes that each neuron is active without caring about which classes and how
-    # often a neuron was active on it, we can do the following: For each row i (each dimension i of the activations), 
-    # we count the number of distinct positive integers, i.e., the number of classes that have an activation above the threshold
-    # .bool() turns every non-zero element into a 1, and every zero into a 0
-    # torch.sum(counting_matrix.bool(), dim=1)
-
     return counting_matrix
 
 def compute_number_dead_neurons(dead_neurons):
     '''
     dead_neurons is a dictionary of the form {(model_type,layer_name): [True,False,False,...]},
     where 'True' means that the neuron is dead
+    Hence, for each key in dead_neurons, count the number of "True"'s
     '''
     number_dead_neurons = {}
     for key, tensor in dead_neurons.items():
         number_dead_neurons[key] = tensor.sum().item()
     return number_dead_neurons
+
+def print_and_log_results(train_or_eval,
+                          model_loss,
+                          accuracy,
+                          use_sae,
+                          wandb_status,
+                          layer_names,
+                          sparsity_dict=None,
+                          mean_number_active_classes_per_neuron=None,
+                          std_number_active_classes_per_neuron=None,
+                          total_neurons=None,
+                          average_activated_neurons=None,
+                          sparsity_dict_1=None,
+                          number_dead_neurons=None,
+                          batch=None,
+                          epoch=None,
+                          sae_loss=None,
+                          sae_rec_loss=None,
+                          sae_l1_loss=None,
+                          sae_nrmse_loss=None,
+                          sae_rmse_loss=None,
+                          kld=None,
+                          perc_same_classification=None,
+                          activation_similarity=None):
+    '''
+    A function for printing results and logging them to W&B. 
+
+    Parameters:
+    train_or_eval (str): The string 'train' or 'eval' to indicate whether
+                         the results are from training or evaluation.
+    use_sae (Bool): True or False
+    batch (int): index of batch whose results are logged
+    dead_neurons_steps (int): after how many batches/epochs we measure dead neurons
+    '''
+    if train_or_eval == 'train':
+        epoch_or_batch = 'batch'
+        step = batch
+    elif train_or_eval == 'eval':
+        epoch_or_batch = 'epoch'
+        step = epoch
+    else:
+        raise ValueError("train_or_eval needs to be 'train' or 'eval'.")
+
+    # we don't print anything during training because there we deal with results batch-wise
+    # printing for every batch would be too much, instead, if specified, these things will be logged to W&B
+    if train_or_eval == 'eval':
+        print(f"Model loss: {model_loss:.4f} | Model accuracy: {accuracy:.4f}")
+        if use_sae:
+            print(f"SAE loss: {sae_loss:.4f} | SAE rec. loss: {sae_rec_loss:.4f} | SAE l1 loss: {sae_l1_loss:.4f} | KLD: {kld:.4f} | Perc same classifications: {perc_same_classification:.4f}")
+    if wandb_status:
+        wandb.log({f"{train_or_eval}/model loss": model_loss, f"{train_or_eval}/model accuracy": accuracy, f"{epoch_or_batch}": step}, commit=False)
+        if use_sae:
+            wandb.log({f"{train_or_eval}/SAE loss": sae_loss, 
+                       f"{train_or_eval}/SAE rec. loss": sae_rec_loss, 
+                       f"{train_or_eval}/SAE l1 loss": sae_l1_loss, 
+                       f"{train_or_eval}/SAE nrmse loss": sae_nrmse_loss,
+                       f"{train_or_eval}/SAE rmse loss": sae_rmse_loss,
+                       f"{train_or_eval}/KLD": kld, 
+                       f"{train_or_eval}/Perc same classifications": perc_same_classification, 
+                       f"{epoch_or_batch}": step}, commit=False)
+            # wandb doesn't accept tuples as keys, so we convert them to strings
+            number_dead_neurons = {f"{train_or_eval}/Number_of_dead_neurons_on_{train_or_eval}_data/{k[0]}_{k[1]}": v for k, v in number_dead_neurons.items()}
+            # merge two dictionaries
+            number_dead_neurons = {**number_dead_neurons, f"{epoch_or_batch}": step}
+            wandb.log(number_dead_neurons, commit=False) # overview of number of dead neurons for all layers
+        
+    # We show per model layer evaluation metrics
+    if use_sae: 
+        for name in number_dead_neurons.keys(): 
+        # the names are the same for the polysemanticity and relative sparsity dictionaries
+        # hence, it suffices to iterate over the keys of the sparsity dictionary
+            model_key = name[1] # can be "original" (model), "sae" (encoder output), "modified" (model)
+
+            # for now, only print/log results for some chosen layers 
+            if name[0] in layer_names or name[0] == 'fc2':
+                if train_or_eval == 'eval':
+                    '''
+                    print("-------")
+                    print(f"{model_key}, Layer {name[0]}")
+                    print(f"Activated/dead/total neurons: {average_activated_neurons:.2f} | {number_dead_neurons[name]} | {int(total_neurons)}")
+                    print(f"Sparsity: {sparsity_dict[name]:.3f}")
+                    if model_key == 'sae':
+                        print(f"Sparsity_1: {sparsity_dict_1[name]:.3f}")
+                    print(f"Mean and std of number of active classes per neuron: {mean_number_active_classes_per_neuron:.4f} | {std_number_active_classes_per_neuron:.4f}")
+                    if use_sae: 
+                        print(f"Mean and std of feature similarity (L2 loss) between modified and original model: {activation_similarity[name[0]][0]:.4f} | {activation_similarity[name[0]][1]:.4f}")
+                    '''
+                if wandb_status:
+                    # can I log a dictionary to wandb? --> yes, see https://docs.wandb.ai/guides/track/log
+                    wandb.log({f"{train_or_eval}/Activation_of_neurons/{model_key}_layer_{name[0]}: Activated neurons": average_activated_neurons, f"{epoch_or_batch}": step}, commit=False)
+                    wandb.log({f"{train_or_eval}/Activation_of_neurons/{model_key}_layer_{name[0]}: Dead neurons": number_dead_neurons[name], f"{epoch_or_batch}": step}, commit=False)
+                    wandb.log({f"{train_or_eval}/Activation_of_neurons/{model_key}_layer_{name[0]}: Total neurons": total_neurons, f"{epoch_or_batch}": step}, commit=False)
+                    if train_or_eval == 'eval':
+                        wandb.log({f"{train_or_eval}/Sparsity/{model_key}_layer_{name[0]}: Sparsity": sparsity_dict[name], f"{epoch_or_batch}":step}, commit=False)
+                    wandb.log({f"{train_or_eval}/Active_classes_per_neuron/{model_key}_layer_{name[0]}: Mean": mean_number_active_classes_per_neuron, f"{epoch_or_batch}":step}, commit=False)
+                    wandb.log({f"{train_or_eval}/Active_classes_per_neuron/{model_key}_layer_{name[0]}: Std": std_number_active_classes_per_neuron, f"{epoch_or_batch}":step}, commit=False)
+                    if model_key == 'sae':
+                        wandb.log({f"{train_or_eval}/Sparsity/{model_key}_layer_{name[0]}: Sparsity_1": sparsity_dict_1[name], f"{epoch_or_batch}":step}, commit=False)
+                    if use_sae:
+                        wandb.log({f"{train_or_eval}/Feature_similarity_L2loss_between_modified_and_original_model/{model_key}_layer_{name[0]}: Mean": activation_similarity[name[0]][0], f"{epoch_or_batch}":step}, commit=False) 
+                        wandb.log({f"{train_or_eval}/Feature_similarity_L2loss_between_modified_and_original_model/{model_key}_layer_{name[0]}: Std": activation_similarity[name[0]][1], f"{epoch_or_batch}":step}, commit=False) 
+        
+    # we only log results at the end of an epoch, which is when epoch is not None (eval mode) or when batch is the last batch (train mode)
+    if wandb_status:
+    #    if (epoch is not None) or (batch is not None and batch == num_batches):
+    #        print("Logging results to W&B...")
+        wandb.log({}, commit=True) # commit the above logs
+
+    
+def feature_similarity(activations,activation_similarity,device):
+    '''
+    calculates the feature similarity between the modified and original for one batch
+    '''
+    unique_layer_names = {key[0] for key in activations.keys()} # curly brackets denote a set --> only take unique values
+    # alternatively: module_names = get_module_names(model)
+
+    for name in unique_layer_names:
+        # we get the activations of the specified layer
+        original_activation = activations.get((name, 'original'), None).to(device)
+        modified_activation = activations.get((name, 'modified'), None).to(device)
+
+        sample_dist = torch.linalg.norm(original_activation - modified_activation, dim=1)
+        dist_mean = sample_dist.mean().item()
+        dist_std = sample_dist.std().item()   
+        activation_similarity[name] = (dist_mean, dist_std)
+
+        '''
+        activations = [(k,v) for k, v in activations.items() if k[0] == name]
+        # activations should be of the form (with len(activations)=3)
+        # [((name, 'modified'), tensor), 
+        #  ((name, 'original'), tensor)]
+        # and if we inserted an SAE at the given layer with name, then 
+        # ((name, 'sae'), tensors) is the first entry of activations
+        # we check whether activations has the expected shape
+        if (activations[-2][0][1] == "modified" and activations[-1][0][1] == "original"):
+            activations_1 = activations[-1][1].to(device)
+            activations_2 = activations[-2][1].to(device)
+            print(activations_1.shape, activations_2.shape)
+            sample_dist = torch.linalg.norm(activations_1 - activations_2, dim=1)
+            dist_mean = sample_dist.mean().item()
+            dist_std = sample_dist.std().item()   
+            activation_similarity[name] = (dist_mean, dist_std)
+        else:
+            raise ValueError("Activations has the wrong shape for evaluating feature similarity.")
+        '''
+    return activation_similarity
+
+def compute_sparsity(train_or_eval, 
+                     sae_expansion_factor, 
+                     number_active_neurons, 
+                     active_classes_per_neuron, 
+                     number_dead_neurons=None,
+                     dead_neurons=None, 
+                     num_classes=None):
+    sparsity_dict = {}
+    sparsity_dict_1 = {} # alternative sparsity
+    number_active_classes_per_neuron = {}
+
+    for name in number_active_neurons.keys(): 
+        model_key = name[1] # can be "original" (model), "sae" (encoder output), "modified" (model)
+          
+        average_activated_neurons = number_active_neurons[name][0]
+        total_neurons = number_active_neurons[name][1] 
+        # during training, we don't measure sparsity batch-wise in terms of dead neurons because the number 
+        # of dead neurons monotonically decreases over batches --> thus the sparsity would change accordingly
+        # making it hard to interpret
+        if train_or_eval == 'eval':
+            number_used_neurons = total_neurons - number_dead_neurons[name]
+            # number of active neurons should be less than or equal to the number of used neurons
+            if average_activated_neurons > number_used_neurons:
+                raise ValueError(f"The number of active neurons ({average_activated_neurons}) is greater than the number of used neurons ({number_used_neurons}).")
+            sparsity = 1 - (average_activated_neurons / number_used_neurons) 
+            sparsity_dict[name] = sparsity
+        if model_key == 'sae':
+            number_of_neurons_in_original_layer = total_neurons / sae_expansion_factor
+            sparsity_1 = 1 - (average_activated_neurons / number_of_neurons_in_original_layer)
+            sparsity_dict_1[name] = sparsity_1
+
+        # in the case, where dead neurons are measured over the same time frame as the active classes per neuron
+        # (this is the case if we're in eval mode), we can check that active_classes_per_neuron is consistent with
+        # the number of dead neurons. If this is the case during evaluation it like also is the case during training.
+        if train_or_eval == 'eval':
+            # First we check that the number of rows of the active_classes_per_neuron matrix
+            # is equal to the number of neurons
+            if active_classes_per_neuron[name].shape[0] != total_neurons:
+                raise ValueError(f"The number of rows of the active_classes_per_neuron matrix ({active_classes_per_neuron[name].shape[0]}) is not equal to the number of dead neurons ({total_neurons}).")
+
+            # Now we remove the rows/neurons from the matrix which correspond to dead neurons
+            a = active_classes_per_neuron[name][dead_neurons[name] == False]
+            # we check whether the number of rows of the matrix with dead neurons removed is equal to the number of used neurons
+            # this is equivalent to: the number of neurons which weren't active on any class is 
+            # equal to the number of dead neurons
+            if a.shape[0] != number_used_neurons:
+                raise ValueError(f"The number of rows of the active_classes_per_neuron matrix with dead neurons removed ({a.shape[0]}) is not equal to the number of used neurons ({number_used_neurons}).")
+
+            # the number of dead neurons should correspond to 
+            # the number of 0 rows in active_classes_per_neuron because a neuron is 
+            # dead iff it is active on 0 classes throughout this epoch
+            num_zero_rows = torch.sum(torch.all(active_classes_per_neuron[name] == 0, dim=1)).item()
+            if number_dead_neurons[name] != num_zero_rows:
+                raise ValueError(f"{name}: The number of dead neurons ({number_dead_neurons[name]}) is not equal to the number of neurons ({num_zero_rows}) which are active on 0 classes.")
+        
+        # For each row i (each neuron), we count the number of distinct positive integers, i.e., the number 
+        # of classes that have an activation above the threshold; .bool() turns every non-zero element into a 1, 
+        # and every zero into a 0
+        number_active_classes_per_neuron[name] = torch.sum(active_classes_per_neuron[name].bool(), dim=1)
+        mean_number_active_classes_per_neuron = number_active_classes_per_neuron[name].float().mean().item()
+        if mean_number_active_classes_per_neuron > num_classes:
+            raise ValueError(f"The mean number of active classes per neuron ({mean_number_active_classes_per_neuron}) is greater than the number of classes ({num_classes}).")
+        std_number_active_classes_per_neuron = number_active_classes_per_neuron[name].float().std().item()
+    
+    return sparsity_dict, sparsity_dict_1, number_active_classes_per_neuron, average_activated_neurons, total_neurons, mean_number_active_classes_per_neuron, std_number_active_classes_per_neuron

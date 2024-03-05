@@ -1,1 +1,1 @@
-custom_mlp_1,sae_mlp,['fc1'],/lustre/home/jtoussaint/master_thesis/,True,7,0.001,adam,64,0.1,cifar_10,True,1
+custom_mlp_2,None,['None'],/lustre/home/jtoussaint/master_thesis/,True,0,0,None,0,0.1,cifar_10,False,0

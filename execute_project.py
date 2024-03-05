@@ -26,12 +26,10 @@ class ExecuteProject:
                 use_sae=None,
                 train_sae=None,
                 train_original_model=None,
-                store_activations=None,
-                compute_feature_similarity=None,
                 model_criterion_name=None,
                 sae_criterion_name=None,
                 run_group_ID=None,
-                dead_neurons_epochs=None,
+                dead_neurons_steps=None,
                 run_evaluation=None):
         self.model_name = model_name
         self.sae_model_name = sae_model_name
@@ -55,12 +53,10 @@ class ExecuteProject:
         self.use_sae = eval(use_sae) if use_sae is not None else None
         self.train_sae = eval(train_sae) if train_sae is not None else None
         self.train_original_model = eval(train_original_model) if train_original_model is not None else None
-        self.store_activations = eval(store_activations) if store_activations is not None else None
-        self.compute_feature_similarity = eval(compute_feature_similarity) if compute_feature_similarity is not None else None
         self.model_criterion_name = model_criterion_name
         self.sae_criterion_name = sae_criterion_name
         self.run_group_ID = run_group_ID
-        self.dead_neurons_epochs = int(dead_neurons_epochs)
+        self.dead_neurons_steps = int(dead_neurons_steps)
         self.run_evaluation = run_evaluation if run_evaluation is not None else None
         # WHEN ADDING A NEW PARAMETER HERE DONT FORGET TO TURN IT FROM STRING INTO THE DESIRED DATA FORMAT EVALUATE IT, i.e., int(x), float(x), eval(x), etc.
 
@@ -68,13 +64,13 @@ class ExecuteProject:
         # be included in the file names to better use and identify files, model_name and dataset_name are already considered
         self.model_params = {'epochs': model_epochs, 'learning_rate': model_learning_rate, 'batch_size': batch_size, 'optimizer': model_optimizer_name, 'activation_threshold': activation_threshold}
         self.sae_params = {'epochs': sae_epochs, 'learning_rate': sae_learning_rate, 'batch_size': sae_batch_size, 'optimizer': sae_optimizer_name, 'expansion_factor': sae_expansion_factor, 
-                           'lambda_sparse': sae_lambda_sparse, 'activation_threshold': activation_threshold, 'dead_neurons_epochs': dead_neurons_epochs}
+                           'lambda_sparse': sae_lambda_sparse, 'activation_threshold': activation_threshold, 'dead_neurons_steps': dead_neurons_steps}
         # sae_params but without lambda_sparse and expansion_factor --> is used to create files collecting results varying over these two parameters
         self.sae_params_1 = self.sae_params.copy()
         self.sae_params_1.pop('lambda_sparse', None)
         self.sae_params_1.pop('expansion_factor', None)
 
-        self.model_weights_folder_path, self.sae_weights_folder_path, self.activations_folder_path, self.evaluation_results_folder_path = get_folder_paths(self.directory_path, self.model_name, self.dataset_name, self.sae_model_name)
+        self.model_weights_folder_path, self.sae_weights_folder_path, self.evaluation_results_folder_path = get_folder_paths(self.directory_path, self.model_name, self.dataset_name, self.sae_model_name)
 
         if torch.cuda.is_available():
             self.device = torch.device('cuda')
@@ -105,7 +101,11 @@ class ExecuteProject:
             self.num_epochs = self.model_epochs
             
         # load data loader
-        self.train_dataloader, self.val_dataloader, self.category_names, self.img_size = load_data(self.directory_path, self.dataset_name, self.batch_size)
+        if self.use_sae:
+            used_batch_size = self.sae_batch_size
+        else:
+            used_batch_size = self.batch_size
+        self.train_dataloader, self.val_dataloader, self.category_names, self.img_size = load_data(self.directory_path, self.dataset_name, used_batch_size)
         # num_batches can be set to a different value if we want to limit the number of batches (which can be used wherever desired)
 
         if self.wandb_status:
@@ -137,28 +137,34 @@ class ExecuteProject:
                                 "train_sae": self.train_sae,
                                 "train_original_model": self.train_original_model,
                                 "run_evaluation": self.run_evaluation,
-                                "store_activations": self.store_activations,
-                                "compute_feature_similarity": self.compute_feature_similarity,
                                 "model_criterion_name": self.model_criterion_name,
                                 "sae_criterion_name": self.sae_criterion_name,
-                                "dead_neurons_epochs": self.dead_neurons_epochs})
+                                "dead_neurons_steps": self.dead_neurons_steps})
+            # we proceeed according to: https://docs.wandb.ai/guides/technical-faq/metrics-and-performance
+            wandb.define_metric("batch")
+            wandb.define_metric("epoch")
+            # set all other train/ metrics to use this step (see here: https://docs.wandb.ai/guides/track/log/customize-logging-axes )
+            wandb.define_metric("train/*", step_metric="batch")
+            wandb.define_metric("eval/*", step_metric="epoch")
+            # Alternatively, in the W&B user interface, I can choose the appropriate x-axis for a certain metric, or I can
 
     def model_pipeline(self):
         pipeline = ModelPipeline(device=self.device,
                                 train_dataloader=self.train_dataloader,
+                                val_dataloader=self.val_dataloader,
                                 category_names=self.category_names,
                                 layer_names=self.layer_names, 
                                 activation_threshold=self.activation_threshold,
+                                wandb_status=self.wandb_status,
                                 prof=None,
                                 use_sae=self.use_sae,
                                 train_sae=self.train_sae,
                                 train_original_model=self.train_original_model,
-                                store_activations=self.store_activations,
-                                compute_feature_similarity=self.compute_feature_similarity,
-                                activations_folder_path=self.activations_folder_path,
                                 sae_weights_folder_path=self.sae_weights_folder_path,
                                 model_weights_folder_path=self.model_weights_folder_path,
-                                evaluation_results_folder_path=self.evaluation_results_folder_path)
+                                evaluation_results_folder_path=self.evaluation_results_folder_path,
+                                dead_neurons_steps=self.dead_neurons_steps,
+                                sae_batch_size=self.sae_batch_size)
         pipeline.instantiate_models(model_name=self.model_name, 
                                     img_size=self.img_size, 
                                     model_optimizer_name=self.model_optimizer_name,
@@ -173,13 +179,13 @@ class ExecuteProject:
                                     sae_learning_rate=self.sae_learning_rate,
                                     sae_params=self.sae_params,
                                     sae_params_1=self.sae_params_1)
-        pipeline.deploy_model(num_epochs=self.num_epochs, 
-                              dead_neurons_epochs=self.dead_neurons_epochs,
-                            wandb_status=self.wandb_status)
+        pipeline.deploy_model(num_epochs=self.num_epochs)
                             
     def evaluation(self):
         evaluation = Evaluation(layer_names=self.layer_names,
                                 wandb_status=self.wandb_status,
                                 sae_params_1=self.sae_params_1,
                                 evaluation_results_folder_path=self.evaluation_results_folder_path)
-        evaluation.get_sae_eval_results()
+        evaluation.get_sae_eval_results(type_of_rec_loss="mse")
+        evaluation.get_sae_eval_results(type_of_rec_loss="rmse")
+        evaluation.get_sae_eval_results(type_of_rec_loss="nrmse")

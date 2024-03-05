@@ -34,11 +34,9 @@ def parse_arguments():
     parser.add_argument('--use_sae', type=str)
     parser.add_argument('--train_sae', type=str)
     parser.add_argument('--train_original_model', type=str)
-    parser.add_argument('--store_activations', type=str)
-    parser.add_argument('--compute_feature_similarity', type=str)
     parser.add_argument('--model_criterion_name', type=str)
     parser.add_argument('--sae_criterion_name', type=str)
-    parser.add_argument('--dead_neurons_epochs', type=int)
+    parser.add_argument('--dead_neurons_steps', type=int)
     return parser.parse_args()
 
 if __name__ == '__main__':
@@ -47,11 +45,13 @@ if __name__ == '__main__':
 
     if args.execution_location is None or args.execution_location == 'local': 
         print("Run code locally")
+
         # create a random (and hopefully unique) group ID
         run_group_ID = "".join(random.choices(string.ascii_lowercase, k=10))
 
         # Read parameters from the file, line by line, and run the model pipeline
         # consecutively for each parameter combination
+        #'''
         with open('parameters.txt', 'r') as file:
             for line in file:
                 parameters = [param for param in line.strip().split(',')]
@@ -75,14 +75,13 @@ if __name__ == '__main__':
                                                 use_sae=parameters[17],
                                                 train_sae=parameters[18],
                                                 train_original_model=parameters[19],
-                                                store_activations=parameters[20],
-                                                compute_feature_similarity=parameters[21],
-                                                model_criterion_name=parameters[22],
-                                                sae_criterion_name=parameters[23],
-                                                dead_neurons_epochs=parameters[24],
+                                                model_criterion_name=parameters[20],
+                                                sae_criterion_name=parameters[21],
+                                                dead_neurons_steps=parameters[22],
                                                 run_group_ID=run_group_ID)
                 execute_project.model_pipeline()
-
+        #'''
+                
         # Once the model pipeline has been run for all parameter combinations,
         # we can perform evaluation using info from all runs
         with open('parameters_eval.txt', 'r') as file:
@@ -105,12 +104,12 @@ if __name__ == '__main__':
                                                     dataset_name=parameters_2[10],
                                                     use_sae = parameters_2[11],
                                                     run_evaluation=True,
-                                                    dead_neurons_epochs=parameters_2[12],
+                                                    dead_neurons_steps=parameters_2[12],
                                                     run_group_ID=run_group_ID)
                     execute_project.evaluation()
 
         # if we used wandb logging, we need to finish the run
-        if parameters[4]=='True' or parameters_2[4]=='True':
+        if parameters_2[4]=='True':
             wandb.finish()
         
     elif args.execution_location == 'cluster':
@@ -137,11 +136,9 @@ if __name__ == '__main__':
                                             use_sae=args.use_sae,
                                             train_sae=args.train_sae,
                                             train_original_model=args.train_original_model,
-                                            store_activations=args.store_activations,
-                                            compute_feature_similarity=args.compute_feature_similarity,
                                             model_criterion_name=args.model_criterion_name,
                                             sae_criterion_name=args.sae_criterion_name,
-                                            dead_neurons_epochs=args.dead_neurons_epochs,
+                                            dead_neurons_steps=args.dead_neurons_steps,
                                             run_group_ID=args.run_group_ID)
             execute_project.model_pipeline()
 
@@ -160,7 +157,7 @@ if __name__ == '__main__':
                                             dataset_name=args.dataset_name,
                                             use_sae=args.use_sae,
                                             run_evaluation=args.run_evaluation,
-                                            dead_neurons_epochs=args.dead_neurons_epochs,
+                                            dead_neurons_steps=args.dead_neurons_steps,
                                             run_group_ID=args.run_group_ID)    
             execute_project.evaluation()
         if args.wandb_status == 'True':

@@ -1,1 +1,1 @@
-custom_mlp_2,None,['None'],/lustre/home/jtoussaint/master_thesis/,True,0,0,None,0,0.1,cifar_10,False,0
+resnet18,sae_mlp,__layer3.0.conv2,/lustre/home/jtoussaint/master_thesis/,1,10,0.001,100,sgd_w_scheduler,5,0.001,adam,64,0.001,tiny_imagenet,False,300

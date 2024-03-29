@@ -10,10 +10,13 @@ class Evaluation:
     def __init__(self,
                 layer_names,
                 wandb_status,
+                model_params,
                 sae_params_1,
                 evaluation_results_folder_path):
-        self.layer_names = layer_names
+        # remove and leading or trailing underscores from layer_name and replace double underscores by single underscore
+        self.layer_names = layer_names.strip('_').replace('__', '_')
         self.wandb_status = wandb_status
+        self.model_params = model_params
         self.sae_params_1 = sae_params_1
         self.evaluation_results_folder_path = evaluation_results_folder_path
         
@@ -24,9 +27,13 @@ class Evaluation:
         '''
         # remove lambda_sparse and expansion_factor from params, because we want a uniform file name 
         # for all lambda_sparse and expansion_factor values
+        model_params = {k: str(v) for k, v in self.model_params.items()}
+        sae_params_1 = {k: str(v) for k, v in self.sae_params_1.items()}
+        params_string_1 = '_'.join(model_params.values()) + "_" + "_".join(sae_params_1.values())
+        
         file_path = get_file_path(folder_path=self.evaluation_results_folder_path,
                                     layer_names=self.layer_names,
-                                    params=self.sae_params_1,
+                                    params=params_string_1,
                                     file_name='sae_eval_results.csv')
         df = pd.read_csv(file_path)
 
@@ -130,14 +137,14 @@ class Evaluation:
             axs[1, 2].plot(x_scaling_col3(expansion_factor_group['rel_sparsity']), expansion_factor_group['l1_loss'], label=int(expansion_factor_value))
             axs[1, 2].scatter(x_scaling_col3(expansion_factor_group['rel_sparsity']), expansion_factor_group['l1_loss'], label='__nolegend__')
 
-        axs[0, 2].set_xlabel(f"Sparsity of SAE encoder output on layer {self.layer_names[0]}")
+        axs[0, 2].set_xlabel(f"Sparsity of SAE encoder output on layer {self.layer_names}")
         axs[0, 2].set_ylabel(loss_name)
         axs[0, 2].set_title(f"{loss_name} over sparsity")
         axs[0, 2].legend(title="Expansion Factor", loc='upper left')
         axs[0, 2].set_xticks(shifted_positions)
         axs[0, 2].set_xticklabels(labels, rotation='vertical')
 
-        axs[1, 2].set_xlabel(f"Sparsity of SAE encoder output on layer {self.layer_names[0]}")
+        axs[1, 2].set_xlabel(f"Sparsity of SAE encoder output on layer {self.layer_names}")
         axs[1, 2].set_ylabel("L1 Loss")
         axs[1, 2].set_title("L1 Loss over sparsity")
         axs[1, 2].legend(title="Expansion Factor", loc='upper left')
@@ -166,14 +173,14 @@ class Evaluation:
                 axs[1, 3].plot(expansion_factor_group['rel_sparsity_1'], expansion_factor_group['l1_loss'], label=int(expansion_factor_value))
                 axs[1, 3].scatter(expansion_factor_group['rel_sparsity_1'], expansion_factor_group['l1_loss'], label='__nolegend__')
 
-            axs[0, 3].set_xlabel(f"Sparsity 1 of SAE encoder output on layer {self.layer_names[0]}")
+            axs[0, 3].set_xlabel(f"Sparsity 1 of SAE encoder output on layer {self.layer_names}")
             axs[0, 3].set_ylabel(loss_name)
             axs[0, 3].set_title(f"{loss_name} over sparsity 1")
             axs[0, 3].legend(title="Expansion Factor", loc='upper left')
             axs[0, 3].set_xticks(shifted_positions)
             axs[0, 3].set_xticklabels(labels, rotation='vertical')
 
-            axs[1, 3].set_xlabel(f"Sparsity 1 of SAE encoder output on layer {self.layer_names[0]}")
+            axs[1, 3].set_xlabel(f"Sparsity 1 of SAE encoder output on layer {self.layer_names}")
             axs[1, 3].set_ylabel("L1 Loss")
             axs[1, 3].set_title("L1 Loss over sparsity 1")
             axs[1, 3].legend(title="Expansion Factor", loc='upper left')
@@ -184,15 +191,10 @@ class Evaluation:
         plt.tight_layout()
         png_path = get_file_path(folder_path=self.evaluation_results_folder_path,
                                 layer_names=self.layer_names,
-                                params=self.sae_params_1,
+                                params=params_string_1,
                                 file_name=f'sae_eval_results_plot_{loss_name}.png')
+        if self.wandb_status:
+            wandb.log({f"eval/sae_eval_results/{params_string_1}/{loss_name}": wandb.Image(plt)}, commit=False)
         plt.savefig(png_path, dpi=300)
         plt.close()
-
         print(f"Successfully stored SAE eval results plot ({loss_name}) in {png_path}")
-
-        if self.wandb_status:
-            # get the keys of self.sae_params_1 and concatenate them into a string with an underscore
-            keys = list(self.sae_params_1.keys())
-            keys_str = '_'.join(keys)
-            wandb.log({f"sae_eval_results_{loss_name}_{keys_str}": wandb.Image(png_path)}, commit=False)

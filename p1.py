@@ -1,56 +1,48 @@
-import os
-import numpy as np
-import matplotlib.pyplot as plt
-import wandb
 import torch
+import torch.nn as nn
+import os
+
+from lucent.optvis import render, param, transform, objectives
+from lucent.modelzoo.util import get_model_layers
+
+from torchvision.models import resnet18, ResNet18_Weights
+
+model_ft = resnet18()
+# Adjust final layers 
+model_ft.avgpool = nn.AdaptiveAvgPool2d(1)
+num_ftrs = model_ft.fc.in_features
+model_ft.fc = nn.Linear(num_ftrs, 200) 
+# Adjust layers at beginning
+model_ft.conv1 = nn.Conv2d(3, 64, kernel_size=(3,3), stride=(1,1), padding=(1,1))
+model_ft.maxpool = nn.Sequential() # nn.Identity() # remove maxpool layer
+
+# creat a small MLP class
+class MLP(nn.Module):
+    def __init__(self, input_size, output_size):
+        super(MLP, self).__init__()
+        self.fc1 = nn.Linear(input_size, 200)
+        self.fc2 = nn.Linear(200, 200)
+        self.fc3 = nn.Linear(200, output_size)
+    
+    def forward(self, x):
+        x = x.view(x.size(0), -1)
+        x = nn.functional.relu(self.fc1(x))
+        x = nn.functional.relu(self.fc2(x))
+        x = self.fc3(x)
+        return x
+    
+# insert a new layer
+model_ft.fc = nn.Sequential(nn.Linear(num_ftrs, 200), nn.ReLU(), MLP(200, 200))
+
+path = "/lustre/home/jtoussaint/master_thesis/model_weights/resnet18_2/tiny_imagenet/None_resnet18_2_10_0.001_100_sgd_w_scheduler_0.1_model_weights.pth"
+# if this path exists, load the weights
+if os.path.exists(path):
+    model_ft.load_state_dict(torch.load(path))
+# else, if we are on local machine, just use random weights
 
 
-def plot_active_classes_per_neuron(number_active_classes_per_neuron, 
-                                   layer_names, 
-                                   num_classes,
-                                   folder_path=None, 
-                                   params=None, 
-                                   wandb_status=None):
-    # for now, only show results for the specified layer and the last layer, which is 'fc3'
-    # 2 rows for the 2 layers we're considering, and 3 columns for the 3 types of models (original, modified, sae)
-    fig, axes = plt.subplots(2, 3, figsize=(15, 10))
-    fig.suptitle('Number of active classes per neuron')
+print(get_model_layers(model_ft))
 
-    bins = np.arange(0, num_classes+1.01, 1)
-    print(bins)
 
-    for name in number_active_classes_per_neuron.keys():
-        if name[0] in layer_names or name[0] == 'fc3':
-            if name[0] == 'fc3':
-                row = 1
-            else:
-                row = 0
-            if name[1] == 'original':
-                col = 0
-            elif name[1] == 'modified':
-                col = 1
-            elif name[1] == 'sae':
-                col = 2
 
-            axes[row, col].hist(number_active_classes_per_neuron[name].cpu().numpy(), bins=bins, color='blue', edgecolor='black')
-            axes[row, col].set_title(f'Layer: {name[0]}, Model: {name[1]}')
-            axes[row, col].set_xlabel('Number of active classes')
-            axes[row, col].set_ylabel('Number of neurons')
-
-            axes[row, col].set_xticks(np.arange(0.5, num_classes+1, 1))
-            axes[row, col].set_xticklabels([str(int(x)) for x in range(num_classes+1)])
-    plt.show()
-
-# create some sample data
-number_active_classes_per_neuron = {
-    ('fc3', 'original'): torch.randint(0, 11, (1000,)),
-    ('fc3', 'modified'): torch.randint(0, 10, (1000,)),
-    ('fc3', 'sae'): torch.randint(0, 10, (1000,)),
-    ('fc2', 'original'): torch.randint(0, 10, (1000,)),
-    ('fc2', 'modified'): torch.randint(0, 10, (1000,)),
-    ('fc2', 'sae'): torch.randint(0, 10, (1000,))
-}
-
-layer_names = ['fc2']
-num_classes = 10
-plot_active_classes_per_neuron(number_active_classes_per_neuron, layer_names, num_classes)
+#render.render_vis(model_ft, "layer1_0_conv1:45")#, show_inline=True)

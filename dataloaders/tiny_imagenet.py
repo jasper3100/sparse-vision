@@ -3,6 +3,8 @@ import numpy as np
 import os
 import urllib.request
 import zipfile
+#import cv2
+#import skimage
 
 from collections import defaultdict
 from torch.utils.data import Dataset
@@ -56,12 +58,23 @@ def download_and_unzip(URL, root_dir):
     # Download the file if it doesn't exist
     if not os.path.exists(file_name):
         print(f"Downloading {URL}...")
-        urllib.request.urlretrieve(URL, file_name)
-
+        req = urllib.request.urlopen(URL)
+        total_size = int(req.headers['Content-Length'])
+        # Download with progress bar
+        with tqdm(unit='B', unit_scale=True, unit_divisor=1024, miniters=1, desc=file_name, total=total_size) as tqdm_instance:
+            urllib.request.urlretrieve(URL, file_name, reporthook=lambda blocknum, blocksize, totalsize: tqdm_instance.update(blocksize))
+        # Without progress bar, one can simply do: urllib.request.urlretrieve(URL, file_name)
+        
     # Unzip the downloaded file
     with zipfile.ZipFile(file_name, 'r') as zip_ref:
         print(f"Extracting files to {root_dir}...")
-        zip_ref.extractall(root_dir)
+        # Extract files with progress bar
+        file_list = zip_ref.namelist()
+        with tqdm(total=len(file_list), desc="Extracting files", ncols=100) as pbar:
+            for file in file_list:
+                zip_ref.extract(file, root_dir)
+                pbar.update(1)
+        # For extracting files without progress bar, do: zip_ref.extractall(root_dir)
 
     print("Download and extraction complete.")
 
@@ -96,21 +109,25 @@ Members:
 class TinyImageNetPaths:
   def __init__(self, root_dir, download=False):
     if download:
+      if root_dir.endswith("tiny-imagenet-200"):
+        # Remove this part, since the data will be extracted into a folder with the same name
+        adjusted_root_dir = root_dir[:-len("tiny-imagenet-200")]
+      
       download_and_unzip('http://cs231n.stanford.edu/tiny-imagenet-200.zip',
-                         root_dir)
+                         adjusted_root_dir)
     # Create the root directory if it doesn't exist
-    if not os.path.exists(root_dir):
-      os.makedirs(root_dir)
+    #if not os.path.exists(root_dir):
+    #  os.makedirs(root_dir)
 
     train_path = os.path.join(root_dir, 'train')
     val_path = os.path.join(root_dir, 'val')
     test_path = os.path.join(root_dir, 'test')
 
-    wnids_path = os.path.join(root_dir, 'wnids.txt')
+    self.wnids_path = os.path.join(root_dir, 'wnids.txt')
     words_path = os.path.join(root_dir, 'words.txt')
 
     self._make_paths(train_path, val_path, test_path,
-                     wnids_path, words_path)
+                     self.wnids_path, words_path)
 
   def _make_paths(self, train_path, val_path, test_path,
                   wnids_path, words_path):
@@ -157,12 +174,21 @@ class TinyImageNetPaths:
           bbox = int(x0), int(y0), int(x1), int(y1)
           self.paths['train'].append((fname, label_id, nid, bbox))
     
-    # I ADDED THE FUNCTION BELOW
-    def get_all_category_names(self):
-        all_category_names = []
-        for _, category_names in self.nid_to_words.items():
-            all_category_names.extend(category_names)
-        return all_category_names
+  # I ADDED THE FUNCTION BELOW
+  def get_all_category_names(self):
+    all_names = []
+    # Read wnids.txt file, which contains the nid of each category
+    with open(self.wnids_path, 'r') as wnids_file:
+      for line in wnids_file:
+          # Extract WordNet synset ID (nid)
+          nid = line.strip()
+          # Lookup name corresponding to nid in the dictionary (the words.txt file contains a mapping
+          # from nid to words --> self.nid_to_words is a dictionary with nid as key and the corresponding list of words as value)
+          if nid in self.nid_to_words:
+              # for each nid, there are multiple labels, we get the first one only, for simplicity
+              list_of_labels = self.nid_to_words[nid]
+              all_names.append(list_of_labels[0])
+    return all_names
 
 """Datastructure for the tiny image dataset.
 
@@ -227,6 +253,11 @@ class TinyImageNetDataset(Dataset):
 
   def __len__(self):
     return self.samples_num
+  
+  def resize_img(self, img, size):
+    #img = skimage.transform.resize(img, (size, size))
+    # skimage package not available to install in conda --> use something else!!!
+    return img
 
   def __getitem__(self, idx):
     if self.preload:
@@ -236,18 +267,28 @@ class TinyImageNetDataset(Dataset):
       s = self.samples[idx]
       img = imageio.v3.imread(s[0])
       img = _add_channels(img) 
+      #print(img.shape)
+      img = self.resize_img(img, 224)  # Resize the image to 224x224
+      #print(img.shape)
       # I ADDED THE BELOW LINE TO GET THE SHAPE (channel, width, height) instead of (width, height, channel)
       img = np.transpose(img, (2, 0, 1))
       lbl = None if self.mode == 'test' else s[self.label_idx]
+
+
+    mean = [0.485, 0.456, 0.406]
+    std = [0.229, 0.224, 0.225]
+    # for normalization values, see: https://stackoverflow.com/questions/58151507/why-pytorch-officially-use-mean-0-485-0-456-0-406-and-std-0-229-0-224-0-2
+
+    if self.transform:
+      img = (img - np.array(mean)[:, None, None]) / np.array(std)[:, None, None]
+
     # I ADDED THE BELOW LINE
     # convert data type from uint8 to float32 for the model to work
     img = np.float32(img)
     # Alternatively when iterating through the batches of the dataloader, one can do:
     # img = img.to(torch.float32)
-    sample = {'image': img, 'label': lbl}
 
-    if self.transform:
-      sample = self.transform(sample)
+    sample = {'image': img, 'label': lbl}
     return sample
 
 # The below code was moved to other scripts, but is just provided for reference here

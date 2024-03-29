@@ -1,5 +1,7 @@
 import torch.nn as nn
 import torch
+import torch.nn.functional as F
+from einops import rearrange
 
 class SaeMLP(nn.Module):
     def __init__(self, img_size, expansion_factor):
@@ -10,7 +12,7 @@ class SaeMLP(nn.Module):
         Decomposing Language Models With Dictionary Learning", 
         https://transformer-circuits.pub/2023/monosemantic-features for more details.
 
-        This SAE has the same architecture as that in the above paper.
+        This SAE has the same architecture as that in the above paper. --> MAYBE NOT TRUE, CHECK
 
         Parameters
         ----------
@@ -21,25 +23,61 @@ class SaeMLP(nn.Module):
         '''
         super(SaeMLP, self).__init__()
         self.img_size = img_size
-        self.prod_size = torch.prod(torch.tensor(self.img_size)).item()
+        self.act_size = torch.prod(torch.tensor(self.img_size)).item()
+        self.hidden_size = int(self.act_size*expansion_factor)
 
-        self.bias = nn.Parameter(torch.ones(self.prod_size))
-        self.encoder = nn.Sequential(
-            nn.Linear(self.prod_size, int(self.prod_size*expansion_factor), bias=True),
-            nn.ReLU()
-        )
-        self.decoder = nn.Linear(int(self.prod_size*expansion_factor), self.prod_size, bias=True)
+        self.encoder = nn.Linear(self.act_size, self.hidden_size)
+        # we take the transpose of the weight matrix since nn.Linear does x*W^T + b	
+        self.encoder.weight = nn.Parameter(torch.nn.init.kaiming_uniform_(torch.empty(self.hidden_size, self.act_size)))
+        self.encoder.bias = nn.Parameter(torch.zeros(self.hidden_size))
+        self.sae_act = nn.ReLU()
+        self.decoder = nn.Linear(self.hidden_size, self.act_size)
+        dec_weight = nn.Parameter(torch.nn.init.kaiming_uniform_(torch.empty(self.act_size, self.hidden_size)))
+        # We initialize s.t. its columns (rows of the transpose) have unit norm
+        # dim=0 --> across the rows --> normalize each column
+        # If we consider the tranpose: dim=1 (dim=-1) --> across the columns --> normalize each row
+        dec_weight.data[:] = dec_weight / dec_weight.norm(dim=0, keepdim=True)
+        self.decoder.weight = dec_weight
+        self.decoder.bias = nn.Parameter(torch.zeros(self.act_size))
 
     def forward(self, x):
-        x = x + self.bias
-        encoded = self.encoder(x)
-        decoded = self.decoder(encoded)
-        return encoded, decoded
+        if len(x.shape) == 4:
+            x_new = rearrange(x, 'b c h w -> (b h w) c')   
+            transformed = True
+        else:
+            transformed = False
+            x_new = x
+        x_cent = x_new - self.decoder.bias
+        encoder_output_prerelu = self.encoder(x_cent)
+        encoder_output = self.sae_act(encoder_output_prerelu)
+        decoder_output = self.decoder(encoder_output)
+        if transformed:
+            decoder_output = rearrange(decoder_output, '(b h w) c -> b c h w', b=x.size(0), h=x.size(2), w=x.size(3))
+            assert decoder_output.shape == x.shape
+        return encoder_output, decoder_output, encoder_output_prerelu        
+        '''
+        x_cent = x - self.b_dec
+        encoder_output_prerelu = x_cent @ self.W_enc + self.b_enc
+        encoder_output = F.relu(encoder_output_prerelu)
+        decoder_output = encoder_output @ self.W_dec + self.b_dec 
+        return encoder_output, decoder_output, encoder_output_prerelu
+        '''
+
+    def make_decoder_weights_and_grad_unit_norm(self):
+        # see https://github.com/neelnanda-io/1L-Sparse-Autoencoder/blob/main/utils.py 
+        # here we consider the transpose so we use 0 instead of -1
+        W_dec = self.decoder.weight
+        W_dec_normed = W_dec / W_dec.norm(dim=0, keepdim=True)
+        W_dec_grad_proj = (W_dec.grad * W_dec_normed).sum(0, keepdim=True) * W_dec_normed
+        W_dec.grad -= W_dec_grad_proj
+        W_dec.data = W_dec_normed
+        self.decoder.weight = W_dec
 
     def reset_encoder_weights(self, dead_neurons_sae, device, optimizer, batch_idx):
-        encoder_weight_matrix = self.encoder[0].weight.data # we do [0] because the linear layer is the first layer in the encoder Sequential
-        encoder_bias_tensor = self.encoder[0].bias.data
-        decoder_weight_matrix = self.decoder.weight.data # no need to do [0] because there is only one layer in the decoder
+        W_enc = self.encoder.weight
+        b_enc = self.encoder.bias
+        W_dec = self.decoder.weight
+        b_dec = self.decoder.bias
 
         indices_of_dead_neurons = torch.nonzero(dead_neurons_sae)
         print(indices_of_dead_neurons)
@@ -57,36 +95,16 @@ class SaeMLP(nn.Module):
             # --> shape (n)
             # Reset the encoding weights and biases leading to the dead neurons and those going out of them
             # in the decoder, using He/Kaiming initialization
-            # a torch weight matrix has dimension [out_features, in_features] --> our encoder weight matrix should have shape [len(indices), in_features = self.prod_size]
-            encoder_weights_to_be_reinitialized = encoder_weight_matrix[indices_of_dead_neurons,:]
-            # --> shape (n, self.prod_size) where n is the number of dead neurons, n = len(indices), we verify that the shape is correct
-            #print(encoder_weights_to_be_adjusted.shape)
-            if encoder_weights_to_be_reinitialized.shape != (len(indices_of_dead_neurons), self.prod_size):
-                raise ValueError(f'The matrix of the encoder weights to be re-initialized has shape {encoder_weights_to_be_reinitialized.shape} which is unexpected.')
-            encoder_biases_to_be_reinitialized = encoder_bias_tensor[indices_of_dead_neurons]
+            new_W_enc = (torch.nn.init.kaiming_uniform_(torch.zeros_like(W_enc)))
+            new_W_dec = (torch.nn.init.kaiming_uniform_(torch.zeros_like(W_dec)))
+            new_b_enc = (torch.zeros_like(b_enc))
+            W_enc.data[indices_of_dead_neurons, :] = new_W_enc[indices_of_dead_neurons, :]
+            W_dec.data[:, indices_of_dead_neurons] = new_W_dec[:, indices_of_dead_neurons]
+            b_enc.data[indices_of_dead_neurons] = new_b_enc[indices_of_dead_neurons]
 
-            decoder_weights_to_be_reinitialized = decoder_weight_matrix[:,indices_of_dead_neurons]
-            if decoder_weights_to_be_reinitialized.shape != (self.prod_size, len(indices_of_dead_neurons)):
-                raise ValueError(f'The matrix of the decoder weights to be re-initialized has shape {decoder_weights_to_be_reinitialized.shape} which is unexpected.')
-
-            ########## START RESET WEIGHTS AND BIASES ##########
-            encoder_weight_matrix_before = encoder_weight_matrix.clone()
-            encoder_bias_tensor_before = encoder_bias_tensor.clone()
-            decoder_weight_matrix_before = decoder_weight_matrix.clone()
-            encoder_weight_matrix[indices_of_dead_neurons,:] = nn.init.kaiming_uniform_(encoder_weights_to_be_reinitialized, mode='fan_in', nonlinearity='relu')
-            # doing nn.init.kaiming_uniform_(...) directly without assigning it to the matrix only works 
-            # if we take the full matrix, not a slice of it
-            encoder_bias_tensor[indices_of_dead_neurons] = nn.init.zeros_(encoder_biases_to_be_reinitialized)
-            decoder_weight_matrix[:,indices_of_dead_neurons] = nn.init.kaiming_uniform_(decoder_weights_to_be_reinitialized, mode='fan_in', nonlinearity='relu')
-
-            # verify that the weights and biases were changed
-            if (encoder_weight_matrix_before == encoder_weight_matrix).all():
-                raise ValueError("The encoder weights were not changed.")
-            if (encoder_bias_tensor_before == encoder_bias_tensor).all():
-                raise ValueError("The encoder biases were not changed.")
-            if (decoder_weight_matrix_before == decoder_weight_matrix).all():
-                raise ValueError("The decoder weights were not changed.")
-            ########## END RESET WEIGHTS AND BIASES ##########
+            self.encoder.weight = W_enc
+            self.decoder.weight = W_dec
+            self.encoder.bias = b_enc
             
             ########## START RESET OPTIMIZER PARAMETERS ##########
             # Reset the optimizer state for the specified indices; Adam --> reset the moving averages
@@ -101,15 +119,12 @@ class SaeMLP(nn.Module):
                 #[1] (bias term "before" encoder), [512, 256] (weight matrix in encoder), [256] (bias term in decoder), 
                 #[256, 512] (weight matrix in decoder), [256] (bias term in decoder)
 
-                if torch.equal(p, encoder_weight_matrix):
-                    #print("Found weight matrix in optimizer params")
-                    #weights_exp_avg_before = optimizer.state[p]['exp_avg'].clone()
-                    #weights_exp_avg_sq_before = optimizer.state[p]['exp_avg_sq'].clone()
+                if torch.equal(p, W_enc):
                     # we reset the moving averages for the weights of the dead neurons to zero
                     # optimizer.state[encoder_weight_matrix] -> error, because this matrix has no requires_grad=True
                     # in constrast to p
-                    optimizer.state[p]['exp_avg'][indices_of_dead_neurons,:] = torch.zeros_like(encoder_weights_to_be_reinitialized)
-                    optimizer.state[p]['exp_avg_sq'][indices_of_dead_neurons,:] = torch.zeros_like(encoder_weights_to_be_reinitialized)
+                    optimizer.state[p]['exp_avg'][indices_of_dead_neurons, :] = torch.zeros_like(W_enc)[indices_of_dead_neurons, :]
+                    optimizer.state[p]['exp_avg_sq'][indices_of_dead_neurons, :] = torch.zeros_like(W_enc)[indices_of_dead_neurons, :]
                     # Note that the moving averages might not have changed, i.e., 
                     # (weights_exp_avg_before == optimizer.state[p]['exp_avg']).all() can be True
                     # because the moving averages might have been zero before. This could occur if a neuron was dead from the start.
@@ -118,15 +133,17 @@ class SaeMLP(nn.Module):
                     # but since the initial value is zero, the moving average would be zero
                     # A neuron being dead from the start is particularly likely to happen if we measure dead neurons very early during training, f.e.
                     # after 10 batches.
+                else:
+                    print("Did not find weight matrix in optimizer params")
 
-                if torch.equal(p, encoder_bias_tensor):
+                if torch.equal(p, b_enc):
                     #print("Found bias tensor in optimizer params")
-                    optimizer.state[p]['exp_avg'][indices_of_dead_neurons] = torch.zeros_like(encoder_biases_to_be_reinitialized)   
-                    optimizer.state[p]['exp_avg_sq'][indices_of_dead_neurons] = torch.zeros_like(encoder_biases_to_be_reinitialized)  
+                    optimizer.state[p]['exp_avg'][indices_of_dead_neurons] = torch.zeros_like(b_enc)[indices_of_dead_neurons]   
+                    optimizer.state[p]['exp_avg_sq'][indices_of_dead_neurons] = torch.zeros_like(b_enc)[indices_of_dead_neurons]  
 
-                if torch.equal(p, decoder_weight_matrix):
-                    optimizer.state[p]['exp_avg'][:,indices_of_dead_neurons] = torch.zeros_like(decoder_weights_to_be_reinitialized)
-                    optimizer.state[p]['exp_avg_sq'][:,indices_of_dead_neurons] = torch.zeros_like(decoder_weights_to_be_reinitialized)             
+                if torch.equal(p, W_dec):
+                    optimizer.state[p]['exp_avg'][:, indices_of_dead_neurons] = torch.zeros_like(W_dec)[:,indices_of_dead_neurons]
+                    optimizer.state[p]['exp_avg_sq'][:, indices_of_dead_neurons] = torch.zeros_like(W_dec)[:,indices_of_dead_neurons]             
             ########## END RESET OPTIMIZER PARAMETERS ##########
 
             print(f"Batch index {batch_idx}: Re-initialized {len(indices_of_dead_neurons)} dead neurons in the SAE and reset optimizer parameters.")

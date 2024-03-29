@@ -17,10 +17,6 @@ class SaeConv(nn.Module):
             Factor by which the number of channels is expanded in the encoder.
         '''
         super(SaeConv, self).__init__()
-        # WOULD A BIAS LAYER MAKE SENSE IN OUR CASE??? CAN ONLY DETERMINE THIS ONCE WE KNOW 
-        # HOW INTERPRETABLE THE INTERMEDIATE FEATURES ARE I SUPPOSE()
-        #self.bias = nn.Parameter(torch.ones(1))
-
         # the number of channels corresponds to the third last dimension of the input tensor
         # This is invariant to whether there is a batch dimension or not:
         # [batch, channels, height, width] or [channels, height, width]

@@ -5,10 +5,9 @@ class SparseLoss(nn.Module):
     '''
     Loss function used to train the sparse autoencoder.
     '''
-    def __init__(self, lambda_sparse, batch_size):
+    def __init__(self, lambda_sparse):
         super(SparseLoss, self).__init__()
         self.lambda_sparse = lambda_sparse
-        self.batch_size = batch_size
 
     def forward(self, encoded, decoded, targets):
         '''
@@ -20,18 +19,21 @@ class SparseLoss(nn.Module):
         # Calculate L1 regularization on hidden layer activations, 
         # i.e. output of encoder, to encourage sparsity
         # in particular encoded is of shape (batch_size, hidden_size)
-        # what the below code does is: for each sample in the batch,
+        
+        l1_loss = torch.mean(torch.abs(encoded)) 
+        # given the L1 norm of one sample this averages the L1 norm over
+        # batch_size and hidden_size
+        # Alternatively: can only average over batch_size and not hidden_size
+        # what the code below does: for each sample in the batch,
         # calculate the L1 norm: sum of absolute values of the elements
         # then take mean of l1 norm over all samples
-        l1_loss = torch.mean(torch.sum(torch.abs(encoded), dim=1))
+        #l1_loss = torch.mean(torch.sum(torch.abs(encoded), dim=1))
         # equivalently: l1_loss = torch.mean(torch.norm(encoded, p=1, dim=1))
-        # Previously, I did: torch.mean(torch.abs(encoded)), given the L1 norm of one
-        # sample this averages the L1 norm over the number of elements in the sample as well 
 
         # we make sure that decoded and targets have the expected shape, i.e., (batch_dimension, hidden_dimension)
         assert decoded.shape == targets.shape
         assert len(decoded.shape) == 2
-        assert decoded.shape[0] == self.batch_size
+        #assert decoded.shape[0] == self.batch_size --> we don't have access to the batch_size here so we do this in model_pipeline.py
         # we compute for each element the squared difference --> shape: (batch_size, vector_size)
         squared_differences = torch.square(decoded - targets)
         # for each vector dimension we compute the MSE over all samples in the batch --> shape: (vector_size)

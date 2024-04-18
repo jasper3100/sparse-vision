@@ -51,9 +51,6 @@ class SaeMLP(nn.Module):
         encoder_output_prerelu = self.encoder(x_cent)
         encoder_output = self.sae_act(encoder_output_prerelu)
         decoder_output = self.decoder(encoder_output)
-        if transformed:
-            decoder_output = rearrange(decoder_output, '(b h w) c -> b c h w', b=x.size(0), h=x.size(2), w=x.size(3))
-            assert decoder_output.shape == x.shape
         return encoder_output, decoder_output, encoder_output_prerelu        
         '''
         x_cent = x - self.b_dec

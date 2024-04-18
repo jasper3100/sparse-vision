@@ -30,6 +30,9 @@ class SparseLoss(nn.Module):
         #l1_loss = torch.mean(torch.sum(torch.abs(encoded), dim=1))
         # equivalently: l1_loss = torch.mean(torch.norm(encoded, p=1, dim=1))
 
+        # number of non-zero elements, averaged over batch dimension
+        #l0_loss = torch.mean((encoded != 0).sum(dim=1))
+
         # we make sure that decoded and targets have the expected shape, i.e., (batch_dimension, hidden_dimension)
         assert decoded.shape == targets.shape
         assert len(decoded.shape) == 2

@@ -4,6 +4,7 @@ from torchvision import transforms
 from utils import *
 from get_sae_input_size import GetSaeInpSize
 import copy
+from einops import rearrange
 
 class ModelPipeline:
     '''
@@ -118,12 +119,14 @@ class ModelPipeline:
         self.sae_expansion_factor = sae_expansion_factor
         self.sae_lambda_sparse = sae_lambda_sparse
         self.sae_criterion_name = sae_criterion_name
+        self.sae_optimizer_name = sae_optimizer_name
+        self.sae_learning_rate = sae_learning_rate
         self.model_criterion = get_criterion(model_criterion_name)
 
         # turn all values into string and merge them into a single string
         model_params_temp = {k: str(v) for k, v in self.model_params.items()}
         sae_params_temp = {k: str(v) for k, v in self.sae_params.items()}
-        sae_params_1_temp = {k: str(v) for k, v in self.sae_params_1.items()} # used for post-hoc evaluation of several models wrt expansion factor and lambda sparse
+        sae_params_1_temp = {k: str(v) for k, v in self.sae_params_1.items()} # used for post-hoc evaluation of several models wrt expansion factor, lambda sparse, learning rate,...
         self.params_string = '_'.join(model_params_temp.values()) + "_" + "_".join(sae_params_temp.values())
         self.params_string_1 = '_'.join(model_params_temp.values()) + "_" + "_".join(sae_params_1_temp.values()) # used for post-hoc evaluation
 
@@ -232,30 +235,21 @@ class ModelPipeline:
         name : str
             The name of the current layer of the model
         '''
-        # if we consider conv layers, we take the average over width and height as the
-        # channels are the units we want to interpret
-        # f.e. if there are dead pixels we have no way to re-initialize single dead pixels anyways, we can only re-initialize the whole channel
-        if len(output.shape) == 4:
-            # we compute the average activation for each channel
-            modified_output = torch.mean(output, dim=(2,3)) # the desired output has shape (b c) as we take the average over h and w
-        else: # if the output has 2 dimensions, we just keep it as it is          
-            modified_output = output
-        # --> modified_output has shape [b, #units]
-            
-        if output_2 is not None:
-            if len(output_2.shape) == 4:
-                modified_output_2 = torch.mean(output_2, dim=(2,3))
-            else:
-                modified_output_2 = output_2
+        # for certain computations we use the spatial mean of conv activations
+        # so far output_2 is not a conv activation
+        output_avg_W_H, output_2_avg_W_H = average_over_W_H(output, output_2)
             
         if self.get_histogram:
             # for the histogram we use the average activation per channel, i.e., modified output and modified output 2
-            self.histogram_info = update_histogram(self.histogram_info, name, model_key, modified_output, self.device, output_2=modified_output_2)
+            self.histogram_info = update_histogram(self.histogram_info, name, model_key, output_avg_W_H, self.device, output_2=output_2_avg_W_H)
         else:
-            # for measuring dead units, we look at the per pixel output
-            inactive_neurons, number_active_neurons, number_total_neurons = measure_activating_neurons(output, self.activation_threshold)
-            self.batch_number_active_neurons[(name,model_key)] = (number_active_neurons, number_total_neurons)
-            self.batch_dead_neurons[(name,model_key)] = inactive_neurons
+            index_inactive_units, sparsity = measure_inactive_units(output, self.sae_expansion_factor)
+            # since a unit is inactive if it's 0, it doesn't matter whether we look at the post- (output) or pre-relu encoder output (output_2)
+            self.batch_sparsity[(name,model_key)] = sparsity
+            #self.batch_number_active_neurons[(name,model_key)] = (number_active_neurons, number_total_neurons)
+            self.batch_dead_units[(name,model_key)] = index_inactive_units
+            #print("Index inactive units:", index_inactive_units)
+            #print("Shape indec inactive units:", index_inactive_units.shape)
 
             # store a matrix of size [#neurons, #classes] with one entry for each neuron (of the current layer) and each class, with the number of how often this neuron 
             # is active on samples from that class for the current batch; measure of polysemanticity
@@ -277,19 +271,18 @@ class ModelPipeline:
                 # indices (in the batch) of those samples --> the two matrices below both have shape
                 # [k, #neurons] and [k, #neurons]
 
-                # we use the channel average activations for getting the top k samples --> modified_output
+                # we use the channel average activations for getting the top k samples
 
                 if output_2 is not None: # if we consider the SAE, then we look at the prerelu encoder output
                     # otherwise, the smallest values will be 0 --> but activation histogram is also for prerelu
                     # encoder output --> need smallest values prerelu!!!
-                    modified_output = modified_output_2
-                self.batch_top_k_values[(name,model_key)] = torch.topk(modified_output, k=self.k, dim=0)[0]
-                self.batch_top_k_indices[(name,model_key)] = torch.topk(modified_output, k=self.k, dim=0)[1]
-                self.batch_small_k_values[(name,model_key)] = torch.topk(modified_output, k=self.k, dim=0, largest=False)[0]
-                self.batch_small_k_indices[(name,model_key)] = torch.topk(modified_output, k=self.k, dim=0, largest=False)[1]
-                #print(self.batch_small_k_values[(name,model_key)])
-                #print(output)
-                #print("------------------------")
+                    use_output = output_2_avg_W_H
+                else:
+                    use_output = output_avg_W_H
+                self.batch_top_k_values[(name,model_key)] = torch.topk(use_output, k=self.k, dim=0)[0]
+                self.batch_top_k_indices[(name,model_key)] = torch.topk(use_output, k=self.k, dim=0)[1]
+                self.batch_small_k_values[(name,model_key)] = torch.topk(use_output, k=self.k, dim=0, largest=False)[0]
+                self.batch_small_k_indices[(name,model_key)] = torch.topk(use_output, k=self.k, dim=0, largest=False)[1]
 
     def hook(self, module, input, output, name, use_sae, train_sae):
         '''
@@ -319,10 +312,11 @@ class ModelPipeline:
                 transformed = True
             else: # if the output has 2 dimensions, we just keep it as it is          
                 modified_output = output  
-                transformed = False          
+                transformed = False    
+                      
             sae_input = modified_output
             encoder_output, decoder_output, encoder_output_prerelu = sae_model(sae_input) 
-            rec_loss, l1_loss, nrmse_loss, rmse_loss = self.sae_criterion(encoder_output, decoder_output, sae_input) # the inputs are the targets
+            rec_loss, l1_loss, nrmse_loss, rmse_loss = self.sae_criterion(encoder_output, decoder_output, sae_input) # the sae inputs are the targets
             loss = rec_loss + self.sae_lambda_sparse*l1_loss
             self.batch_sae_rec_loss[name] = rec_loss.item()
             self.batch_sae_l1_loss[name] = l1_loss.item()
@@ -344,10 +338,12 @@ class ModelPipeline:
             # store quantities of the encoder output
             self.compute_and_store_batch_wise_metrics(model_key='sae', output=encoder_output, name=name, output_2 = encoder_output_prerelu)
 
-            # we pass the decoder_output back to the original model
             if len(output.shape) == 4:                
                 decoder_output = rearrange(decoder_output, '(b h w) c -> b c h w', b=output.size(0), h=output.size(2), w=output.size(3))
                 assert decoder_output.shape == output.shape
+            self.batch_var_expl[name] = variance_explained(output, decoder_output).item()
+            
+            # we pass the decoder_output back to the original model
             output = decoder_output
 
         # we store quantities of the modified model, in case we passed the layer output through the SAE, 
@@ -485,21 +481,25 @@ class ModelPipeline:
         if train_or_eval == "eval":
             accuracy = 0.0
             model_loss = 0.0
+            loss_diff = 0.0
             #if epoch <= num_epochs: # in the additional epoch for creating the histograms
             self.top_k_samples = {}
             self.small_k_samples = {}
-            number_active_neurons = {}
+            #number_active_neurons = {}
             #active_classes_per_neuron = {}
             eval_dead_neurons = {}
+            sparsity_dict = {}
             sae_loss = {}
             sae_rec_loss = {}
             sae_l1_loss = {}
             sae_nrmse_loss = {}
             sae_rmse_loss = {}
+            var_expl = {}
             perc_same_classification = 0.0
             kld = 0.0
             #activation_similarity = {}
             eval_batch_idx = 0
+            perc_eval_dead_neurons = {}
             #self.activations = {}
 
         ######## BATCH LOOP START ########
@@ -508,8 +508,9 @@ class ModelPipeline:
                 tepoch.set_description(f'{train_or_eval} epoch {epoch}')
 
                 #self.batch_activations = {}
-                self.batch_number_active_neurons = {}
-                self.batch_dead_neurons = {}
+                #self.batch_number_active_neurons = {}
+                self.batch_sparsity = {}
+                self.batch_dead_units = {}
                 #self.batch_active_classes_per_neuron = {}
                 #self.batch_activation_similarity = {}
                 self.batch_sae_rec_loss = {}
@@ -517,6 +518,8 @@ class ModelPipeline:
                 self.batch_sae_loss = {}
                 self.batch_sae_nrmse_loss = {}
                 self.batch_sae_rmse_loss = {}
+                self.batch_var_expl = {}
+                perc_train_dead_neurons = {}
                 if epoch == num_epochs and train_or_eval == "eval":
                     self.batch_top_k_values = {}
                     self.batch_top_k_indices = {}
@@ -549,6 +552,8 @@ class ModelPipeline:
                     # and then compare them with those of the modified model
                     # hook_2 should be registered on self.model_copy to get the activations
                     outputs_original = self.model_copy(inputs)
+                    batch_loss_original = self.model_criterion(outputs_original, self.targets).item()
+                    batch_loss_diff = batch_loss - batch_loss_original
                     # we apply first softmax (--> prob. distr.) and then log
                     log_prob_original = F.log_softmax(outputs_original, dim=1)
                     log_prob_modified = F.log_softmax(outputs, dim=1)
@@ -592,24 +597,18 @@ class ModelPipeline:
                     #    break
                     # if we are in train mode we keep track of dead neurons possibly across several epochs
                     # depending on the value of dead_neurons_steps
-                    for name in self.batch_dead_neurons.keys():
+                    for name in self.batch_dead_units.keys():
                         if name not in self.train_dead_neurons:
-                            self.train_dead_neurons[name] = self.batch_dead_neurons[name]
+                            self.train_dead_neurons[name] = self.batch_dead_units[name]
                         else:
-                            self.train_dead_neurons[name] = self.train_dead_neurons[name] * self.batch_dead_neurons[name]
+                            self.train_dead_neurons[name] = self.train_dead_neurons[name] * self.batch_dead_units[name]
                         # in train mode, we measure dead neurons for every batch
-                        number_dead_neurons = compute_number_dead_neurons(self.train_dead_neurons)
+                        perc_train_dead_neurons[name] = self.train_dead_neurons[name].sum().item() / (self.train_dead_neurons[name].shape[0] * self.train_dead_neurons[name].shape[1])
                         # we don't get sparsity_dict here because it depends on the number of dead neurons, which changes during training
                         # --> we don't measure sparsity (definition 0) during training
                         # _, sparsity_dict_1, number_active_classes_per_neuron, mean_number_active_classes_per_neuron, std_number_active_classes_per_neuron = compute_sparsity(train_or_eval, 
-                        _, sparsity_dict_1, _, _, _ = compute_sparsity(train_or_eval, self.sae_expansion_factor,self.batch_number_active_neurons,num_classes=self.num_classes)
+                        #_, sparsity_dict_1, _, _, _ = compute_sparsity(train_or_eval, self.sae_expansion_factor,self.batch_number_active_neurons,num_classes=self.num_classes)
                                                                                                 #active_classes_per_neuron=self.batch_active_classes_per_neuron,
-                    if self.batch_dead_neurons == {}:
-                        number_dead_neurons = 0
-                        sparsity_dict_1 = {}
-                        #number_active_classes_per_neuron = {}
-                        #mean_number_active_classes_per_neuron = {}
-                        #std_number_active_classes_per_neuron = {}
                     '''
                     During training, we also re-initialize dead neurons, which were dead over the last n steps (n=dead_neurons_steps)
                     Then, we let the model train with the new neurons for n steps
@@ -643,27 +642,31 @@ class ModelPipeline:
                 # if we are in eval mode we we accumulate batch-wise quantities
                 if train_or_eval == "eval":
                     model_loss += batch_loss
+                    loss_diff += batch_loss_diff
                     accuracy += batch_accuracy
                     eval_batch_idx += 1
                     #if eval_batch_idx == 4:
                     #    break
 
-                    for name in self.batch_number_active_neurons.keys():
-                        if name not in number_active_neurons:
+                    for name in self.batch_sparsity.keys():
+                        if name not in eval_dead_neurons:
                             # the below dictionaries have the same keys and they are also empty if activation_similarity is empty
-                            number_active_neurons[name] = self.batch_number_active_neurons[name]
+                            #number_active_neurons[name] = self.batch_number_active_neurons[name]
+                            sparsity_dict[name] = self.batch_sparsity[name]
                             #active_classes_per_neuron[name] = self.batch_active_classes_per_neuron[name]
-                            eval_dead_neurons[name] = self.batch_dead_neurons[name]
+                            eval_dead_neurons[name] = self.batch_dead_units[name]
                         else:
-                            number_active_neurons[name] = (number_active_neurons[name][0] + self.batch_number_active_neurons[name][0], 
-                                                                number_active_neurons[name][1]) 
+                            sparsity_dict[name] = sparsity_dict[name] + self.batch_sparsity[name]
+                            #number_active_neurons[name] = (number_active_neurons[name][0] + self.batch_number_active_neurons[name][0], 
+                            #                                    number_active_neurons[name][1]) 
                             # the total number of neurons is the same for all samples, hence we don't need to sum it up
                             ###active_classes_per_neuron[name] = active_classes_per_neuron[name] + self.batch_active_classes_per_neuron[name]
                             # dead_neurons is of the form [True,False,False,True,...] with size of the respective layer, where 
                             # "True" stands for dead neuron and "False" stands for "active" neuron. We have the previous dead_neurons 
                             # entry and a new one. A neuron is counted as dead if it was dead before and is still dead, 
                             # otherwise it is counted as "active". This can be achieved through pointwise multiplication.
-                            eval_dead_neurons[name] = eval_dead_neurons[name] * self.batch_dead_neurons[name]
+                            eval_dead_neurons[name] = eval_dead_neurons[name] * self.batch_dead_units[name]
+                    #print("Eval dead neurons:", eval_dead_neurons)
                                                        
                     # in the last epoch we keep track of the top k samples, the activations and the target classes
                     if epoch == num_epochs:
@@ -698,12 +701,14 @@ class ModelPipeline:
                                 sae_loss[name] = self.batch_sae_loss[name]
                                 sae_nrmse_loss[name] = self.batch_sae_nrmse_loss[name]
                                 sae_rmse_loss[name] = self.batch_sae_rmse_loss[name]
+                                var_expl[name] = self.batch_var_expl[name]
                             else:
                                 sae_rec_loss[name] += self.batch_sae_rec_loss[name]
                                 sae_l1_loss[name] += self.batch_sae_l1_loss[name]
                                 sae_loss[name] += self.batch_sae_loss[name]
                                 sae_nrmse_loss[name] += self.batch_sae_nrmse_loss[name]
                                 sae_rmse_loss[name] += self.batch_sae_rmse_loss[name]
+                                var_expl[name] = self.batch_var_expl[name]
                         kld += batch_kld
                         perc_same_classification += batch_perc_same_classification
 
@@ -721,20 +726,23 @@ class ModelPipeline:
                 if train_or_eval == "train":
                     print_and_log_results(train_or_eval=train_or_eval, 
                                         model_loss=batch_loss,
+                                        loss_diff=batch_loss_diff,
                                         accuracy=batch_accuracy,
                                         use_sae=self.use_sae,
                                         wandb_status=self.wandb_status,
+                                        sparsity_dict=self.batch_sparsity,
                                         #mean_number_active_classes_per_neuron=mean_number_active_classes_per_neuron,
                                         #std_number_active_classes_per_neuron=std_number_active_classes_per_neuron,
-                                        number_active_neurons=self.batch_number_active_neurons,
-                                        sparsity_dict_1=sparsity_dict_1,
-                                        number_dead_neurons=number_dead_neurons,
+                                        #number_active_neurons=self.batch_number_active_neurons,
+                                        #sparsity_dict_1=sparsity_dict_1,
+                                        perc_dead_neurons=perc_train_dead_neurons,
                                         batch=self.train_batch_idx,
                                         sae_loss=self.batch_sae_loss, 
                                         sae_rec_loss=self.batch_sae_rec_loss,
                                         sae_l1_loss=self.batch_sae_l1_loss,
                                         sae_nrmse_loss=self.batch_sae_nrmse_loss,
                                         sae_rmse_loss=self.batch_sae_rmse_loss,
+                                        var_expl=self.batch_var_expl,
                                         kld=batch_kld,
                                         perc_same_classification=batch_perc_same_classification)
                                         #activation_similarity=self.batch_activation_similarity)
@@ -759,6 +767,7 @@ class ModelPipeline:
             # to allow for better comparability
             num_batches = len(dataloader)
             model_loss = model_loss/num_batches
+            loss_diff = loss_diff/num_batches
             accuracy = accuracy/num_batches
             for name in sae_loss.keys():
                 sae_loss[name] = sae_loss[name]/num_batches
@@ -766,46 +775,58 @@ class ModelPipeline:
                 sae_l1_loss[name] = sae_l1_loss[name]/num_batches
                 sae_nrmse_loss[name] = sae_nrmse_loss[name]/num_batches
                 sae_rmse_loss[name] = sae_rmse_loss[name]/num_batches
+                var_expl[name] = var_expl[name]/num_batches
             kld = kld/num_batches
             perc_same_classification = perc_same_classification/num_batches
+            for name in sparsity_dict.keys():
+                sparsity_dict[name] = sparsity_dict[name]/num_batches
+                perc_eval_dead_neurons[name] = eval_dead_neurons[name].sum().item() / (eval_dead_neurons[name].shape[0] * eval_dead_neurons[name].shape[1]) # (1 / #batches) * (sum of dead channels / # channels) <-- this sum is also taken over all batches
+                #print(eval_dead_neurons[name].shape[0])
+                #print(eval_dead_neurons[name].shape[1])
+                #print(eval_dead_neurons[name].sum().item())
+                #print(perc_eval_dead_neurons[name])
             #activation_similarity = {k: (v[0]/num_batches, v[1]/num_batches) for k, v in activation_similarity.items()}
-            number_active_neurons = {k: (v[0]/num_batches, v[1]) for k, v in number_active_neurons.items()}
-            number_dead_neurons = compute_number_dead_neurons(eval_dead_neurons)
+            #number_active_neurons = {k: (v[0]/num_batches, v[1]) for k, v in number_active_neurons.items()}
             #sparsity_dict, sparsity_dict_1, number_active_classes_per_neuron, mean_number_active_classes_per_neuron, std_number_active_classes_per_neuron = compute_sparsity(train_or_eval, 
-            sparsity_dict, sparsity_dict_1, _, _, _ = compute_sparsity(train_or_eval,self.sae_expansion_factor,number_active_neurons,number_dead_neurons=number_dead_neurons,
-                                                                       dead_neurons=eval_dead_neurons,num_classes=self.num_classes)
+            #sparsity_dict, sparsity_dict_1, _, _, _ = compute_sparsity(train_or_eval,self.sae_expansion_factor,number_active_neurons,number_dead_neurons=number_dead_neurons,
+            #                                                           dead_neurons=eval_dead_neurons,num_classes=self.num_classes)
                                                                         #active_classes_per_neuron=active_classes_per_neuron, 
 
             if epoch <= num_epochs: # if we do the extra eval epoch for getting the activation histogram we don't want to print or log anything                              
                 print_and_log_results(train_or_eval, 
                                         model_loss=model_loss,
+                                        loss_diff=loss_diff,
                                         accuracy=accuracy,
                                         use_sae=self.use_sae,
                                         wandb_status=self.wandb_status,
                                         sparsity_dict=sparsity_dict,
                                         #mean_number_active_classes_per_neuron=mean_number_active_classes_per_neuron,
                                         #std_number_active_classes_per_neuron=std_number_active_classes_per_neuron,
-                                        number_active_neurons=number_active_neurons,
-                                        sparsity_dict_1=sparsity_dict_1,
-                                        number_dead_neurons=number_dead_neurons,
+                                        #number_active_neurons=number_active_neurons,
+                                        #sparsity_dict_1=sparsity_dict_1,
+                                        perc_dead_neurons=perc_eval_dead_neurons,
                                         epoch=epoch,
                                         sae_loss=sae_loss,
                                         sae_rec_loss=sae_rec_loss,
                                         sae_l1_loss=sae_l1_loss,
                                         sae_nrmse_loss=sae_nrmse_loss,
                                         sae_rmse_loss=sae_rmse_loss,
+                                        var_expl=var_expl,
                                         kld=kld,
                                         perc_same_classification=perc_same_classification)
                                         #activation_similarity=activation_similarity)
             
-            # if we are in the last epoch, we store the sparsity dictionaries for access by another function
+            # if we are in the last epoch, we store some quantities for access by another function
             if epoch == num_epochs:
                 self.sparsity_dict = sparsity_dict
-                self.sparsity_dict_1 = sparsity_dict_1
+                #self.sparsity_dict_1 = sparsity_dict_1
                 self.sae_rec_loss = sae_rec_loss
                 self.sae_l1_loss = sae_l1_loss
                 self.sae_nrmse_loss = sae_nrmse_loss
                 self.sae_rmse_loss = sae_rmse_loss
+                self.var_expl = var_expl
+                self.perc_dead_neurons = perc_eval_dead_neurons
+                self.loss_diff = loss_diff
                 #self.number_active_classes_per_neuron = number_active_classes_per_neuron
                 #self.active_classes_per_neuron = active_classes_per_neuron
                 
@@ -904,17 +925,19 @@ class ModelPipeline:
                     # check if the outputs are the same
                     assert torch.allclose(outputs, outputs_1, atol=1e-5), "The outputs of the original model and the modified model are not the same."
 
-                print(get_model_layers(self.model))
+                #print(get_model_layers(self.model))
                 # If we use an SAE, the new layer names are f.e.: 'layer1_0_conv1' (the overall layer), with sublayers:
                 # 'layer1_0_conv1_0' (the original conv layer) 
                 # SAE: 'layer1_0_conv1_1' (x_cent in SAE MLP), 'layer1_0_conv1_1_encoder', 'layer1_0_conv1_1_sae_act', 'layer1_0_conv1_1_decoder'
 
+                '''
                 plot_lucent_explanations(self.model, 
                                             self.layer_names, 
                                             self.params_string, 
                                             self.evaluation_results_folder_path, 
                                             self.wandb_status,
                                             self.number_neurons)
+                '''
             #'''
 
             ''' # this only works for MNIST reasonably well
@@ -988,12 +1011,18 @@ class ModelPipeline:
                                         self.params_string_1, 
                                         self.sae_lambda_sparse, 
                                         self.sae_expansion_factor,
+                                        self.sae_batch_size,
+                                        self.sae_optimizer_name,
+                                        self.sae_learning_rate,
                                         self.sae_rec_loss[name], 
                                         self.sae_l1_loss[name],
                                         self.sae_nrmse_loss[name],
                                         self.sae_rmse_loss[name], 
-                                        self.sparsity_dict[(name,'sae')], 
-                                        self.sparsity_dict_1[(name,'sae')])
+                                        self.sparsity_dict[(name,'sae')],
+                                        self.var_expl[name],
+                                        self.perc_dead_neurons[(name,'sae')],
+                                        self.loss_diff)
+                                        #self.sparsity_dict_1[(name,'sae')])
             #'''
         elif self.training and not self.use_sae:
             print("Training of the original model completed.")
@@ -1031,7 +1060,7 @@ class ModelPipeline:
                                         wandb_status=self.wandb_status)
         '''
 
-        #'''
+        '''
         # show the most highly activating samples for a specific neuron of a specific layer of a specific model
         for layer_name, model_key in self.model_layer_list:
             show_top_k_samples(self.val_dataloader, 
@@ -1046,10 +1075,10 @@ class ModelPipeline:
                             number_neurons=self.number_neurons,
                             wandb_status=self.wandb_status,
                             dataset_name=self.dataset_name)
-        #'''
+        '''
 
         # generate activation histogram
-        #'''
+        '''
         print("---------------------------")
         print("Doing an extra round of inference to get the activation histogram...")
         num_bins = 100
@@ -1074,7 +1103,6 @@ class ModelPipeline:
 
         # then, we loop through the model and put the activations into the histogram matrix based on the bins
         # which we infer from the top and small values
-        #'''
         self.get_histogram = True
         self.epoch("eval", num_epochs + 1, num_epochs) # we do an additional round of evaluation
         activation_histograms_2(self.histogram_info, 
@@ -1083,7 +1111,7 @@ class ModelPipeline:
                               params=self.params_string, 
                               wandb_status=self.wandb_status, 
                               num_units=self.number_neurons)
-        #'''
+        '''
 
         ''' # outdated as we don't store activations anymore
         activation_histograms(self.activations,
@@ -1099,130 +1127,3 @@ class ModelPipeline:
                               wandb_status=self.wandb_status,
                               targets=self.targets_epoch)
         '''
-
-
-# this only worked for MNIST but it would have to be adapted now because self.only_get_act is not defined anymore as I'm not storing
-# the activations in the model_pipeline class anymore as this is too expensive for larger datasets
-    def create_maximally_activating_images(self, 
-                                            layer_name, 
-                                            model_key, 
-                                            top_k_samples, # used for getting dead neurons
-                                            folder_path,
-                                            layer_names,
-                                            params,
-                                            number_neurons,
-                                            wandb_status):
-        # We define this function in this class because otherwise we would have to pass the model as input
-        # register the hooks, take care to only return the activations etc.
-
-        # The few lines below are copied from the show_top_k_samples function
-        top_value_matrix = top_k_samples[(layer_name, model_key)][0]
-        # we store the column indices of non-dead neurons --> we will not plot activating samples for dead neurons because this is pointless
-        non_zero_columns = torch.any(top_value_matrix != 0, dim=0) # --> tensor([True, False, True,...]), True wherever non-zero
-        # the number of neurons we can plot is upper bounded by the number of non-dead neurons in the layer
-        number_non_dead_neurons = torch.sum(non_zero_columns).item()
-        number_neurons = min(number_neurons, number_non_dead_neurons)
-        # find the column indices of the first number_neurons non-zero columns
-        non_zero_columns_indices = torch.nonzero(non_zero_columns).squeeze()[:number_neurons]
-
-        # so far this function only works for MNIST!!!
-        MNIST_mean = 0.1307
-        MNIST_std = 0.3081
-
-        num_cols, num_rows = rows_cols(number_neurons)
-        fig = plt.figure(figsize=(18,9))
-        outer_grid = fig.add_gridspec(num_rows, num_cols, wspace=0.1, hspace=0.3)
-        fig.suptitle(f'Maximally activating image for {number_neurons} neurons \n in {model_key, layer_name}', fontsize=10)
-        
-        # for specifying in the loop that we only want to get the activations
-        self.only_get_act = True
-
-        for i in range(num_rows):
-            for j in range(num_cols):
-                if i * num_cols + j >= number_neurons:
-                    break
-                neuron_idx = non_zero_columns_indices[i * num_cols + j].item()
-
-                #outer_grid_1 = outer_grid[i,j].subgridspec(1, 3, wspace=0, hspace=0, width_ratios=[1, 0.1, 1])
-                outer_grid_1 = outer_grid[i,j].subgridspec(1, 1, wspace=0, hspace=0)#width_ratios=[1, 0.1, 1])
-
-                # add ghost axis --> allows us to add a title
-                ax_title_1 = fig.add_subplot(outer_grid_1[:])
-                ax_title_1.set(xticks=[], yticks=[])
-                ax_title_1.set_title(f'Neuron {neuron_idx}\n', fontsize=9, pad=0) # we add a newline so that title is above the ones of the subplots
-
-                # we generate the maximally and minimally activating image for the current neuron
-                for mode in ['max']:#,'min']:
-                    if mode == "max":
-                        inner_grid = outer_grid_1[0, 0].subgridspec(1, 2, wspace=0, hspace=0)#, height_ratios=[1,1], width_ratios=[1,1])
-                    #else:
-                    #    inner_grid = outer_grid_1[0, 2].subgridspec(1, 2, wspace=0, hspace=0)#, height_ratios=[1,1], width_ratios=[1,1])
-
-                    # add ghost axis --> allows us to add a title
-                    ax_title_2 = fig.add_subplot(inner_grid[:])
-                    ax_title_2.set(xticks=[], yticks=[])
-                    ax_title_2.set_title(f'{mode} activating', fontsize=8, pad=0.1)
-
-                    axs = inner_grid.subplots()  # Create all subplots for the inner grid.
-                    version = 0
-                    for (c), ax in np.ndenumerate(axs): # if there are only rows/columns use (c) instead of (c,d)
-                        ax.set(xticks=[], yticks=[])
-                        ax.set_box_aspect(1) # make the image square
-                        ax.axis('off')
-                        version += 1
-                        if version > 2:
-                            break
-                        optim_image = torch.randn(28*28) 
-                        optim_image.data = processed_optim_image(optim_image.data, str(version), MNIST_mean, MNIST_std, True)
-                        #optim_image = optim_image.view(1, 28*28)
-                        optim_image.requires_grad = True
-                        
-                        # we define an optimizer for optimizing the image
-                        optimizer = torch.optim.SGD([optim_image], lr=0.1)
-                        
-                        # Get the maximally activating image
-                        for iteration in range(500):
-                            if model_key=='original' and self.use_sae:
-                                self.model_copy(optim_image)
-                            else:
-                                self.model(optim_image)
-                            act = self.batch_activations[(layer_name,model_key)]
-                            #print(self.batch_activations)
-                            #print(act.shape)
-                            # we use the pre-relu encoder output, because otherwise we would have many zeros and we couldn't 
-                            # optimize the image effectively
-
-                            # remove singleton dimensions: [1,neuron_idx] --> [neuron_idx] (1 was for the one sample we consider)
-                            act = act.squeeze()
-                            # consider the output of the neuron we're interested in
-                            act = act[neuron_idx]
-                            if mode == 'max':
-                                # since we want to maximize the activation value of this neuron, we minimize the negative of the activation value
-                                loss = -act
-                            elif mode == 'min':
-                                loss = act
-                            else:
-                                raise ValueError("Invalid mode")
-                            
-                            #print(act, layer_name, model_key)
-
-                            optimizer.zero_grad()
-                            loss.backward()
-                            optimizer.step()
-
-                            optim_image.data = processed_optim_image(optim_image.data, str(version), MNIST_mean, MNIST_std, False)
-
-                        optim_image = optim_image.detach().numpy().reshape(28, 28)                   
-                        ax.imshow(optim_image, cmap='gray', aspect='auto')  # Assuming grayscale images
-        #'''
-        if wandb_status:
-            wandb.log({f"eval/generated_max_and_min_activating_images/{model_key}_{layer_name}":wandb.Image(plt)})
-        else:
-            folder_path = os.path.join(folder_path, 'generated_max_and_min_activating_images')
-            os.makedirs(folder_path, exist_ok=True)
-            file_path = get_file_path(folder_path, layer_names, params, f'{model_key}_{layer_name}_{number_neurons}_generated_max_min_activating_images.png')
-            plt.savefig(file_path, bbox_inches='tight', pad_inches=0.1, dpi=300)
-            print(f"Successfully stored generated max and min activating image for {number_neurons} neurons in {file_path}")
-        plt.close()
-        #'''
-        self.only_get_act = False # to be sure we just turn this parameter off again

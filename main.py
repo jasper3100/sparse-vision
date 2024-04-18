@@ -96,7 +96,7 @@ if __name__ == '__main__':
                 
         # Once the model pipeline has been run for all parameter combinations,
         # we can perform evaluation using info from all runs
-        '''
+        #'''
         with open('parameters_eval.txt', 'r') as file:
             for line in file:
                 parameters_2 = [param for param in line.strip().split(',')]
@@ -134,7 +134,7 @@ if __name__ == '__main__':
                                                             run_group_ID=run_group_ID,
                                                             execution_location='local')
                             execute_project.evaluation()
-        '''
+        #'''
 
         # if we used wandb logging, we need to finish the run 
         #if parameters[4]=='True':

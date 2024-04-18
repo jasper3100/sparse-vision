@@ -19,23 +19,51 @@ class Evaluation:
         self.model_params = model_params
         self.sae_params_1 = sae_params_1
         self.evaluation_results_folder_path = evaluation_results_folder_path
+        model_params = {k: str(v) for k, v in self.model_params.items()}
+        sae_params_1 = {k: str(v) for k, v in self.sae_params_1.items()}
+        self.params_string_1 = '_'.join(model_params.values()) + "_" + "_".join(sae_params_1.values())
+        self.file_path = get_file_path(folder_path=self.evaluation_results_folder_path,
+                                    layer_names=self.layer_names,
+                                    params=self.params_string_1,
+                                    file_name='sae_eval_results.csv')
+    
+    def compute_sae_ranking(self):
+        '''
+        This function reads SAE eval results for different lambda, exp factor, learning rate,... 
+        from a stored CSV file and computes a ranking of the different SAEs
+        '''       
+        df = pd.read_csv(self.file_path)
+
+        # compute the ranks for each metric
+        # ascending=False: highest value gets the best/highest rank (=1)
+        # ascending=True: lowest value gets the best/highest rank (=1)
+        df['var_expl_rank'] = df["var_expl"].rank(ascending=False).astype(int)
+        df['l1_rank'] = df['l1_loss'].rank(ascending=True).astype(int)
+        df['rec_loss_rank'] = df['nrmse_loss'].rank(ascending=True).astype(int) # for the rec loss we take the nrmse loss
+        df['perc_dead_units_rank'] = df['perc_dead_units'].rank(ascending=True).astype(int)
+        df['sparsity_rank'] = df['rel_sparsity'].rank(ascending=False).astype(int)
+        df['loss_diff_rank'] = df['loss_diff'].rank(ascending=True).astype(int)
+
+        df['average_ranking'] = df[['var_expl_rank', 'l1_rank', 'rec_loss_rank', 'perc_dead_units_rank', 'sparsity_rank', 'loss_diff_rank']].mean(axis=1)
+        df['final_ranking'] = df['average_ranking'].rank(ascending=True).astype(int)
+        df = df.sort_values(by='final_ranking')
+
+        rank_table_path = get_file_path(folder_path=self.evaluation_results_folder_path,
+                                        layer_names=self.layer_names,
+                                        params=self.params_string_1,
+                                        file_name=f'sae_rank_table.csv')
+        df.to_csv(rank_table_path, index=False)
+        if self.wandb_status:
+            wandb.log({f"eval/sae_eval_results/{self.params_string_1}": wandb.Table(dataframe=df)}, commit=False)
+        print(f"Successfully computed and stored SAE ranking in {self.file_path}")
+
         
-    def get_sae_eval_results(self, type_of_rec_loss):
+    def plot_rec_loss_vs_sparsity(self, type_of_rec_loss):
         '''
         This function reads SAE eval results (such as nrmse_loss, l1_loss, relative sparsity of SAE encoder output)
         for different lambda_sparse and expansion_factor values from a stored CSV file and visualizes them.
         '''
-        # remove lambda_sparse and expansion_factor from params, because we want a uniform file name 
-        # for all lambda_sparse and expansion_factor values
-        model_params = {k: str(v) for k, v in self.model_params.items()}
-        sae_params_1 = {k: str(v) for k, v in self.sae_params_1.items()}
-        params_string_1 = '_'.join(model_params.values()) + "_" + "_".join(sae_params_1.values())
-        
-        file_path = get_file_path(folder_path=self.evaluation_results_folder_path,
-                                    layer_names=self.layer_names,
-                                    params=params_string_1,
-                                    file_name='sae_eval_results.csv')
-        df = pd.read_csv(file_path)
+        df = pd.read_csv(self.file_path)
 
         # if I only want to plot the results for specific expansion factors
         # exlude all rows where expansion factor is 16, 32, or 64
@@ -191,10 +219,10 @@ class Evaluation:
         plt.tight_layout()
         png_path = get_file_path(folder_path=self.evaluation_results_folder_path,
                                 layer_names=self.layer_names,
-                                params=params_string_1,
+                                params=self.params_string_1,
                                 file_name=f'sae_eval_results_plot_{loss_name}.png')
         if self.wandb_status:
-            wandb.log({f"eval/sae_eval_results/{params_string_1}/{loss_name}": wandb.Image(plt)}, commit=False)
+            wandb.log({f"eval/sae_eval_results/{self.params_string_1}/{loss_name}": wandb.Image(plt)}, commit=False)
         plt.savefig(png_path, dpi=300)
         plt.close()
         print(f"Successfully stored SAE eval results plot ({loss_name}) in {png_path}")

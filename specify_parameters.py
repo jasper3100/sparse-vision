@@ -12,7 +12,7 @@ sae_model_name = ['sae_mlp'] #'sae_conv'
 # including the cluster process number. Locally, it will be specified in main.py
 
 # 0 = False, 1 = True
-training = ['1'] # training or inference
+training = ['0'] # training or inference
 original_model = ['0'] # use original model or not
 '''
 Examples of "sae layers" values
@@ -88,7 +88,7 @@ dataset_name = ['cifar_10'] # cifar_10, mnist
 sae_layers = ['fc1__']
 model_name = ['custom_mlp_9']
 directory_path = ['C:\\Users\\Jasper\\Downloads\\Master thesis\\Code']
-wandb_status = ['0']
+wandb_status = ['1']
 model_epochs = [1]
 model_learning_rate = [0.1]#,0.2]
 batch_size = [64]#,128]
@@ -98,7 +98,7 @@ sae_learning_rate = [0.001]
 sae_optimizer_name = ['adam']
 sae_batch_size = [64]
 sae_lambda_sparse = [1e-1] #,1e-2] 
-sae_expansion_factor = [2]#,4]
+sae_expansion_factor = [2,4,6]#,4]
 activation_threshold = [0.1]
 dataset_name = ['mnist'] # cifar_10, mnist
 #'''
@@ -116,13 +116,13 @@ sae_epochs = [15]
 sae_learning_rate = [0.001]
 sae_optimizer_name = ['adam']
 sae_batch_size = [64]
-sae_lambda_sparse = [5,10,20,40,80]#[0.5,1,2,3,4,5,7,10]#[1e-4, 1e-3, 1e-2, 1e-1] # recall: 1e-3 = 0.001
-sae_expansion_factor = [4,8,16,32]
+sae_lambda_sparse = [12]#[1e-4, 1e-3, 1e-2, 1e-1] # recall: 1e-3 = 0.001
+sae_expansion_factor = [2] #[4,8,16,32]
 activation_threshold = [0.1]
 dataset_name = ['mnist'] # cifar_10, mnist
 '''
 
-'''
+#'''
 # local, Tiny ImageNet
 sae_layers = ['layer1.0.conv1__'] 
 model_name = ['resnet18']
@@ -140,15 +140,15 @@ sae_lambda_sparse = [1e-1]
 sae_expansion_factor = [2]
 activation_threshold = [0.1]
 dataset_name = ['tiny_imagenet'] # cifar_10, mnist
-'''
+#'''
 
 #''' # cluster, Tiny ImageNet
 #sae_layers = ['layer1.0.conv1__'] 
-sae_layers = ['__layer3.0.conv2']
+sae_layers = ['layer3.0.conv2__']
 model_name = ['resnet18']
 directory_path = ['/lustre/home/jtoussaint/master_thesis/']
 wandb_status = ['1']
-model_epochs = [10]
+model_epochs = [2]
 model_learning_rate = [0.001]
 batch_size = [100]
 model_optimizer_name = ['sgd_w_scheduler']
@@ -156,7 +156,7 @@ sae_epochs = [5]
 sae_learning_rate = [0.001]#, 0.0001]
 sae_optimizer_name = ['adam']
 sae_batch_size = [64]
-sae_lambda_sparse = [0.1,0.5,2,5] # 0.1
+sae_lambda_sparse = [0.1] #[0.1,0.5,2,5] # 0.1
 sae_expansion_factor = [2,4,8] # 8
 activation_threshold = [0.001]
 dataset_name = ['tiny_imagenet'] # cifar_10, mnist

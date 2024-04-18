@@ -69,6 +69,9 @@ class ExecuteProject:
         self.sae_params_1 = self.sae_params.copy()
         self.sae_params_1.pop('lambda_sparse', None)
         self.sae_params_1.pop('expansion_factor', None)
+        self.sae_params_1.pop('batch_size', None)
+        self.sae_params_1.pop('optimizer', None)
+        self.sae_params_1.pop('learning_rate', None)
 
         self.model_weights_folder_path, self.sae_weights_folder_path, self.evaluation_results_folder_path = get_folder_paths(self.directory_path, self.model_name, self.dataset_name, self.sae_model_name)
 
@@ -195,8 +198,10 @@ class ExecuteProject:
                                 model_params=self.model_params,
                                 sae_params_1=self.sae_params_1,
                                 evaluation_results_folder_path=self.evaluation_results_folder_path)
-        evaluation.get_sae_eval_results(type_of_rec_loss="mse")
-        evaluation.get_sae_eval_results(type_of_rec_loss="rmse")
-        evaluation.get_sae_eval_results(type_of_rec_loss="nrmse")
+        #evaluation.plot_rec_loss_vs_sparsity(type_of_rec_loss="mse")
+        #evaluation.plot_rec_loss_vs_sparsity(type_of_rec_loss="rmse")
+        #evaluation.plot_rec_loss_vs_sparsity(type_of_rec_loss="nrmse")
+        evaluation.compute_sae_ranking()
+
         if self.wandb_status:
             wandb.log({}, commit=True) # commit the logs from before

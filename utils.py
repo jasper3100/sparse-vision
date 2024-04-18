@@ -15,8 +15,8 @@ import math
 import matplotlib.pyplot as plt
 from lucent.optvis import render
 import lucent.optvis.param as lucentparam
-from lucent.modelzoo.util import get_model_layers
-from einops import rearrange
+import pandas as pd
+import webdataset as wds
 
 from dataloaders.tiny_imagenet import *
 from dataloaders.tiny_imagenet import _add_channels
@@ -317,6 +317,25 @@ def load_data(directory_path, dataset_name, batch_size):
         category_names = train_dataset.classes
 
     elif dataset_name == 'imagenet':    
+        # Roland's version
+        '''
+        datadir = ""
+        dataset = (
+            wds.WebDataset(datadir)
+            .shuffle(True)
+            .decode("pil")
+            .to_tuple("jpeg.jpg;png.png jpeg.cls __key__")
+            .map_tuple(transform, lambda x: x, lambda x: x)
+            .batched(batch_size, partial=False)
+        )
+        dataloader = wds.WebLoader(
+            dataset,
+            batch_size=None,
+            shuffle=False,
+            num_workers=8,
+        )
+        '''
+
         '''         
         # Define transformations to be applied to the images
         transform = transforms.Compose([
@@ -325,7 +344,7 @@ def load_data(directory_path, dataset_name, batch_size):
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])
         '''
-
+        '''
         # THIS CODE IN THIS VERSION EXCEEDS THE CURRENT MEMORY LIMITS THAT I SET IN THE CLUSTER. WHY?
 
         root_dir = '/lustre/shared/imagenet-2016/ILSVRC'
@@ -341,6 +360,7 @@ def load_data(directory_path, dataset_name, batch_size):
         #test_dataloader = DataLoader(test_dataset, batch_size=64, shuffle=False, num_workers=4)
 
         category_names = train_dataset.classes
+        '''
 
         '''
         root_dir='/lustre/shared/imagenet-2016'
@@ -746,64 +766,110 @@ def store_sae_eval_results(folder_path,
                             params, 
                             lambda_sparse, 
                             expansion_factor, 
+                            batch_size,
+                            optimizer_name, 
+                            learning_rate,
                             rec_loss, 
                             scaled_l1_loss, 
                             nrmse_loss,
                             rmse_loss,
                             sparsity,
-                            sparsity_1):
-    # remove lambda_sparse and expansion_factor from params, because we want a uniform file name 
-    # for all lambda_sparse and expansion_factor values
+                            var_expl,
+                            perc_dead_units,
+                            loss_diff):
+                            #sparsity_1=None):
+    # params doesn't contain lambda_sparse, expansion factor, learning rate etc. because we 
+    # want a uniform file name for all different values
     file_path = get_file_path(folder_path=folder_path,
                             layer_names=layer_names,
                             params=params,
                             file_name='sae_eval_results.csv')
     file_exists = os.path.exists(file_path)
-    columns = ["lambda_sparse", "expansion_factor", "rec_loss", "l1_loss", "nrmse_loss", "rmse_loss", "rel_sparsity", "rel_sparsity_1"]
-        
-    if not file_exists:
+    columns = ["lambda_sparse", 
+               "expansion_factor", 
+               "batch_size",
+                "optimizer_name",
+                "learning_rate",
+               "rec_loss", 
+               "l1_loss", 
+               "nrmse_loss", 
+               "rmse_loss", 
+               "rel_sparsity",
+               "var_expl",
+               "perc_dead_units",
+               "loss_diff"]#, "rel_sparsity_1"]
+    
+    if file_exists:
+        df = pd.read_csv(file_path)
+        column_names = df.columns.tolist()
+        if column_names != columns:
+            # this might happen if we added some quantities/columns which previously weren't computed
+            create_new_file = True 
+        else:
+            create_new_file = False
+
+    if not file_exists or create_new_file:
         with open(file_path, 'w', newline='') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=columns)
             writer.writeheader()
             writer.writerow({columns[0]: lambda_sparse,
                             columns[1]: expansion_factor,
-                            columns[2]: rec_loss,
-                            columns[3]: scaled_l1_loss,
-                            columns[4]: nrmse_loss,
-                            columns[5]: rmse_loss,
-                            columns[6]: sparsity,
-                            columns[7]: sparsity_1})
+                            columns[2]: batch_size,
+                            columns[3]: optimizer_name,
+                            columns[4]: learning_rate,
+                            columns[5]: rec_loss,
+                            columns[6]: scaled_l1_loss,
+                            columns[7]: nrmse_loss,
+                            columns[8]: rmse_loss,
+                            columns[9]: sparsity,
+                            columns[10]: var_expl,
+                            columns[11]: perc_dead_units,
+                            columns[12]: loss_diff})
     else:
         # Read the existing CSV file
         with open(file_path, 'r', newline='') as csvfile:
             reader = csv.DictReader(csvfile, fieldnames=columns)
             rows = list(reader)
 
-            # Check if the combination of lambda_sparse, expansion_factor already exists
-            combination_exists = any(row["lambda_sparse"] == str(lambda_sparse) and row["expansion_factor"] == str(expansion_factor) for row in rows)
+            # Check if the combination of lambda_sparse, expansion_factor, batch_size, optimizer_name, learning_rate already exists
+            combination_exists = any(row["lambda_sparse"] == str(lambda_sparse) 
+                                     and row["expansion_factor"] == str(expansion_factor)
+                                      and row["batch_size"] == str(batch_size)
+                                       and row["optimizer_name"] == str(optimizer_name)
+                                        and row["learning_rate"] == str(learning_rate) 
+                                        for row in rows)
 
             # If the combination exists, update rec_loss, l1_loss, relative sparsity
             if combination_exists:
                 for row in rows:
-                    if row["lambda_sparse"] == str(lambda_sparse) and row["expansion_factor"] == str(expansion_factor):
+                    if row["lambda_sparse"] == str(lambda_sparse) and row["expansion_factor"] == str(expansion_factor) and row["batch_size"] == str(batch_size) and row["optimizer_name"] == str(optimizer_name) and row["learning_rate"] == str(learning_rate):
                         row["rec_loss"] = str(rec_loss)
                         row["l1_loss"] = str(scaled_l1_loss)
                         row["nrmse_loss"] = str(nrmse_loss)
                         row["rmse_loss"] = str(rmse_loss)
                         row["rel_sparsity"] = str(sparsity)
-                        if sparsity_1 is not None:
-                            row["rel_sparsity_1"] = str(sparsity_1)
+                        row["var_expl"] = str(var_expl)
+                        row["perc_dead_units"] = str(perc_dead_units)
+                        row["loss_diff"] = str(loss_diff)
+                        #if sparsity_1 is not None:
+                        #    row["rel_sparsity_1"] = str(sparsity_1)
                         break
             else:
                 # If the combination doesn't exist, add a new row
                 rows.append({"lambda_sparse": str(lambda_sparse), 
                              "expansion_factor": str(expansion_factor), 
+                                "batch_size": str(batch_size),
+                                "optimizer_name": str(optimizer_name),
+                                "learning_rate": str(learning_rate),
                              "rec_loss": str(rec_loss), 
                              "l1_loss": str(scaled_l1_loss),
                              "nrmse_loss": str(nrmse_loss),
                              "rmse_loss": str(rmse_loss),
                              "rel_sparsity": str(sparsity),
-                             "rel_sparsity_1": str(sparsity_1)})
+                            "var_expl": str(var_expl),
+                            "perc_dead_units": str(perc_dead_units),
+                            "loss_diff": str(loss_diff)})
+                             #"rel_sparsity_1": str(sparsity_1)})
 
         # Write the updated data back to the CSV file
         with open(file_path, 'w', newline='') as csvfile:
@@ -853,13 +919,14 @@ def compute_number_dead_neurons(dead_neurons):
     where 'True' means that the neuron is dead
     Hence, for each key in dead_neurons, count the number of "True"'s
     '''
-    number_dead_neurons = {}
+    perc_dead_neurons = {}
     for key, tensor in dead_neurons.items():
-        number_dead_neurons[key] = tensor.sum().item()
-    return number_dead_neurons
+        perc_dead_neurons[key] = tensor.sum().item() / len(tensor)
+    return perc_dead_neurons
 
 def print_and_log_results(train_or_eval,
                           model_loss,
+                          loss_diff,
                           accuracy,
                           use_sae,
                           wandb_status,
@@ -868,7 +935,7 @@ def print_and_log_results(train_or_eval,
                           std_number_active_classes_per_neuron=None,
                           number_active_neurons=None,
                           sparsity_dict_1=None,
-                          number_dead_neurons=None,
+                          perc_dead_neurons=None,
                           batch=None,
                           epoch=None,
                           sae_loss=None,
@@ -876,6 +943,7 @@ def print_and_log_results(train_or_eval,
                           sae_l1_loss=None,
                           sae_nrmse_loss=None,
                           sae_rmse_loss=None,
+                          var_expl=None,
                           kld=None,
                           perc_same_classification=None,
                           activation_similarity=None):
@@ -904,19 +972,21 @@ def print_and_log_results(train_or_eval,
         print(f"Model loss: {model_loss:.4f} | Model accuracy: {accuracy:.4f}")
         if use_sae:
             print(f"KLD: {kld:.4f} | Perc same classifications: {perc_same_classification:.4f}")
+            print(f"Loss difference: {loss_diff:.4f}")
     if wandb_status:
         wandb.log({f"{train_or_eval}/model loss": model_loss, f"{train_or_eval}/model accuracy": accuracy, f"{epoch_or_batch}": step}, commit=False)
         if use_sae:
             wandb.log({f"{train_or_eval}/KLD": kld, 
                        f"{train_or_eval}/Perc same classifications": perc_same_classification, 
+                       f"{train_or_eval}/Loss difference": loss_diff,
                        f"{epoch_or_batch}": step}, commit=False)
             # wandb doesn't accept tuples as keys, so we convert them to strings
-            number_dead_neurons_wandb = {f"{train_or_eval}/Number_of_dead_neurons_on_{train_or_eval}_data/{k[0]}_{k[1]}": v for k, v in number_dead_neurons.items()}
+            perc_dead_neurons_wandb = {f"{train_or_eval}/Perc_of_dead_neurons_on_{train_or_eval}_data/{k[0]}_{k[1]}": v for k, v in perc_dead_neurons.items()}
             # merge two dictionaries and log them to W&B
-            wandb.log({**number_dead_neurons_wandb, f"{epoch_or_batch}": step}, commit=False) # overview of number of dead neurons for all layers
+            wandb.log({**perc_dead_neurons_wandb, f"{epoch_or_batch}": step}, commit=False) # overview of number of dead neurons for all layers
         
     # We show per model layer evaluation metrics
-    for name in sparsity_dict_1.keys(): 
+    for name in sparsity_dict.keys(): 
     # the names are the same for the polysemanticity and relative sparsity dictionaries
     # hence, it suffices to iterate over the keys of the sparsity dictionary
         model_key = name[1] # can be "original" (model), "sae" (encoder output), "modified" (model)
@@ -947,12 +1017,13 @@ def print_and_log_results(train_or_eval,
                 wandb.log({f"{train_or_eval}/SAE_loss/layer_{name[0]} SAE l1 loss": sae_l1_loss[name[0]], f"{epoch_or_batch}":step}, commit=False)
                 wandb.log({f"{train_or_eval}/SAE_loss/layer_{name[0]} SAE nrmse loss": sae_nrmse_loss[name[0]], f"{epoch_or_batch}":step}, commit=False)
                 wandb.log({f"{train_or_eval}/SAE_loss/layer_{name[0]} SAE rmse loss": sae_rmse_loss[name[0]], f"{epoch_or_batch}":step}, commit=False)
+                wandb.log({f"{train_or_eval}/Variance_explained/layer_{name[0]}": var_expl[name[0]], f"{epoch_or_batch}":step}, commit=False)
              #if model_key == 'sae':
-            wandb.log({f"{train_or_eval}/Sparsity/{model_key}_layer_{name[0]} sparsity_1": sparsity_dict_1[name], f"{epoch_or_batch}":step}, commit=False)  
+            #wandb.log({f"{train_or_eval}/Sparsity/{model_key}_layer_{name[0]} sparsity_1": sparsity_dict_1[name], f"{epoch_or_batch}":step}, commit=False)  
             # Optional metrics
-            if number_active_neurons is not None:
+            #if number_active_neurons is not None:
                 #wandb.log({f"{train_or_eval}/Activation_of_neurons/{model_key}_layer_{name[0]} activated neurons": number_active_neurons[name][0], f"{epoch_or_batch}": step}, commit=False)            
-                wandb.log({f"{train_or_eval}/Number_of_neurons/{model_key}_layer_{name[0]}": number_active_neurons[name][1], f"{epoch_or_batch}": step}, commit=False)
+                #wandb.log({f"{train_or_eval}/Number_of_neurons/{model_key}_layer_{name[0]}": number_active_neurons[name][1], f"{epoch_or_batch}": step}, commit=False)
                 #wandb.log({f"{train_or_eval}/Activation_of_neurons/{model_key}_layer_{name[0]} dead neurons": number_dead_neurons[name], f"{epoch_or_batch}": step}, commit=False)
             if use_sae and activation_similarity is not None:
                 wandb.log({f"{train_or_eval}/Feature_similarity_L2loss_between_modified_and_original_model/{model_key}_layer_{name[0]} mean": activation_similarity[name[0]][0], f"{epoch_or_batch}":step}, commit=False) 
@@ -1383,7 +1454,7 @@ def plot_lucent_explanations(model, layer_names, params, folder_path, wandb_stat
         plt.suptitle(f"Maximally activating explanations, {layer_name}")
         for i in range(num_units):
             plt.subplot(rows, cols, i+1)
-            img = render.render_vis(model, "{}:{}".format(layer_name, i), show_image=False)[0] 
+            img = render.render_vis(model, "{}:{}".format(layer_name, i), show_image=False, preprocess="torchvision")[0]
             # the output is a list of images for different thresholds when to stop optimizing --> we only use one threshold 
             # --> only one image in the list, which we get through [0]
             img = img.squeeze(0)  # remove batch dimension (why is there a batch dimension in the first place?)
@@ -1459,3 +1530,56 @@ def activation_histograms_2(histogram_info, folder_path, layer_names, params, wa
         plt.savefig(file_path, dpi=300)
         plt.close()
         print(f"Successfully stored {name} of layer {key[0]}, model {key[1]} in {file_path}")
+
+def average_over_W_H(output, output_2):
+    # if we consider conv layers, we sometimes want to consider 
+    # the average over width and height
+    if len(output.shape) == 4:
+        # we compute the average activation for each channel
+        output = torch.mean(output, dim=(2,3)) # the desired output has shape (b c) as we take the average over h and w
+    # if the output has 2 dimensions, we just keep it as it is          
+    # --> modified output has shape [b, #units]
+        
+    if output_2 is not None:
+        if len(output_2.shape) == 4:
+            output_2 = torch.mean(output_2, dim=(2,3))
+        # else we just keep output_2 as it is
+
+    return output, output_2
+
+def variance_explained(output, decoder_output):
+    if len(output.shape) == 4:
+        # take variance over width and height
+        var = torch.var(output, dim=(2,3))
+        # take average over channels and batches
+        var = torch.mean(var)
+        if len(decoder_output.shape) != 4:
+            raise ValueError(f"Decoder output has unexpected shape {len(decoder_output.shape)}.")
+        mod_var = torch.mean(torch.var(decoder_output, dim=(2,3)))
+    elif len(output.shape) == 2: # [B, #units]
+        var = torch.var(output, dim=1)
+        var = torch.mean(var)
+        if len(decoder_output.shape) != 2: 
+            raise ValueError(f"Decoder output has unexpected shape {len(decoder_output.shape)}.")
+        mod_var = torch.mean(torch.var(decoder_output, dim=1))
+    else:
+        raise ValueError(f"Output has unexpected shape {len(output.shape)}.")
+    
+    return 1 - mod_var/var
+
+def measure_inactive_units(output, expansion_factor=1):
+    bool_output = output == 0 # --> True if 0, False otherwise
+    bool_output = bool_output.bool()
+
+    if len(output.shape) == 4:
+        # output has shape [BS, C, H, W]
+        # if for a specific B and C, all values are 0, then the corresponding channel is inactive
+        # for some reason dim = (2,3) doesn't work so we do it sequentially
+        index_inactive_units = torch.all(torch.all(bool_output, dim=3), dim=2) 
+    elif len(output.shape) == 2:
+        index_inactive_units = bool_output
+
+    sample_sparsity = torch.sum(bool_output, dim = 1) / (bool_output.size(1) / expansion_factor)
+    batch_sparsity = torch.mean(sample_sparsity).item()
+    
+    return index_inactive_units, batch_sparsity

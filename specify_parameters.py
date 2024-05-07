@@ -12,14 +12,14 @@ sae_model_name = ['sae_mlp'] #'sae_conv'
 # including the cluster process number. Locally, it will be specified in main.py
 
 # 0 = False, 1 = True
-training = ['0'] # training or inference
+training = ['1'] # training or inference
 original_model = ['0'] # use original model or not
 '''
 Examples of "sae layers" values
-'fc1_fc2__' # original model with SAEs on fc1 and fc2
-'__fc3' # take original model and train SAE on fc3
-'fc1_fc2__fc3' # take original model with SAEs on fc1 and fc2, and train SAE on fc3
-'fc1_fc2__fc3_fc4' # take original model with SAEs on fc1 and fc2, and first train SAE on fc3, then take original model with SAEs on fc1, fc2, fc3 and train SAE on fc4
+'fc1&fc2&&' # original model with SAEs on fc1 and fc2
+'&&fc3' # take original model and train SAE on fc3
+'fc1&fc2&&fc3' # take original model with SAEs on fc1 and fc2, and train SAE on fc3
+'fc1&fc2&&fc3&fc4' # take original model with SAEs on fc1 and fc2, and first train SAE on fc3, then take original model with SAEs on fc1, fc2, fc3 and train SAE on fc4
 if we use the original model, sae_layers will be reset to some default value
 '''
 
@@ -85,10 +85,10 @@ dataset_name = ['cifar_10'] # cifar_10, mnist
 '''
 
 #'''# local, MNIST
-sae_layers = ['fc1__']
+sae_layers = ['fc1&&']
 model_name = ['custom_mlp_9']
 directory_path = ['C:\\Users\\Jasper\\Downloads\\Master thesis\\Code']
-wandb_status = ['1']
+wandb_status = ['0']
 model_epochs = [1]
 model_learning_rate = [0.1]#,0.2]
 batch_size = [64]#,128]
@@ -98,13 +98,13 @@ sae_learning_rate = [0.001]
 sae_optimizer_name = ['adam']
 sae_batch_size = [64]
 sae_lambda_sparse = [1e-1] #,1e-2] 
-sae_expansion_factor = [2,4,6]#,4]
+sae_expansion_factor = [4]#[2,4,6]#,4]
 activation_threshold = [0.1]
 dataset_name = ['mnist'] # cifar_10, mnist
 #'''
 
 ''' cluster, MNIST
-sae_layers = ['fc1__']
+sae_layers = ['fc1&&']
 model_name = ['custom_mlp_10']#custom_mlp_8', 'custom_mlp_9', 'custom_mlp_10']
 directory_path = ['/lustre/home/jtoussaint/master_thesis/']
 wandb_status = ['1']
@@ -122,9 +122,9 @@ activation_threshold = [0.1]
 dataset_name = ['mnist'] # cifar_10, mnist
 '''
 
-#'''
+'''
 # local, Tiny ImageNet
-sae_layers = ['layer1.0.conv1__'] 
+sae_layers = ['layer1.0.conv1&&'] 
 model_name = ['resnet18']
 directory_path = ['C:\\Users\\Jasper\\Downloads\\Master thesis\\Code']
 wandb_status = ['0']
@@ -140,11 +140,11 @@ sae_lambda_sparse = [1e-1]
 sae_expansion_factor = [2]
 activation_threshold = [0.1]
 dataset_name = ['tiny_imagenet'] # cifar_10, mnist
-#'''
+'''
 
-#''' # cluster, Tiny ImageNet
-#sae_layers = ['layer1.0.conv1__'] 
-sae_layers = ['layer3.0.conv2__']
+''' # cluster, Tiny ImageNet
+#sae_layers = ['layer1.0.conv1&&'] 
+sae_layers = ['layer3.0.conv2&&']
 model_name = ['resnet18']
 directory_path = ['/lustre/home/jtoussaint/master_thesis/']
 wandb_status = ['1']
@@ -160,6 +160,46 @@ sae_lambda_sparse = [0.1] #[0.1,0.5,2,5] # 0.1
 sae_expansion_factor = [2,4,8] # 8
 activation_threshold = [0.001]
 dataset_name = ['tiny_imagenet'] # cifar_10, mnist
+'''
+
+'''
+# local, ImageNet (doesnt work right now, need to fix the code)
+sae_layers = ["&&mixed3b_3x3_pre_relu_conv"]
+model_name = ['inceptionv1']
+directory_path = ['C:\\Users\\Jasper\\Downloads\\Master thesis\\Code']
+wandb_status = ['0']
+model_epochs = [1] #7
+model_learning_rate = [0.001]
+batch_size = [20]
+model_optimizer_name = ['sgd_w_scheduler']
+sae_epochs = [1] 
+sae_learning_rate = [0.001]
+sae_optimizer_name = ['adam']
+sae_batch_size = [20]
+sae_lambda_sparse = [1e-1] 
+sae_expansion_factor = [2]
+activation_threshold = [0.1]
+dataset_name = ['imagenet']
+'''
+
+#'''
+# cluster, ImageNet
+sae_layers = ["&&mixed3b_3x3_pre_relu_conv"]
+model_name = ['inceptionv1']
+directory_path = ['/lustre/home/jtoussaint/master_thesis/']
+wandb_status = ['1']
+model_epochs = [1] #7
+model_learning_rate = [0.001]
+batch_size = [512]
+model_optimizer_name = ['sgd_w_scheduler']
+sae_epochs = [1] 
+sae_learning_rate = [0.001]
+sae_optimizer_name = ['adam']
+sae_batch_size = [256]
+sae_lambda_sparse = [0.1] #[0.1, 0.5, 1,2,5,10]#[1e-1] 
+sae_expansion_factor = [2] #[2,4,8]
+activation_threshold = [0.1]
+dataset_name = ['imagenet']
 #'''
 
 ################################################################################################
@@ -174,7 +214,7 @@ original_model = ['True'] if original_model == ['1'] else ['False']
 # by this script, i.e., if we generate 6 combinations, 6 jobs will be run on the cluster.
 if original_model == ['True']:
     sae_model_name = ['None']
-    sae_layers = ['None__']
+    sae_layers = ['&&']
     sae_epochs = ['0']
     sae_learning_rate = ['0']
     sae_optimizer_name = ['None']

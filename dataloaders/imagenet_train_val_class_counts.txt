@@ -1,0 +1,998 @@
+Afghan hound, 51
+African chameleon, 53
+African crocodile, 64
+African elephant, 55
+African grey, 50
+African hunting dog, 42
+Airedale, 58
+American Staffordshire terrier, 51
+American alligator, 65
+American black bear, 54
+American chameleon, 39
+American coot, 45
+American egret, 40
+American lobster, 51
+Angora, 56
+Appenzeller, 39
+Arabian camel, 54
+Arctic fox, 58
+Australian terrier, 52
+Band Aid, 56
+Bedlington terrier, 46
+Bernese mountain dog, 40
+Blenheim spaniel, 50
+Border collie, 50
+Border terrier, 55
+Boston bull, 50
+Bouvier des Flandres, 53
+Brabancon griffon, 39
+Brittany spaniel, 47
+CD player, 51
+Cardigan, 57
+Chesapeake Bay retriever, 59
+Chihuahua, 59
+Christmas stocking, 54
+Crock Pot, 43
+Dandie Dinmont, 52
+Doberman, 63
+Dungeness crab, 43
+Dutch oven, 31
+Egyptian cat, 44
+English foxhound, 30
+English setter, 45
+English springer, 59
+EntleBucher, 57
+Eskimo dog, 46
+European fire salamander, 54
+European gallinule, 73
+French bulldog, 33
+French horn, 53
+French loaf, 46
+German shepherd, 46
+German short-haired pointer, 50
+Gila monster, 64
+Gordon setter, 52
+Granny Smith, 58
+Great Dane, 48
+Great Pyrenees, 54
+Greater Swiss Mountain dog, 59
+Ibizan hound, 47
+Indian cobra, 39
+Indian elephant, 58
+Irish setter, 47
+Irish terrier, 44
+Irish water spaniel, 32
+Irish wolfhound, 53
+Italian greyhound, 52
+Japanese spaniel, 34
+Kerry blue terrier, 46
+Komodo dragon, 44
+Labrador retriever, 50
+Lakeland terrier, 52
+Leonberg, 43
+Lhasa, 46
+Loafer, 39
+Madagascar cat, 54
+Maltese dog, 43
+Mexican hairless, 33
+Model T, 48
+Newfoundland, 62
+Norfolk terrier, 42
+Norwegian elkhound, 59
+Norwich terrier, 53
+Old English sheepdog, 47
+Pekinese, 44
+Pembroke, 48
+Persian cat, 56
+Petri dish, 44
+Polaroid camera, 44
+Pomeranian, 49
+Rhodesian ridgeback, 43
+Rottweiler, 48
+Saint Bernard, 64
+Saluki, 55
+Samoyed, 47
+Scotch terrier, 47
+Scottish deerhound, 59
+Sealyham terrier, 34
+Shetland sheepdog, 63
+Shih-Tzu, 46
+Siamese cat, 46
+Siberian husky, 43
+Staffordshire bullterrier, 50
+Sussex spaniel, 54
+Tibetan mastiff, 56
+Tibetan terrier, 63
+Walker hound, 33
+Weimaraner, 51
+Welsh springer spaniel, 49
+West Highland white terrier, 46
+Windsor tie, 59
+Yorkshire terrier, 67
+abacus, 52
+abaya, 50
+academic gown, 38
+accordion, 58
+acorn, 50
+acorn squash, 56
+acoustic guitar, 46
+admiral, 70
+affenpinscher, 32
+agama, 56
+agaric, 68
+aircraft carrier, 42
+airliner, 56
+airship, 44
+albatross, 49
+alligator lizard, 43
+alp, 53
+altar, 44
+ambulance, 40
+amphibian, 59
+analog clock, 49
+anemone fish, 52
+ant, 57
+apiary, 53
+apron, 54
+armadillo, 59
+artichoke, 49
+ashcan, 47
+assault rifle, 36
+axolotl, 52
+baboon, 44
+backpack, 58
+badger, 51
+bagel, 36
+bakery, 55
+balance beam, 56
+bald eagle, 43
+balloon, 54
+ballplayer, 40
+ballpoint, 51
+banana, 52
+banded gecko, 50
+banjo, 63
+bannister, 50
+barbell, 48
+barber chair, 59
+barbershop, 35
+barn, 58
+barn spider, 44
+barometer, 51
+barracouta, 54
+barrel, 58
+barrow, 59
+baseball, 50
+basenji, 49
+basketball, 47
+basset, 58
+bassinet, 55
+bassoon, 57
+bath towel, 44
+bathing cap, 47
+bathtub, 54
+beach wagon, 61
+beacon, 33
+beagle, 67
+beaker, 64
+bearskin, 50
+beaver, 47
+bee, 44
+bee eater, 47
+beer bottle, 49
+beer glass, 53
+bell cote, 49
+bell pepper, 55
+bib, 41
+bicycle-built-for-two, 59
+bighorn, 58
+bikini, 56
+binder, 56
+binoculars, 46
+birdhouse, 47
+bison, 38
+bittern, 50
+black and gold garden spider, 58
+black grouse, 45
+black stork, 50
+black swan, 50
+black widow, 50
+black-and-tan coonhound, 31
+black-footed ferret, 44
+bloodhound, 48
+bluetick, 44
+boa constrictor, 55
+boathouse, 57
+bobsled, 43
+bolete, 51
+bolo tie, 40
+bonnet, 44
+book jacket, 52
+bookcase, 39
+bookshop, 63
+borzoi, 56
+bottlecap, 48
+bow, 42
+bow tie, 49
+box turtle, 48
+boxer, 47
+brain coral, 57
+brambling, 51
+brass, 47
+brassiere, 51
+breakwater, 52
+breastplate, 42
+briard, 62
+broccoli, 44
+broom, 49
+brown bear, 45
+bubble, 49
+bucket, 59
+buckeye, 48
+buckle, 38
+bulbul, 50
+bull mastiff, 50
+bullet train, 56
+bulletproof vest, 50
+bullfrog, 48
+burrito, 36
+bustard, 52
+butcher shop, 56
+butternut squash, 52
+cab, 44
+cabbage butterfly, 52
+cairn, 56
+caldron, 81
+can opener, 53
+candle, 58
+cannon, 52
+canoe, 43
+capuchin, 60
+car mirror, 37
+car wheel, 57
+carbonara, 56
+cardigan, 41
+cardoon, 33
+carousel, 46
+carpenter's kit, 44
+carton, 67
+cash machine, 51
+cassette, 42
+cassette player, 38
+castle, 37
+catamaran, 43
+cauliflower, 60
+cello, 54
+cellular telephone, 64
+centipede, 45
+chain, 67
+chain mail, 43
+chain saw, 41
+chainlink fence, 54
+chambered nautilus, 39
+cheeseburger, 52
+cheetah, 60
+chest, 58
+chickadee, 48
+chiffonier, 45
+chime, 44
+chimpanzee, 64
+china cabinet, 45
+chiton, 54
+chocolate sauce, 52
+chow, 49
+church, 46
+cicada, 49
+cinema, 57
+cleaver, 39
+cliff, 49
+cliff dwelling, 49
+cloak, 34
+clog, 54
+clumber, 63
+cock, 53
+cocker spaniel, 52
+cockroach, 54
+cocktail shaker, 52
+coffee mug, 44
+coffeepot, 52
+coho, 59
+coil, 53
+collie, 45
+colobus, 38
+combination lock, 43
+comic book, 54
+common iguana, 39
+common newt, 42
+computer keyboard, 58
+conch, 44
+confectionery, 51
+consomme, 35
+container ship, 48
+convertible, 56
+coral fungus, 42
+coral reef, 39
+corkscrew, 44
+corn, 54
+cornet, 56
+coucal, 50
+cougar, 51
+cowboy boot, 43
+cowboy hat, 52
+coyote, 46
+cradle, 52
+crane, 96
+crash helmet, 56
+crate, 49
+crayfish, 49
+crib, 45
+cricket, 47
+croquet ball, 60
+crossword puzzle, 47
+crutch, 44
+cucumber, 37
+cuirass, 45
+cup, 66
+curly-coated retriever, 46
+custard apple, 42
+daisy, 51
+dalmatian, 41
+dam, 47
+damselfly, 51
+desk, 48
+desktop computer, 50
+dhole, 55
+dial telephone, 65
+diamondback, 35
+diaper, 48
+digital clock, 51
+digital watch, 38
+dingo, 41
+dining table, 54
+dishrag, 41
+dishwasher, 51
+disk brake, 53
+dock, 48
+dogsled, 54
+dome, 46
+doormat, 48
+dough, 47
+dowitcher, 44
+dragonfly, 57
+drake, 41
+drilling platform, 55
+drum, 59
+drumstick, 39
+dugong, 51
+dumbbell, 62
+dung beetle, 57
+ear, 45
+earthstar, 48
+echidna, 58
+eel, 43
+eft, 46
+eggnog, 55
+electric fan, 41
+electric guitar, 46
+electric locomotive, 55
+electric ray, 30
+entertainment center, 54
+envelope, 54
+espresso, 56
+espresso maker, 42
+face powder, 48
+feather boa, 59
+fiddler crab, 45
+fig, 54
+file, 49
+fire engine, 52
+fire screen, 46
+fireboat, 41
+flagpole, 39
+flamingo, 61
+flat-coated retriever, 60
+flatworm, 44
+flute, 58
+fly, 36
+folding chair, 51
+football helmet, 48
+forklift, 47
+fountain, 53
+fountain pen, 58
+four-poster, 53
+fox squirrel, 47
+freight car, 57
+frilled lizard, 46
+frying pan, 48
+fur coat, 46
+gar, 62
+garbage truck, 54
+garden spider, 47
+garter snake, 57
+gas pump, 46
+gasmask, 58
+gazelle, 61
+geyser, 44
+giant panda, 42
+giant schnauzer, 40
+gibbon, 60
+go-kart, 54
+goblet, 57
+golden retriever, 45
+goldfinch, 48
+goldfish, 43
+golf ball, 51
+golfcart, 58
+gondola, 43
+gong, 43
+goose, 50
+gorilla, 47
+gown, 54
+grand piano, 61
+grasshopper, 46
+great grey owl, 54
+great white shark, 58
+green lizard, 38
+green mamba, 44
+green snake, 48
+greenhouse, 58
+grey fox, 46
+grey whale, 49
+grille, 39
+grocery store, 44
+groenendael, 51
+groom, 47
+ground beetle, 56
+guacamole, 51
+guenon, 62
+guillotine, 58
+guinea pig, 54
+gyromitra, 52
+hair slide, 46
+hair spray, 33
+half track, 56
+hammer, 62
+hammerhead, 52
+hamper, 54
+hamster, 43
+hand blower, 52
+hand-held computer, 47
+handkerchief, 46
+hard disc, 46
+hare, 54
+harmonica, 45
+harp, 47
+hartebeest, 57
+harvester, 52
+harvestman, 55
+hatchet, 35
+hay, 43
+head cabbage, 61
+hen, 58
+hen-of-the-woods, 59
+hermit crab, 50
+hip, 41
+hippopotamus, 49
+hog, 60
+hognose snake, 50
+holster, 49
+home theater, 43
+honeycomb, 60
+hook, 61
+hoopskirt, 38
+horizontal bar, 55
+hornbill, 43
+horned viper, 58
+horse cart, 52
+hot pot, 43
+hotdog, 58
+hourglass, 45
+house finch, 46
+howler monkey, 55
+hummingbird, 61
+hyena, 54
+iPod, 57
+ibex, 59
+ice bear, 46
+ice cream, 54
+ice lolly, 51
+impala, 49
+indigo bunting, 47
+indri, 47
+iron, 38
+isopod, 47
+jacamar, 45
+jack-o'-lantern, 54
+jackfruit, 52
+jaguar, 53
+jay, 55
+jean, 40
+jeep, 45
+jellyfish, 49
+jersey, 49
+jigsaw puzzle, 49
+jinrikisha, 43
+joystick, 44
+junco, 46
+keeshond, 62
+kelpie, 47
+killer whale, 49
+kimono, 58
+king crab, 58
+king penguin, 56
+king snake, 61
+kit fox, 53
+kite, 56
+knee pad, 48
+knot, 59
+koala, 57
+komondor, 52
+kuvasz, 56
+lab coat, 49
+lacewing, 44
+ladle, 42
+ladybug, 51
+lakeside, 55
+lampshade, 55
+langur, 51
+laptop, 53
+lawn mower, 47
+leaf beetle, 47
+leafhopper, 46
+leatherback turtle, 58
+lemon, 57
+lens cap, 47
+leopard, 63
+lesser panda, 46
+letter opener, 39
+library, 49
+lifeboat, 48
+lighter, 51
+limousine, 45
+limpkin, 45
+liner, 53
+lion, 44
+lionfish, 34
+lipstick, 45
+little blue heron, 57
+llama, 52
+loggerhead, 62
+long-horned beetle, 54
+lorikeet, 59
+lotion, 42
+loudspeaker, 70
+loupe, 53
+lumbermill, 56
+lycaenid, 48
+lynx, 49
+macaque, 55
+macaw, 53
+magnetic compass, 41
+magpie, 43
+mailbag, 56
+mailbox, 46
+maillot, 119
+malamute, 51
+malinois, 62
+manhole cover, 51
+mantis, 43
+maraca, 53
+marimba, 50
+marmoset, 47
+marmot, 49
+mashed potato, 56
+mask, 61
+matchstick, 67
+maypole, 57
+maze, 58
+measuring cup, 56
+meat loaf, 51
+medicine chest, 49
+meerkat, 53
+megalith, 43
+menu, 58
+microphone, 49
+microwave, 49
+military uniform, 48
+milk can, 40
+miniature pinscher, 48
+miniature poodle, 48
+miniature schnauzer, 63
+minibus, 47
+miniskirt, 42
+minivan, 41
+mink, 41
+missile, 46
+mitten, 52
+mixing bowl, 59
+mobile home, 54
+modem, 44
+monarch, 53
+monastery, 41
+mongoose, 38
+monitor, 47
+moped, 43
+mortar, 61
+mortarboard, 52
+mosque, 51
+mosquito net, 54
+motor scooter, 50
+mountain bike, 57
+mountain tent, 51
+mouse, 48
+mousetrap, 44
+moving van, 55
+mud turtle, 48
+mushroom, 50
+muzzle, 47
+nail, 54
+neck brace, 47
+necklace, 53
+nematode, 56
+night snake, 51
+nipple, 52
+notebook, 52
+obelisk, 56
+oboe, 58
+ocarina, 56
+odometer, 46
+oil filter, 59
+orange, 51
+orangutan, 50
+organ, 41
+oscilloscope, 48
+ostrich, 67
+otter, 68
+otterhound, 29
+overskirt, 36
+ox, 38
+oxcart, 44
+oxygen mask, 54
+oystercatcher, 45
+packet, 50
+paddle, 57
+paddlewheel, 38
+padlock, 51
+paintbrush, 49
+pajama, 54
+palace, 61
+panpipe, 49
+paper towel, 42
+papillon, 51
+parachute, 47
+parallel bars, 53
+park bench, 57
+parking meter, 55
+partridge, 57
+passenger car, 38
+patas, 51
+patio, 43
+pay-phone, 36
+peacock, 50
+pedestal, 50
+pelican, 43
+pencil box, 45
+pencil sharpener, 54
+perfume, 46
+photocopier, 59
+pick, 54
+pickelhaube, 55
+picket fence, 57
+pickup, 45
+pier, 50
+piggy bank, 47
+pill bottle, 57
+pillow, 50
+pineapple, 42
+ping-pong ball, 50
+pinwheel, 48
+pirate, 35
+pitcher, 54
+pizza, 50
+plane, 59
+planetarium, 45
+plastic bag, 53
+plate, 56
+plate rack, 32
+platypus, 52
+plow, 52
+plunger, 50
+pole, 47
+polecat, 48
+police van, 52
+pomegranate, 60
+poncho, 68
+pool table, 47
+pop bottle, 51
+porcupine, 45
+pot, 54
+potpie, 56
+potter's wheel, 48
+power drill, 28
+prairie chicken, 55
+prayer rug, 48
+pretzel, 60
+printer, 52
+prison, 43
+proboscis monkey, 46
+projectile, 52
+projector, 60
+promontory, 43
+ptarmigan, 54
+puck, 50
+puffer, 51
+pug, 44
+punching bag, 43
+purse, 44
+quail, 63
+quill, 44
+quilt, 50
+racer, 47
+racket, 57
+radiator, 45
+radio, 52
+radio telescope, 46
+rain barrel, 63
+ram, 56
+rapeseed, 57
+recreational vehicle, 43
+red fox, 68
+red wine, 35
+red wolf, 46
+red-backed sandpiper, 47
+red-breasted merganser, 42
+redbone, 54
+redshank, 41
+reel, 55
+reflex camera, 44
+refrigerator, 54
+remote control, 47
+restaurant, 61
+revolver, 56
+rhinoceros beetle, 45
+rifle, 48
+ringlet, 63
+ringneck snake, 56
+robin, 42
+rock beauty, 30
+rock crab, 58
+rock python, 49
+rocking chair, 53
+rotisserie, 60
+rubber eraser, 53
+ruddy turnstone, 52
+ruffed grouse, 51
+rugby ball, 40
+rule, 53
+running shoe, 48
+safe, 40
+safety pin, 46
+saltshaker, 57
+sandal, 44
+sandbar, 47
+sarong, 55
+sax, 52
+scabbard, 57
+scale, 58
+schipperke, 56
+school bus, 51
+schooner, 44
+scoreboard, 54
+scorpion, 47
+screen, 58
+screw, 71
+screwdriver, 59
+scuba diver, 57
+sea anemone, 34
+sea cucumber, 56
+sea lion, 49
+sea slug, 36
+sea snake, 60
+sea urchin, 38
+seashore, 57
+seat belt, 45
+sewing machine, 52
+shield, 41
+shoe shop, 49
+shoji, 56
+shopping basket, 62
+shopping cart, 65
+shovel, 50
+shower cap, 56
+shower curtain, 56
+siamang, 68
+sidewinder, 50
+silky terrier, 43
+ski, 47
+ski mask, 46
+skunk, 50
+sleeping bag, 49
+slide rule, 44
+sliding door, 49
+slot, 41
+sloth bear, 61
+slug, 46
+snail, 52
+snorkel, 53
+snow leopard, 49
+snowmobile, 52
+snowplow, 58
+soap dispenser, 51
+soccer ball, 42
+sock, 58
+soft-coated wheaten terrier, 46
+solar dish, 64
+sombrero, 59
+sorrel, 42
+soup bowl, 55
+space bar, 41
+space heater, 48
+space shuttle, 52
+spaghetti squash, 55
+spatula, 67
+speedboat, 48
+spider monkey, 59
+spider web, 52
+spindle, 54
+spiny lobster, 55
+spoonbill, 46
+sports car, 54
+spotlight, 56
+spotted salamander, 51
+squirrel monkey, 63
+stage, 48
+standard poodle, 48
+standard schnauzer, 43
+starfish, 48
+steam locomotive, 49
+steel arch bridge, 36
+steel drum, 45
+stethoscope, 51
+stingray, 54
+stinkhorn, 45
+stole, 56
+stone wall, 45
+stopwatch, 41
+stove, 48
+strainer, 45
+strawberry, 54
+street sign, 50
+streetcar, 51
+stretcher, 53
+studio couch, 56
+stupa, 51
+sturgeon, 49
+submarine, 28
+suit, 48
+sulphur butterfly, 49
+sulphur-crested cockatoo, 55
+sundial, 60
+sunglass, 44
+sunglasses, 55
+sunscreen, 47
+suspension bridge, 52
+swab, 52
+sweatshirt, 44
+swimming trunks, 49
+swing, 60
+switch, 58
+syringe, 52
+tabby, 37
+table lamp, 54
+tailed frog, 55
+tank, 55
+tape player, 43
+tarantula, 53
+teapot, 62
+teddy, 54
+television, 57
+tench, 60
+tennis ball, 60
+terrapin, 60
+thatch, 43
+theater curtain, 67
+thimble, 54
+three-toed sloth, 51
+thresher, 57
+throne, 27
+thunder snake, 54
+tick, 46
+tiger, 65
+tiger beetle, 46
+tiger cat, 38
+tiger shark, 48
+tile roof, 58
+timber wolf, 48
+titi, 54
+toaster, 49
+tobacco shop, 59
+toilet seat, 57
+toilet tissue, 56
+torch, 55
+totem pole, 52
+toucan, 42
+tow truck, 64
+toy poodle, 59
+toy terrier, 27
+toyshop, 60
+tractor, 48
+traffic light, 46
+trailer truck, 56
+tray, 50
+tree frog, 49
+trench coat, 44
+triceratops, 49
+tricycle, 65
+trifle, 41
+trilobite, 41
+trimaran, 56
+tripod, 37
+triumphal arch, 44
+trolleybus, 36
+trombone, 52
+tub, 52
+turnstile, 55
+tusker, 41
+typewriter keyboard, 47
+umbrella, 52
+unicycle, 53
+upright, 59
+vacuum, 55
+valley, 58
+vase, 46
+vault, 45
+velvet, 52
+vending machine, 60
+vestment, 51
+viaduct, 46
+vine snake, 35
+violin, 58
+vizsla, 41
+volcano, 50
+volleyball, 60
+vulture, 43
+waffle iron, 42
+walking stick, 56
+wall clock, 60
+wallaby, 72
+wallet, 45
+wardrobe, 50
+warplane, 37
+warthog, 57
+washbasin, 41
+washer, 39
+water bottle, 45
+water buffalo, 50
+water jug, 53
+water ouzel, 41
+water snake, 44
+water tower, 39
+weasel, 54
+web site, 52
+weevil, 32
+whippet, 51
+whiptail, 46
+whiskey jug, 45
+whistle, 62
+white stork, 49
+white wolf, 52
+wig, 46
+wild boar, 46
+window screen, 44
+window shade, 53
+wine bottle, 57
+wing, 48
+wire-haired fox terrier, 39
+wok, 56
+wolf spider, 52
+wombat, 52
+wood rabbit, 59
+wooden spoon, 40
+wool, 33
+worm fence, 56
+wreck, 64
+yawl, 50
+yellow lady's slipper, 50
+yurt, 49
+zebra, 51
+zucchini, 56

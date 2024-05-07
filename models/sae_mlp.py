@@ -146,3 +146,20 @@ class SaeMLP(nn.Module):
             print(f"Batch index {batch_idx}: Re-initialized {len(indices_of_dead_neurons)} dead neurons in the SAE and reset optimizer parameters.")
         else:
             raise ValueError("The indices_of_dead_neurons tensor has unexpected value in second dimension.")
+
+
+    def intervene_on_decoder_weights(self, unit_index, value):
+        '''
+        unit index: int, index of the SAE unit/feature to intervene on
+        value: float, value to set the unit to (in the case of imagenet, this can be the imagenet mean)
+        '''
+        # W_dec has shape (self.act_size, self.hidden_size), where self.act_size is the size of the incoming activation
+        # f.e. self.act_size = 64 and self.hidden_size = 128 (exp. fact. 2)
+        # the decoder is nn.Linear, which does x*W^T + b
+        # W_dec^T has shape (self.hidden_size, self.act_size), f.e. (128, 64) (and x has shape (1,128))
+        # --> each row of W_dec^T is a feature of the SAE, i.e., there are 128 features (of size 64 each), which makes sense
+        # --> each column of W_dec is a feature of the SAE
+        # Hence, we set the unit_index-th column of W_dec to the Imagenet mean (or we could take the mean of the image cluster that we consider)
+        self.decoder.weight.data[:, unit_index] = value
+
+        # make sure to normalize the decoder weight matrix with ""

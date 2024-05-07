@@ -1,3 +1,1 @@
-resnet18,sae_mlp,layer3.0.conv2__,/lustre/home/jtoussaint/master_thesis/,1,2,0.001,100,sgd_w_scheduler,5,0.001,adam,64,0.1,2,0.001,tiny_imagenet,False,False,cross_entropy,sae_loss,300
-resnet18,sae_mlp,layer3.0.conv2__,/lustre/home/jtoussaint/master_thesis/,1,2,0.001,100,sgd_w_scheduler,5,0.001,adam,64,0.1,4,0.001,tiny_imagenet,False,False,cross_entropy,sae_loss,300
-resnet18,sae_mlp,layer3.0.conv2__,/lustre/home/jtoussaint/master_thesis/,1,2,0.001,100,sgd_w_scheduler,5,0.001,adam,64,0.1,8,0.001,tiny_imagenet,False,False,cross_entropy,sae_loss,300
+inceptionv1,sae_mlp,&&mixed3b_3x3_pre_relu_conv,/lustre/home/jtoussaint/master_thesis/,1,1,0.001,512,sgd_w_scheduler,1,0.001,adam,256,0.1,2,0.1,imagenet,True,False,cross_entropy,sae_loss,300

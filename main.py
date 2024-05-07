@@ -111,7 +111,7 @@ if __name__ == '__main__':
                 if not eval(original_model):
                     # Make sure the order of parameters coincides with the one in
                     # parameters_eval.txt (see specify_parameters.py)
-                    for name in sae_layers.split("_"):
+                    for name in sae_layers.split("&"):
                         if name != "":
                             execute_project = ExecuteProject(model_name=parameters_2[0],
                                                             sae_model_name=parameters_2[1],
@@ -187,7 +187,7 @@ if __name__ == '__main__':
                 raise ValueError(f"The directory path is {args.directory_path} but it should be a local directory path.")
             elif not args.directory_path.startswith('/lustre'):
                 raise ValueError(f"The directory path is {args.directory_path} but it should be a local directory path.")
-            for name in args.sae_layers.split("_"):
+            for name in args.sae_layers.split("&"):
                 if name != "":
                     execute_project = ExecuteProject(model_name=args.model_name,
                                                     sae_model_name=args.sae_model_name,

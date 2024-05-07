@@ -1,0 +1,998 @@
+Afghan hound: 0.41%
+African chameleon: 0.49%
+African crocodile: 1.65%
+African elephant: 0.88%
+African grey: 0.24%
+African hunting dog: 0.35%
+Airedale: 1.05%
+American Staffordshire terrier: 0.63%
+American alligator: 1.43%
+American black bear: 0.57%
+American chameleon: 0.60%
+American coot: 0.25%
+American egret: 0.59%
+American lobster: 0.48%
+Angora: 0.90%
+Appenzeller: 0.75%
+Arabian camel: 0.81%
+Arctic fox: 0.92%
+Australian terrier: 0.40%
+Band Aid: 0.99%
+Bedlington terrier: 0.10%
+Bernese mountain dog: 0.51%
+Blenheim spaniel: 0.39%
+Border collie: 0.55%
+Border terrier: 0.66%
+Boston bull: 0.24%
+Bouvier des Flandres: 0.64%
+Brabancon griffon: 0.70%
+Brittany spaniel: 0.01%
+CD player: 0.55%
+Cardigan: 0.98%
+Chesapeake Bay retriever: 1.14%
+Chihuahua: 1.30%
+Christmas stocking: 0.64%
+Crock Pot: 0.37%
+Dandie Dinmont: 0.47%
+Doberman: 1.49%
+Dungeness crab: 0.19%
+Dutch oven: 1.25%
+Egyptian cat: 0.26%
+English foxhound: 2.22%
+English setter: 0.13%
+English springer: 1.07%
+EntleBucher: 0.83%
+Eskimo dog: 0.06%
+European fire salamander: 0.66%
+European gallinule: 2.35%
+French bulldog: 1.25%
+French horn: 0.56%
+French loaf: 0.15%
+German shepherd: 0.01%
+German short-haired pointer: 0.31%
+Gila monster: 1.56%
+Gordon setter: 0.48%
+Granny Smith: 0.91%
+Great Dane: 0.30%
+Great Pyrenees: 0.58%
+Greater Swiss Mountain dog: 1.07%
+Ibizan hound: 0.06%
+Indian cobra: 0.75%
+Indian elephant: 1.00%
+Irish setter: 0.06%
+Irish terrier: 0.27%
+Irish water spaniel: 1.53%
+Irish wolfhound: 0.56%
+Italian greyhound: 0.63%
+Japanese spaniel: 1.73%
+Kerry blue terrier: 0.18%
+Komodo dragon: 0.19%
+Labrador retriever: 0.33%
+Lakeland terrier: 0.63%
+Leonberg: 0.27%
+Lhasa: 0.02%
+Loafer: 0.58%
+Madagascar cat: 0.72%
+Maltese dog: 0.42%
+Mexican hairless: 1.91%
+Model T: 0.06%
+Newfoundland: 1.25%
+Norfolk terrier: 0.12%
+Norwegian elkhound: 1.07%
+Norwich terrier: 0.56%
+Old English sheepdog: 0.22%
+Pekinese: 0.02%
+Pembroke: 0.08%
+Persian cat: 0.75%
+Petri dish: 0.08%
+Polaroid camera: 0.18%
+Pomeranian: 0.25%
+Rhodesian ridgeback: 0.28%
+Rottweiler: 0.23%
+Saint Bernard: 1.33%
+Saluki: 0.90%
+Samoyed: 0.06%
+Scotch terrier: 0.00%
+Scottish deerhound: 0.92%
+Sealyham terrier: 1.46%
+Shetland sheepdog: 1.33%
+Shih-Tzu: 0.05%
+Siamese cat: 0.01%
+Siberian husky: 0.27%
+Staffordshire bullterrier: 0.23%
+Sussex spaniel: 0.50%
+Tibetan mastiff: 0.90%
+Tibetan terrier: 1.33%
+Walker hound: 1.35%
+Weimaraner: 0.24%
+Welsh springer spaniel: 0.24%
+West Highland white terrier: 0.06%
+Windsor tie: 1.16%
+Yorkshire terrier: 1.67%
+abacus: 0.40%
+abaya: 0.33%
+academic gown: 0.60%
+accordion: 0.92%
+acorn: 0.32%
+acorn squash: 0.81%
+acoustic guitar: 0.10%
+admiral: 1.93%
+affenpinscher: 1.34%
+agama: 0.90%
+agaric: 1.68%
+aircraft carrier: 0.35%
+airliner: 0.81%
+airship: 0.11%
+albatross: 0.08%
+alligator lizard: 0.27%
+alp: 0.57%
+altar: 0.11%
+ambulance: 0.28%
+amphibian: 1.07%
+analog clock: 0.23%
+anemone fish: 0.47%
+ant: 0.90%
+apiary: 0.40%
+apron: 0.58%
+armadillo: 1.00%
+artichoke: 0.08%
+ashcan: 0.01%
+assault rifle: 0.68%
+axolotl: 0.64%
+baboon: 0.26%
+backpack: 0.84%
+badger: 0.24%
+bagel: 1.00%
+bakery: 0.73%
+balance beam: 0.67%
+bald eagle: 0.19%
+balloon: 0.57%
+ballplayer: 0.52%
+ballpoint: 0.35%
+banana: 0.47%
+banded gecko: 0.32%
+banjo: 1.64%
+bannister: 0.39%
+barbell: 0.01%
+barber chair: 0.91%
+barbershop: 0.85%
+barn: 1.06%
+barn spider: 0.26%
+barometer: 0.52%
+barracouta: 0.58%
+barrel: 0.92%
+barrow: 1.08%
+baseball: 0.32%
+basenji: 0.23%
+basketball: 0.15%
+basset: 1.00%
+bassinet: 0.65%
+bassoon: 0.91%
+bath towel: 0.34%
+bathing cap: 0.05%
+bathtub: 0.57%
+beach wagon: 1.24%
+beacon: 1.09%
+beagle: 1.66%
+beaker: 1.60%
+bearskin: 0.27%
+beaver: 0.06%
+bee: 0.35%
+bee eater: 0.14%
+beer bottle: 0.15%
+beer glass: 0.56%
+bell cote: 0.31%
+bell pepper: 0.65%
+bib: 0.43%
+bicycle-built-for-two: 1.00%
+bighorn: 0.90%
+bikini: 0.75%
+binder: 0.67%
+binoculars: 0.13%
+birdhouse: 0.02%
+bison: 0.83%
+bittern: 0.48%
+black and gold garden spider: 1.06%
+black grouse: 0.10%
+black stork: 0.24%
+black swan: 0.31%
+black widow: 0.38%
+black-and-tan coonhound: 2.26%
+black-footed ferret: 0.20%
+bloodhound: 0.38%
+bluetick: 0.18%
+boa constrictor: 0.73%
+boathouse: 0.83%
+bobsled: 0.27%
+bolete: 0.40%
+bolo tie: 0.51%
+bonnet: 0.27%
+book jacket: 0.57%
+bookcase: 0.68%
+bookshop: 1.49%
+borzoi: 0.74%
+bottlecap: 0.07%
+bow: 0.51%
+bow tie: 0.23%
+box turtle: 0.00%
+boxer: 0.21%
+brain coral: 0.82%
+brambling: 0.39%
+brass: 0.22%
+brassiere: 0.24%
+breakwater: 0.64%
+breastplate: 0.35%
+briard: 1.32%
+broccoli: 0.26%
+broom: 0.08%
+brown bear: 0.09%
+bubble: 0.23%
+bucket: 0.99%
+buckeye: 0.15%
+buckle: 0.75%
+bulbul: 0.32%
+bull mastiff: 0.30%
+bullet train: 0.98%
+bulletproof vest: 0.37%
+bullfrog: 0.06%
+burrito: 1.00%
+bustard: 0.32%
+butcher shop: 0.82%
+butternut squash: 0.48%
+cab: 0.25%
+cabbage butterfly: 0.41%
+cairn: 0.90%
+caldron: 3.12%
+can opener: 0.49%
+candle: 1.14%
+cannon: 0.48%
+canoe: 0.11%
+capuchin: 1.15%
+car mirror: 0.53%
+car wheel: 0.90%
+carbonara: 0.66%
+cardigan: 0.51%
+cardoon: 1.15%
+carousel: 0.09%
+carpenter's kit: 0.11%
+carton: 1.98%
+cash machine: 0.56%
+cassette: 0.37%
+cassette player: 0.68%
+castle: 0.77%
+catamaran: 0.27%
+cauliflower: 0.99%
+cello: 0.49%
+cellular telephone: 1.50%
+centipede: 0.11%
+chain: 1.76%
+chain mail: 0.42%
+chain saw: 0.54%
+chainlink fence: 0.88%
+chambered nautilus: 0.67%
+cheeseburger: 0.40%
+cheetah: 1.22%
+chest: 1.06%
+chickadee: 0.15%
+chiffonier: 0.09%
+chime: 0.26%
+chimpanzee: 1.57%
+china cabinet: 0.19%
+chiton: 0.49%
+chocolate sauce: 0.48%
+chow: 0.16%
+church: 0.02%
+cicada: 0.38%
+cinema: 0.98%
+cleaver: 0.60%
+cliff: 0.15%
+cliff dwelling: 0.23%
+cloak: 1.34%
+clog: 0.72%
+clumber: 1.25%
+cock: 0.49%
+cocker spaniel: 0.33%
+cockroach: 0.57%
+cocktail shaker: 0.49%
+coffee mug: 0.26%
+coffeepot: 0.32%
+coho: 1.08%
+coil: 0.64%
+collie: 0.11%
+colobus: 0.67%
+combination lock: 0.45%
+comic book: 0.72%
+common iguana: 0.43%
+common newt: 0.27%
+computer keyboard: 0.90%
+conch: 0.19%
+confectionery: 0.49%
+consomme: 0.99%
+container ship: 0.08%
+convertible: 0.98%
+coral fungus: 0.27%
+coral reef: 0.60%
+corkscrew: 0.34%
+corn: 0.49%
+cornet: 0.74%
+coucal: 0.47%
+cougar: 0.24%
+cowboy boot: 0.19%
+cowboy hat: 0.42%
+coyote: 0.03%
+cradle: 0.49%
+crane: 0.19%
+crash helmet: 0.74%
+crate: 0.31%
+crayfish: 0.16%
+crib: 0.02%
+cricket: 0.01%
+croquet ball: 1.24%
+crossword puzzle: 0.02%
+crutch: 0.18%
+cucumber: 0.85%
+cuirass: 0.25%
+cup: 1.83%
+curly-coated retriever: 0.15%
+custard apple: 0.35%
+daisy: 0.56%
+dalmatian: 0.58%
+dam: 0.14%
+damselfly: 0.32%
+desk: 0.07%
+desktop computer: 0.31%
+dhole: 0.59%
+dial telephone: 1.66%
+diamondback: 0.84%
+diaper: 0.23%
+digital clock: 0.40%
+digital watch: 1.14%
+dingo: 0.12%
+dining table: 0.65%
+dishrag: 0.43%
+dishwasher: 0.31%
+disk brake: 0.49%
+dock: 0.01%
+dogsled: 0.65%
+dome: 0.02%
+doormat: 0.15%
+dough: 0.02%
+dowitcher: 0.26%
+dragonfly: 0.75%
+drake: 0.50%
+drilling platform: 0.65%
+drum: 1.00%
+drumstick: 0.52%
+dugong: 0.40%
+dumbbell: 1.32%
+dung beetle: 1.22%
+ear: 0.10%
+earthstar: 0.07%
+echidna: 0.84%
+eel: 0.37%
+eft: 0.17%
+eggnog: 0.82%
+electric fan: 0.51%
+electric guitar: 0.06%
+electric locomotive: 0.58%
+electric ray: 1.32%
+entertainment center: 0.58%
+envelope: 0.65%
+espresso: 0.75%
+espresso maker: 0.13%
+face powder: 0.18%
+feather boa: 0.91%
+fiddler crab: 0.02%
+fig: 0.74%
+file: 0.24%
+fire engine: 0.48%
+fire screen: 0.09%
+fireboat: 0.28%
+flagpole: 0.60%
+flamingo: 1.10%
+flat-coated retriever: 1.07%
+flatworm: 0.34%
+flute: 0.99%
+fly: 1.01%
+folding chair: 0.25%
+football helmet: 0.15%
+forklift: 0.06%
+fountain: 0.64%
+fountain pen: 1.06%
+four-poster: 0.48%
+fox squirrel: 0.42%
+freight car: 0.98%
+frilled lizard: 0.01%
+frying pan: 0.42%
+fur coat: 0.17%
+gar: 1.40%
+garbage truck: 0.73%
+garden spider: 0.07%
+garter snake: 0.82%
+gas pump: 0.06%
+gasmask: 1.14%
+gazelle: 1.32%
+geyser: 0.19%
+giant panda: 0.19%
+giant schnauzer: 0.59%
+gibbon: 1.32%
+go-kart: 0.65%
+goblet: 0.84%
+golden retriever: 0.18%
+goldfinch: 0.14%
+goldfish: 0.34%
+golf ball: 0.24%
+golfcart: 0.98%
+gondola: 0.35%
+gong: 0.41%
+goose: 0.48%
+gorilla: 0.05%
+gown: 0.65%
+grand piano: 1.09%
+grasshopper: 0.14%
+great grey owl: 0.65%
+great white shark: 0.91%
+green lizard: 0.68%
+green mamba: 0.19%
+green snake: 0.07%
+greenhouse: 0.98%
+grey fox: 0.18%
+grey whale: 0.39%
+grille: 0.76%
+grocery store: 0.19%
+groenendael: 0.55%
+groom: 0.06%
+ground beetle: 0.74%
+guacamole: 0.48%
+guenon: 1.32%
+guillotine: 1.08%
+guinea pig: 0.59%
+gyromitra: 0.40%
+hair slide: 0.03%
+hair spray: 1.51%
+half track: 0.90%
+hammer: 1.33%
+hammerhead: 0.56%
+hamper: 0.80%
+hamster: 0.19%
+hand blower: 0.50%
+hand-held computer: 0.22%
+handkerchief: 0.09%
+hard disc: 0.10%
+hare: 0.64%
+harmonica: 0.11%
+harp: 0.09%
+hartebeest: 0.89%
+harvester: 0.33%
+harvestman: 0.64%
+hatchet: 1.53%
+hay: 0.34%
+head cabbage: 1.24%
+hen: 1.05%
+hen-of-the-woods: 1.15%
+hermit crab: 0.23%
+hip: 0.51%
+hippopotamus: 0.16%
+hog: 1.09%
+hognose snake: 0.32%
+holster: 0.16%
+home theater: 0.09%
+honeycomb: 1.16%
+hook: 1.16%
+hoopskirt: 0.68%
+horizontal bar: 0.65%
+hornbill: 0.35%
+horned viper: 0.99%
+horse cart: 0.55%
+hot pot: 0.28%
+hotdog: 0.98%
+hourglass: 0.18%
+house finch: 0.02%
+howler monkey: 0.65%
+hummingbird: 1.17%
+hyena: 0.80%
+iPod: 0.90%
+ibex: 1.30%
+ice bear: 0.10%
+ice cream: 0.57%
+ice lolly: 0.40%
+impala: 0.23%
+indigo bunting: 0.02%
+indri: 0.09%
+iron: 0.76%
+isopod: 0.01%
+jacamar: 0.10%
+jack-o'-lantern: 0.57%
+jackfruit: 0.55%
+jaguar: 0.40%
+jay: 0.66%
+jean: 0.59%
+jeep: 0.10%
+jellyfish: 0.31%
+jersey: 0.17%
+jigsaw puzzle: 0.15%
+jinrikisha: 0.18%
+joystick: 0.25%
+junco: 0.02%
+keeshond: 1.40%
+kelpie: 0.13%
+killer whale: 0.08%
+kimono: 0.98%
+king crab: 1.00%
+king penguin: 0.75%
+king snake: 1.16%
+kit fox: 0.49%
+kite: 0.75%
+knee pad: 0.07%
+knot: 1.38%
+koala: 0.83%
+komondor: 0.40%
+kuvasz: 0.90%
+lab coat: 0.47%
+lacewing: 0.26%
+ladle: 0.41%
+ladybug: 0.40%
+lakeside: 0.57%
+lampshade: 0.65%
+langur: 0.47%
+laptop: 0.56%
+lawn mower: 0.01%
+leaf beetle: 0.06%
+leafhopper: 0.01%
+leatherback turtle: 0.99%
+lemon: 0.90%
+lens cap: 0.14%
+leopard: 1.41%
+lesser panda: 0.10%
+letter opener: 0.75%
+library: 0.23%
+lifeboat: 0.30%
+lighter: 0.40%
+limousine: 0.26%
+limpkin: 0.18%
+liner: 0.63%
+lion: 0.10%
+lionfish: 1.09%
+lipstick: 0.18%
+little blue heron: 0.74%
+llama: 0.71%
+loggerhead: 1.32%
+long-horned beetle: 0.49%
+lorikeet: 1.08%
+lotion: 0.28%
+loudspeaker: 2.03%
+loupe: 0.41%
+lumbermill: 0.90%
+lycaenid: 0.15%
+lynx: 0.31%
+macaque: 0.82%
+macaw: 0.80%
+magnetic compass: 0.30%
+magpie: 0.35%
+mailbag: 0.76%
+mailbox: 0.11%
+maillot: 1.01%
+malamute: 0.33%
+malinois: 1.33%
+manhole cover: 0.32%
+mantis: 0.27%
+maraca: 0.64%
+marimba: 0.16%
+marmoset: 0.15%
+marmot: 0.30%
+mashed potato: 1.06%
+mask: 1.24%
+matchstick: 1.75%
+maypole: 0.75%
+maze: 0.98%
+measuring cup: 0.74%
+meat loaf: 0.31%
+medicine chest: 0.23%
+meerkat: 0.56%
+megalith: 0.27%
+menu: 0.90%
+microphone: 0.22%
+microwave: 0.15%
+military uniform: 0.07%
+milk can: 0.50%
+miniature pinscher: 0.22%
+miniature poodle: 0.15%
+miniature schnauzer: 1.26%
+minibus: 0.09%
+miniskirt: 0.35%
+minivan: 0.44%
+mink: 0.44%
+missile: 0.02%
+mitten: 0.48%
+mixing bowl: 1.07%
+mobile home: 0.56%
+modem: 0.37%
+monarch: 0.73%
+monastery: 0.56%
+mongoose: 0.53%
+monitor: 0.30%
+moped: 0.27%
+mortar: 1.16%
+mortarboard: 0.49%
+mosque: 0.41%
+mosquito net: 0.57%
+motor scooter: 0.25%
+mountain bike: 0.82%
+mountain tent: 0.40%
+mouse: 0.30%
+mousetrap: 0.25%
+moving van: 0.76%
+mud turtle: 0.01%
+mushroom: 0.23%
+muzzle: 0.01%
+nail: 0.72%
+neck brace: 0.09%
+necklace: 0.41%
+nematode: 0.90%
+night snake: 0.47%
+nipple: 0.40%
+notebook: 0.40%
+obelisk: 0.96%
+oboe: 0.92%
+ocarina: 0.89%
+odometer: 0.06%
+oil filter: 1.47%
+orange: 0.55%
+orangutan: 0.31%
+organ: 0.43%
+oscilloscope: 0.07%
+ostrich: 1.82%
+otter: 1.75%
+otterhound: 2.68%
+overskirt: 1.16%
+ox: 0.74%
+oxcart: 0.19%
+oxygen mask: 0.65%
+oystercatcher: 0.02%
+packet: 0.24%
+paddle: 1.05%
+paddlewheel: 0.60%
+padlock: 0.23%
+paintbrush: 0.31%
+pajama: 0.65%
+palace: 1.08%
+panpipe: 0.08%
+paper towel: 0.51%
+papillon: 0.32%
+parachute: 0.14%
+parallel bars: 0.48%
+park bench: 0.90%
+parking meter: 0.73%
+partridge: 0.83%
+passenger car: 0.60%
+patas: 0.25%
+patio: 0.47%
+pay-phone: 0.99%
+peacock: 0.33%
+pedestal: 0.37%
+pelican: 0.34%
+pencil box: 0.09%
+pencil sharpener: 0.57%
+perfume: 0.10%
+photocopier: 1.24%
+pick: 0.85%
+pickelhaube: 0.66%
+picket fence: 1.07%
+pickup: 0.09%
+pier: 0.32%
+piggy bank: 0.06%
+pill bottle: 0.74%
+pillow: 0.55%
+pineapple: 0.35%
+ping-pong ball: 0.40%
+pinwheel: 0.20%
+pirate: 0.71%
+pitcher: 0.50%
+pizza: 0.23%
+plane: 1.30%
+planetarium: 0.02%
+plastic bag: 0.92%
+plate: 0.66%
+plate rack: 1.52%
+platypus: 0.42%
+plow: 0.63%
+plunger: 0.57%
+pole: 0.05%
+polecat: 0.01%
+police van: 0.40%
+pomegranate: 1.08%
+poncho: 1.83%
+pool table: 0.09%
+pop bottle: 0.25%
+porcupine: 0.10%
+pot: 0.72%
+potpie: 0.83%
+potter's wheel: 0.23%
+power drill: 2.11%
+prairie chicken: 0.65%
+prayer rug: 0.07%
+pretzel: 1.31%
+printer: 0.56%
+prison: 0.34%
+proboscis monkey: 0.13%
+projectile: 0.86%
+projector: 1.08%
+promontory: 0.27%
+ptarmigan: 0.58%
+puck: 0.40%
+puffer: 0.24%
+pug: 0.10%
+punching bag: 0.11%
+purse: 0.11%
+quail: 1.49%
+quill: 0.10%
+quilt: 0.31%
+racer: 0.01%
+racket: 0.75%
+radiator: 0.14%
+radio: 0.63%
+radio telescope: 0.07%
+rain barrel: 1.72%
+ram: 0.74%
+rapeseed: 0.82%
+recreational vehicle: 0.04%
+red fox: 1.83%
+red wine: 0.61%
+red wolf: 0.10%
+red-backed sandpiper: 0.08%
+red-breasted merganser: 0.46%
+redbone: 0.57%
+redshank: 0.43%
+reel: 0.59%
+reflex camera: 0.27%
+refrigerator: 0.57%
+remote control: 0.29%
+restaurant: 1.16%
+revolver: 0.74%
+rhinoceros beetle: 0.11%
+rifle: 0.07%
+ringlet: 1.33%
+ringneck snake: 0.66%
+robin: 0.51%
+rock beauty: 1.86%
+rock crab: 0.99%
+rock python: 0.23%
+rocking chair: 0.57%
+rotisserie: 1.15%
+rubber eraser: 0.57%
+ruddy turnstone: 0.57%
+ruffed grouse: 0.25%
+rugby ball: 0.58%
+rule: 0.48%
+running shoe: 0.23%
+safe: 0.61%
+safety pin: 0.10%
+saltshaker: 1.13%
+sandal: 0.19%
+sandbar: 0.07%
+sarong: 0.75%
+sax: 0.32%
+scabbard: 0.98%
+scale: 0.92%
+schipperke: 0.82%
+school bus: 0.39%
+schooner: 0.19%
+scoreboard: 0.65%
+scorpion: 0.07%
+screen: 0.86%
+screw: 2.02%
+screwdriver: 1.16%
+scuba diver: 0.97%
+sea anemone: 1.00%
+sea cucumber: 0.82%
+sea lion: 0.30%
+sea slug: 0.76%
+sea snake: 1.15%
+sea urchin: 0.52%
+seashore: 0.99%
+seat belt: 0.25%
+sewing machine: 0.48%
+shield: 0.05%
+shoe shop: 0.31%
+shoji: 0.94%
+shopping basket: 1.32%
+shopping cart: 1.59%
+shovel: 0.24%
+shower cap: 0.89%
+shower curtain: 0.75%
+siamang: 1.70%
+sidewinder: 0.39%
+silky terrier: 0.35%
+ski: 0.01%
+ski mask: 0.02%
+skunk: 0.48%
+sleeping bag: 0.08%
+slide rule: 0.07%
+sliding door: 0.16%
+slot: 0.43%
+sloth bear: 1.16%
+slug: 0.02%
+snail: 0.41%
+snorkel: 0.64%
+snow leopard: 0.15%
+snowmobile: 0.40%
+snowplow: 0.99%
+soap dispenser: 0.40%
+soccer ball: 0.42%
+sock: 0.83%
+soft-coated wheaten terrier: 0.30%
+solar dish: 1.41%
+sombrero: 1.15%
+sorrel: 0.35%
+soup bowl: 0.73%
+space bar: 0.69%
+space heater: 0.15%
+space shuttle: 0.52%
+spaghetti squash: 0.78%
+spatula: 1.68%
+speedboat: 0.15%
+spider monkey: 1.06%
+spider web: 0.33%
+spindle: 0.89%
+spiny lobster: 0.74%
+spoonbill: 0.07%
+sports car: 0.64%
+spotlight: 0.74%
+spotted salamander: 0.32%
+squirrel monkey: 1.41%
+stage: 0.23%
+standard poodle: 0.01%
+standard schnauzer: 0.42%
+starfish: 0.06%
+steam locomotive: 0.24%
+steel arch bridge: 1.02%
+steel drum: 0.09%
+stethoscope: 0.33%
+stingray: 0.73%
+stinkhorn: 0.10%
+stole: 0.65%
+stone wall: 0.11%
+stopwatch: 0.39%
+stove: 0.07%
+strainer: 0.02%
+strawberry: 0.65%
+street sign: 0.24%
+streetcar: 0.39%
+stretcher: 0.57%
+studio couch: 0.74%
+stupa: 0.40%
+sturgeon: 0.23%
+submarine: 1.33%
+suit: 0.21%
+sulphur butterfly: 0.08%
+sulphur-crested cockatoo: 0.73%
+sundial: 1.17%
+sunglass: 0.26%
+sunglasses: 0.59%
+sunscreen: 0.01%
+suspension bridge: 0.49%
+swab: 0.40%
+sweatshirt: 0.18%
+swimming trunks: 0.38%
+swing: 1.08%
+switch: 0.98%
+syringe: 0.56%
+tabby: 0.84%
+table lamp: 0.57%
+tailed frog: 0.64%
+tank: 0.64%
+tape player: 0.35%
+tarantula: 0.65%
+teapot: 1.40%
+teddy: 0.49%
+television: 0.82%
+tench: 1.00%
+tennis ball: 1.31%
+terrapin: 1.15%
+thatch: 0.27%
+theater curtain: 2.04%
+thimble: 0.65%
+three-toed sloth: 0.24%
+thresher: 0.82%
+throne: 2.17%
+thunder snake: 0.73%
+tick: 0.06%
+tiger: 1.58%
+tiger beetle: 0.01%
+tiger cat: 0.83%
+tiger shark: 0.15%
+tile roof: 0.98%
+timber wolf: 0.15%
+titi: 0.72%
+toaster: 0.39%
+tobacco shop: 1.05%
+toilet seat: 0.74%
+toilet tissue: 0.82%
+torch: 0.57%
+totem pole: 0.40%
+toucan: 0.50%
+tow truck: 1.50%
+toy poodle: 1.01%
+toy terrier: 2.57%
+toyshop: 1.23%
+tractor: 0.14%
+traffic light: 0.17%
+trailer truck: 0.82%
+tray: 0.31%
+tree frog: 0.31%
+trench coat: 0.20%
+triceratops: 0.16%
+tricycle: 1.50%
+trifle: 0.43%
+trilobite: 0.35%
+trimaran: 0.82%
+tripod: 1.01%
+triumphal arch: 0.18%
+trolleybus: 0.76%
+trombone: 0.33%
+tub: 0.40%
+turnstile: 0.57%
+tusker: 0.51%
+typewriter keyboard: 0.09%
+umbrella: 0.48%
+unicycle: 0.42%
+upright: 0.99%
+vacuum: 0.74%
+valley: 0.97%
+vase: 0.01%
+vault: 0.18%
+velvet: 0.54%
+vending machine: 1.31%
+vestment: 0.40%
+viaduct: 0.14%
+vine snake: 1.00%
+violin: 1.06%
+vizsla: 0.51%
+volcano: 0.24%
+volleyball: 1.24%
+vulture: 0.35%
+waffle iron: 0.56%
+walking stick: 0.74%
+wall clock: 1.16%
+wallaby: 2.10%
+wallet: 0.25%
+wardrobe: 0.39%
+warplane: 0.84%
+warthog: 0.76%
+washbasin: 0.36%
+washer: 0.60%
+water bottle: 0.11%
+water buffalo: 0.25%
+water jug: 0.72%
+water ouzel: 0.43%
+water snake: 0.26%
+water tower: 0.68%
+weasel: 0.74%
+web site: 0.40%
+weevil: 1.32%
+whippet: 0.40%
+whiptail: 0.02%
+whiskey jug: 0.07%
+whistle: 1.33%
+white stork: 0.16%
+white wolf: 0.56%
+wig: 0.06%
+wild boar: 0.03%
+window screen: 0.25%
+window shade: 0.49%
+wine bottle: 0.82%
+wing: 0.15%
+wire-haired fox terrier: 0.75%
+wok: 0.75%
+wolf spider: 0.40%
+wombat: 0.41%
+wood rabbit: 1.06%
+wooden spoon: 0.59%
+wool: 0.78%
+worm fence: 0.82%
+wreck: 1.34%
+yawl: 0.36%
+yellow lady's slipper: 0.24%
+yurt: 0.22%
+zebra: 0.48%
+zucchini: 0.83%

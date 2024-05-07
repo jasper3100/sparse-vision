@@ -1,0 +1,998 @@
+Afghan hound, 1242
+African chameleon, 1242
+African crocodile, 1234
+African elephant, 1242
+African grey, 1247
+African hunting dog, 1255
+Airedale, 1242
+American Staffordshire terrier, 1243
+American alligator, 1231
+American black bear, 1240
+American chameleon, 1259
+American coot, 1251
+American egret, 1254
+American lobster, 1241
+Angora, 1240
+Appenzeller, 1254
+Arabian camel, 1240
+Arctic fox, 1235
+Australian terrier, 1245
+Band Aid, 1237
+Bedlington terrier, 1206
+Bernese mountain dog, 1252
+Blenheim spaniel, 1246
+Border collie, 1243
+Border terrier, 1240
+Boston bull, 1245
+Bouvier des Flandres, 1242
+Brabancon griffon, 1028
+Brittany spaniel, 1248
+CD player, 1243
+Cardigan, 1239
+Chesapeake Bay retriever, 1239
+Chihuahua, 1237
+Christmas stocking, 1241
+Crock Pot, 1141
+Dandie Dinmont, 1103
+Doberman, 1234
+Dungeness crab, 1253
+Dutch oven, 1266
+Egyptian cat, 1251
+English foxhound, 721
+English setter, 1250
+English springer, 1239
+EntleBucher, 1237
+Eskimo dog, 1251
+European fire salamander, 1239
+European gallinule, 1222
+French bulldog, 1263
+French horn, 1244
+French loaf, 1248
+German shepherd, 1248
+German short-haired pointer, 1247
+Gila monster, 1235
+Gordon setter, 1247
+Granny Smith, 1240
+Great Dane, 1248
+Great Pyrenees, 1242
+Greater Swiss Mountain dog, 1238
+Ibizan hound, 1249
+Indian cobra, 1255
+Indian elephant, 1235
+Irish setter, 1249
+Irish terrier, 1253
+Irish water spaniel, 931
+Irish wolfhound, 1244
+Italian greyhound, 1244
+Japanese spaniel, 735
+Kerry blue terrier, 1222
+Komodo dragon, 1254
+Labrador retriever, 1242
+Lakeland terrier, 1248
+Leonberg, 1254
+Lhasa, 1249
+Loafer, 1096
+Madagascar cat, 1244
+Maltese dog, 1250
+Mexican hairless, 721
+Model T, 1250
+Newfoundland, 1233
+Norfolk terrier, 1253
+Norwegian elkhound, 1238
+Norwich terrier, 1240
+Old English sheepdog, 1247
+Pekinese, 1251
+Pembroke, 1245
+Persian cat, 1236
+Petri dish, 913
+Polaroid camera, 1251
+Pomeranian, 1241
+Rhodesian ridgeback, 1256
+Rottweiler, 1248
+Saint Bernard, 1232
+Saluki, 1239
+Samoyed, 1250
+Scotch terrier, 1245
+Scottish deerhound, 1238
+Sealyham terrier, 897
+Shetland sheepdog, 1232
+Shih-Tzu, 1252
+Siamese cat, 1250
+Siberian husky, 1250
+Staffordshire bullterrier, 1247
+Sussex spaniel, 1242
+Tibetan mastiff, 1240
+Tibetan terrier, 1232
+Walker hound, 987
+Weimaraner, 1243
+Welsh springer spaniel, 1243
+West Highland white terrier, 1250
+Windsor tie, 1151
+Yorkshire terrier, 1232
+abacus, 1243
+abaya, 1243
+academic gown, 1257
+accordion, 1235
+acorn, 1244
+acorn squash, 1241
+acoustic guitar, 1253
+admiral, 1228
+affenpinscher, 918
+agama, 1240
+agaric, 1230
+aircraft carrier, 1254
+airliner, 1241
+airship, 1254
+albatross, 1246
+alligator lizard, 1252
+alp, 1242
+altar, 1253
+ambulance, 1253
+amphibian, 1237
+analog clock, 1241
+anemone fish, 1246
+ant, 1238
+apiary, 1243
+apron, 1242
+armadillo, 1238
+artichoke, 1248
+ashcan, 1251
+assault rifle, 1260
+axolotl, 1243
+baboon, 1254
+backpack, 1234
+badger, 1246
+bagel, 1262
+bakery, 1242
+balance beam, 1237
+bald eagle, 1250
+balloon, 1240
+ballplayer, 1257
+ballpoint, 1180
+banana, 1246
+banded gecko, 1247
+banjo, 1234
+bannister, 1248
+barbell, 1248
+barber chair, 1239
+barbershop, 1258
+barn, 1238
+barn spider, 1251
+barometer, 1145
+barracouta, 1242
+barrel, 1237
+barrow, 1234
+baseball, 1245
+basenji, 1248
+basketball, 1245
+basset, 1235
+bassinet, 1243
+bassoon, 1237
+bath towel, 1250
+bathing cap, 1252
+bathtub, 1242
+beach wagon, 1234
+beacon, 1262
+beagle, 1233
+beaker, 1224
+bearskin, 1158
+beaver, 1251
+bee, 1253
+bee eater, 1250
+beer bottle, 1249
+beer glass, 1245
+bell cote, 1248
+bell pepper, 1243
+bib, 1258
+bicycle-built-for-two, 1235
+bighorn, 1238
+bikini, 1239
+binder, 1240
+binoculars, 1251
+birdhouse, 1249
+bison, 1260
+bittern, 1245
+black and gold garden spider, 1240
+black grouse, 1250
+black stork, 1245
+black swan, 1246
+black widow, 1249
+black-and-tan coonhound, 697
+black-footed ferret, 1252
+bloodhound, 1251
+bluetick, 1087
+boa constrictor, 1242
+boathouse, 1237
+bobsled, 1253
+bolete, 1243
+bolo tie, 1257
+bonnet, 1252
+book jacket, 1100
+bookcase, 1257
+bookshop, 1234
+borzoi, 1239
+bottlecap, 1247
+bow, 1254
+bow tie, 1248
+box turtle, 1248
+boxer, 1249
+brain coral, 1239
+brambling, 1247
+brass, 1246
+brassiere, 1244
+breakwater, 1244
+breastplate, 1253
+briard, 1235
+broccoli, 1250
+broom, 1247
+brown bear, 1248
+bubble, 1247
+bucket, 1239
+buckeye, 1248
+buckle, 1256
+bulbul, 1242
+bull mastiff, 1249
+bullet train, 1239
+bulletproof vest, 1120
+bullfrog, 1251
+burrito, 1261
+bustard, 1243
+butcher shop, 1239
+butternut squash, 1245
+cab, 1248
+cabbage butterfly, 1242
+cairn, 1238
+caldron, 1214
+can opener, 1242
+candle, 1239
+cannon, 1245
+canoe, 1250
+capuchin, 1236
+car mirror, 1260
+car wheel, 1238
+carbonara, 1240
+cardigan, 1255
+cardoon, 1088
+carousel, 1247
+carpenter's kit, 1253
+carton, 1229
+cash machine, 1245
+cassette, 1141
+cassette player, 1257
+castle, 1261
+catamaran, 1254
+cauliflower, 1237
+cello, 1243
+cellular telephone, 1230
+centipede, 1253
+chain, 1228
+chain mail, 1254
+chain saw, 1147
+chainlink fence, 1242
+chambered nautilus, 1256
+cheeseburger, 1240
+cheetah, 1236
+chest, 1239
+chickadee, 1249
+chiffonier, 1248
+chime, 1249
+chimpanzee, 1230
+china cabinet, 1252
+chiton, 1245
+chocolate sauce, 1244
+chow, 1248
+church, 1250
+cicada, 1247
+cinema, 1236
+cleaver, 1020
+cliff, 1246
+cliff dwelling, 1248
+cloak, 992
+clog, 1243
+clumber, 1236
+cock, 1241
+cocker spaniel, 1245
+cockroach, 1244
+cocktail shaker, 1098
+coffee mug, 1254
+coffeepot, 1243
+coho, 1235
+coil, 1244
+collie, 1252
+colobus, 1256
+combination lock, 1169
+comic book, 1240
+common iguana, 1253
+common newt, 1255
+computer keyboard, 1241
+conch, 1253
+confectionery, 1241
+consomme, 1167
+container ship, 1248
+convertible, 1233
+coral fungus, 1250
+coral reef, 1257
+corkscrew, 1252
+corn, 1242
+cornet, 1239
+coucal, 1246
+cougar, 1247
+cowboy boot, 1252
+cowboy hat, 1242
+coyote, 1253
+cradle, 1242
+crane, 2494
+crash helmet, 1238
+crate, 1247
+crayfish, 1245
+crib, 1251
+cricket, 1246
+croquet ball, 1233
+crossword puzzle, 1251
+crutch, 1251
+cucumber, 1261
+cuirass, 1251
+cup, 1226
+curly-coated retriever, 1170
+custard apple, 1254
+daisy, 1243
+dalmatian, 1254
+dam, 1246
+damselfly, 1246
+desk, 1249
+desktop computer, 1247
+dhole, 1240
+dial telephone, 1232
+diamondback, 1258
+diaper, 1248
+digital clock, 1246
+digital watch, 847
+dingo, 1255
+dining table, 1242
+dishrag, 1254
+dishwasher, 1246
+disk brake, 1242
+dock, 1158
+dogsled, 1241
+dome, 1250
+doormat, 1247
+dough, 1250
+dowitcher, 1254
+dragonfly, 1240
+drake, 1250
+drilling platform, 1242
+drum, 1238
+drumstick, 1254
+dugong, 1245
+dumbbell, 1234
+dung beetle, 1236
+ear, 1250
+earthstar, 1250
+echidna, 1234
+eel, 1116
+eft, 1249
+eggnog, 1131
+electric fan, 1256
+electric guitar, 1248
+electric locomotive, 1242
+electric ray, 1266
+entertainment center, 1238
+envelope, 1243
+espresso, 1236
+espresso maker, 1090
+face powder, 1103
+feather boa, 1236
+fiddler crab, 1248
+fig, 1238
+file, 1244
+fire engine, 1241
+fire screen, 1248
+fireboat, 1254
+flagpole, 1258
+flamingo, 1231
+flat-coated retriever, 1236
+flatworm, 1249
+flute, 1236
+fly, 1261
+folding chair, 1244
+football helmet, 1250
+forklift, 1249
+fountain, 1244
+fountain pen, 1239
+four-poster, 1244
+fox squirrel, 1152
+freight car, 1240
+frilled lizard, 1068
+frying pan, 1168
+fur coat, 1248
+gar, 1232
+garbage truck, 1242
+garden spider, 1247
+garter snake, 1240
+gas pump, 1250
+gasmask, 1239
+gazelle, 1236
+geyser, 1253
+giant panda, 1255
+giant schnauzer, 1255
+gibbon, 1232
+go-kart, 1241
+goblet, 1235
+golden retriever, 1249
+goldfinch, 1250
+goldfish, 1252
+golf ball, 1246
+golfcart, 1242
+gondola, 1253
+gong, 1233
+goose, 1245
+gorilla, 1252
+gown, 1242
+grand piano, 1234
+grasshopper, 1250
+great grey owl, 1245
+great white shark, 1239
+green lizard, 1262
+green mamba, 1253
+green snake, 1249
+greenhouse, 1239
+grey fox, 1252
+grey whale, 1094
+grille, 1257
+grocery store, 1252
+groenendael, 1247
+groom, 1250
+ground beetle, 1239
+guacamole, 1245
+guenon, 1235
+guillotine, 1224
+guinea pig, 1236
+gyromitra, 1247
+hair slide, 1252
+hair spray, 944
+half track, 1235
+hammer, 1232
+hammerhead, 1245
+hamper, 1244
+hamster, 1253
+hand blower, 1239
+hand-held computer, 983
+handkerchief, 1249
+hard disc, 1253
+hare, 1245
+harmonica, 1252
+harp, 1247
+hartebeest, 1242
+harvester, 1243
+harvestman, 1243
+hatchet, 851
+hay, 1254
+head cabbage, 1233
+hen, 1242
+hen-of-the-woods, 1236
+hermit crab, 1247
+hip, 1257
+hippopotamus, 1247
+hog, 1233
+hognose snake, 1243
+holster, 1247
+home theater, 1248
+honeycomb, 1235
+hook, 1236
+hoopskirt, 1260
+horizontal bar, 1244
+hornbill, 1252
+horned viper, 1237
+horse cart, 1245
+hot pot, 1102
+hotdog, 1238
+hourglass, 1252
+house finch, 1250
+howler monkey, 1241
+hummingbird, 1236
+hyena, 1243
+iPod, 1239
+ibex, 1236
+ice bear, 1250
+ice cream, 1245
+ice lolly, 1244
+impala, 1248
+indigo bunting, 1250
+indri, 1250
+iron, 1259
+isopod, 1248
+jacamar, 1251
+jack-o'-lantern, 1242
+jackfruit, 1246
+jaguar, 1243
+jay, 1239
+jean, 1255
+jeep, 1250
+jellyfish, 1245
+jersey, 1232
+jigsaw puzzle, 1247
+jinrikisha, 1250
+joystick, 1251
+junco, 1250
+keeshond, 1235
+kelpie, 1252
+killer whale, 1244
+kimono, 1239
+king crab, 1235
+king penguin, 1239
+king snake, 1234
+kit fox, 1243
+kite, 1235
+knee pad, 1243
+knot, 1234
+koala, 1236
+komondor, 1245
+kuvasz, 1238
+lab coat, 1245
+lacewing, 1252
+ladle, 1250
+ladybug, 1244
+lakeside, 1243
+lampshade, 1241
+langur, 1248
+laptop, 1245
+lawn mower, 1249
+leaf beetle, 1249
+leafhopper, 1251
+leatherback turtle, 1234
+lemon, 1240
+lens cap, 1249
+leopard, 1234
+lesser panda, 1250
+letter opener, 945
+library, 1247
+lifeboat, 1246
+lighter, 1243
+limousine, 1253
+limpkin, 1253
+liner, 1243
+lion, 1250
+lionfish, 1262
+lipstick, 1249
+little blue heron, 1242
+llama, 1246
+loggerhead, 1234
+long-horned beetle, 1243
+lorikeet, 1235
+lotion, 1227
+loudspeaker, 1219
+loupe, 1244
+lumbermill, 1240
+lycaenid, 1246
+lynx, 1243
+macaque, 1239
+macaw, 1245
+magnetic compass, 1113
+magpie, 1253
+mailbag, 1237
+mailbox, 1252
+maillot, 2467
+malamute, 1241
+malinois, 1236
+manhole cover, 1246
+mantis, 1254
+maraca, 1243
+marimba, 1245
+marmoset, 1248
+marmot, 1250
+mashed potato, 1238
+mask, 1236
+matchstick, 1229
+maypole, 1237
+maze, 1239
+measuring cup, 1239
+meat loaf, 1249
+medicine chest, 1243
+meerkat, 1244
+megalith, 1253
+menu, 1239
+microphone, 1249
+microwave, 1250
+military uniform, 1251
+milk can, 1053
+miniature pinscher, 1246
+miniature poodle, 1248
+miniature schnauzer, 1234
+minibus, 1249
+miniskirt, 1253
+minivan, 1257
+mink, 1257
+missile, 1251
+mitten, 1244
+mixing bowl, 1238
+mobile home, 1243
+modem, 1104
+monarch, 1241
+monastery, 1110
+mongoose, 1257
+monitor, 1247
+moped, 1252
+mortar, 1238
+mortarboard, 1240
+mosque, 1242
+mosquito net, 1245
+motor scooter, 1245
+mountain bike, 1238
+mountain tent, 1244
+mouse, 1246
+mousetrap, 1249
+moving van, 1102
+mud turtle, 1245
+mushroom, 1249
+muzzle, 1082
+nail, 1240
+neck brace, 1126
+necklace, 1244
+nematode, 1239
+night snake, 1246
+nipple, 1243
+notebook, 1248
+obelisk, 1241
+oboe, 1235
+ocarina, 1241
+odometer, 1251
+oil filter, 1058
+orange, 1246
+orangutan, 1248
+organ, 1259
+oscilloscope, 1249
+ostrich, 1231
+otter, 1229
+otterhound, 707
+overskirt, 966
+ox, 1255
+oxcart, 1253
+oxygen mask, 1245
+oystercatcher, 1249
+packet, 1246
+paddle, 1242
+paddlewheel, 1257
+padlock, 1246
+paintbrush, 1248
+pajama, 1241
+palace, 1237
+panpipe, 1245
+paper towel, 1257
+papillon, 1246
+parachute, 1250
+parallel bars, 1244
+park bench, 1238
+parking meter, 1241
+partridge, 1239
+passenger car, 1258
+patas, 1244
+patio, 1105
+pay-phone, 1259
+peacock, 1242
+pedestal, 1103
+pelican, 1251
+pencil box, 1248
+pencil sharpener, 1243
+perfume, 1251
+photocopier, 1234
+pick, 1098
+pickelhaube, 1241
+picket fence, 1237
+pickup, 1247
+pier, 1245
+piggy bank, 1250
+pill bottle, 1241
+pillow, 1245
+pineapple, 1252
+ping-pong ball, 1229
+pinwheel, 1067
+pirate, 1082
+pitcher, 1238
+pizza, 1247
+plane, 1240
+planetarium, 1220
+plastic bag, 1013
+plate, 1243
+plate rack, 1018
+platypus, 1217
+plow, 1246
+plunger, 1202
+pole, 1252
+polecat, 1248
+police van, 1244
+pomegranate, 1235
+poncho, 1229
+pool table, 1251
+pop bottle, 1241
+porcupine, 1250
+pot, 1243
+potpie, 1236
+potter's wheel, 1248
+power drill, 877
+prairie chicken, 1244
+prayer rug, 1250
+pretzel, 1238
+printer, 1244
+prison, 1255
+proboscis monkey, 1252
+projectile, 1247
+projector, 1238
+promontory, 1252
+ptarmigan, 1242
+puck, 1243
+puffer, 1246
+pug, 1250
+punching bag, 1200
+purse, 1249
+quail, 1233
+quill, 1250
+quilt, 1246
+racer, 1249
+racket, 1238
+radiator, 1203
+radio, 1247
+radio telescope, 1244
+rain barrel, 1231
+ram, 1242
+rapeseed, 1239
+recreational vehicle, 1254
+red fox, 1229
+red wine, 1261
+red wolf, 1249
+red-backed sandpiper, 1245
+red-breasted merganser, 1095
+redbone, 1232
+redshank, 1255
+reel, 1236
+reflex camera, 1252
+refrigerator, 1242
+remote control, 1251
+restaurant, 1235
+revolver, 1238
+rhinoceros beetle, 1252
+rifle, 1246
+ringlet, 1236
+ringneck snake, 1238
+robin, 1256
+rock beauty, 935
+rock crab, 1236
+rock python, 1019
+rocking chair, 1242
+rotisserie, 1238
+rubber eraser, 1242
+ruddy turnstone, 1239
+ruffed grouse, 1241
+rugby ball, 1255
+rule, 1243
+running shoe, 1248
+safe, 986
+safety pin, 1211
+saltshaker, 1241
+sandal, 1253
+sandbar, 1248
+sarong, 1239
+sax, 1244
+scabbard, 1237
+scale, 1235
+schipperke, 1240
+school bus, 1247
+schooner, 1252
+scoreboard, 1240
+scorpion, 1244
+screen, 1206
+screw, 1222
+screwdriver, 1233
+scuba diver, 1241
+sea anemone, 1257
+sea cucumber, 1240
+sea lion, 1248
+sea slug, 1258
+sea snake, 1236
+sea urchin, 1260
+seashore, 1236
+seat belt, 1249
+sewing machine, 1245
+shield, 1255
+shoe shop, 1247
+shoji, 1190
+shopping basket, 1235
+shopping cart, 1231
+shovel, 1246
+shower cap, 1239
+shower curtain, 1236
+siamang, 1224
+sidewinder, 1246
+silky terrier, 1252
+ski, 1246
+ski mask, 1249
+skunk, 1242
+sleeping bag, 1247
+slide rule, 1113
+sliding door, 1245
+slot, 1253
+sloth bear, 1236
+slug, 1251
+snail, 1242
+snorkel, 1245
+snow leopard, 1249
+snowmobile, 1244
+snowplow, 1237
+soap dispenser, 1243
+soccer ball, 1251
+sock, 1237
+soft-coated wheaten terrier, 1248
+solar dish, 1235
+sombrero, 1238
+sorrel, 1255
+soup bowl, 1241
+space bar, 1003
+space heater, 952
+space shuttle, 1182
+spaghetti squash, 1181
+spatula, 1229
+speedboat, 1246
+spider monkey, 1239
+spider web, 1244
+spindle, 1242
+spiny lobster, 1240
+spoonbill, 1248
+sports car, 1243
+spotlight, 1242
+spotted salamander, 1246
+squirrel monkey, 1232
+stage, 1247
+standard poodle, 1249
+standard schnauzer, 1253
+starfish, 1250
+steam locomotive, 1247
+steel arch bridge, 1115
+steel drum, 1248
+stethoscope, 1245
+stingray, 1241
+stinkhorn, 1250
+stole, 1241
+stone wall, 1252
+stopwatch, 1038
+stove, 1246
+strainer, 1250
+strawberry, 1240
+street sign, 1245
+streetcar, 1249
+stretcher, 1240
+studio couch, 1239
+stupa, 1244
+sturgeon, 1247
+submarine, 1268
+suit, 1252
+sulphur butterfly, 1245
+sulphur-crested cockatoo, 1241
+sundial, 1232
+sunglass, 1255
+sunglasses, 1239
+sunscreen, 1170
+suspension bridge, 1242
+swab, 1244
+sweatshirt, 883
+swimming trunks, 1249
+swing, 1235
+switch, 1236
+syringe, 1245
+tabby, 1258
+table lamp, 1243
+tailed frog, 1243
+tank, 1243
+tape player, 1252
+tarantula, 1242
+teapot, 1234
+teddy, 1245
+television, 1243
+tench, 1234
+tennis ball, 1236
+terrapin, 1236
+thatch, 1252
+theater curtain, 1195
+thimble, 1240
+three-toed sloth, 1247
+thresher, 1239
+throne, 945
+thunder snake, 1242
+tick, 1251
+tiger, 1232
+tiger beetle, 1248
+tiger cat, 1258
+tiger shark, 1246
+tile roof, 1239
+timber wolf, 1248
+titi, 1243
+toaster, 1246
+tobacco shop, 1188
+toilet seat, 1240
+toilet tissue, 1239
+torch, 1242
+totem pole, 1245
+toucan, 1254
+tow truck, 1232
+toy poodle, 1233
+toy terrier, 831
+toyshop, 1237
+tractor, 1249
+traffic light, 1247
+trailer truck, 1239
+tray, 1247
+tree frog, 1246
+trench coat, 1006
+triceratops, 1215
+tricycle, 1233
+trifle, 1254
+trilobite, 1253
+trimaran, 1240
+tripod, 1118
+triumphal arch, 1251
+trolleybus, 1259
+trombone, 1241
+tub, 1246
+turnstile, 1245
+tusker, 1256
+typewriter keyboard, 1247
+umbrella, 1245
+unicycle, 1242
+upright, 1238
+vacuum, 1239
+valley, 1241
+vase, 1247
+vault, 1247
+velvet, 1007
+vending machine, 1237
+vestment, 1244
+viaduct, 1250
+vine snake, 1259
+violin, 1239
+vizsla, 1252
+volcano, 1248
+volleyball, 1235
+vulture, 1253
+waffle iron, 1090
+walking stick, 1240
+wall clock, 1235
+wallaby, 1226
+wallet, 1251
+wardrobe, 1247
+warplane, 1259
+warthog, 1237
+washbasin, 1257
+washer, 1257
+water bottle, 1252
+water buffalo, 1242
+water jug, 1242
+water ouzel, 1255
+water snake, 1250
+water tower, 1257
+weasel, 1239
+web site, 1243
+weevil, 1266
+whippet, 1241
+whiptail, 1251
+whiskey jug, 999
+whistle, 1235
+white stork, 1248
+white wolf, 1245
+wig, 1250
+wild boar, 1252
+window screen, 1251
+window shade, 1245
+wine bottle, 1238
+wing, 1247
+wire-haired fox terrier, 936
+wok, 1237
+wolf spider, 1243
+wombat, 1245
+wood rabbit, 1240
+wooden spoon, 1252
+wool, 1262
+worm fence, 1240
+wreck, 1231
+yawl, 1150
+yellow lady's slipper, 1246
+yurt, 1243
+zebra, 1245
+zucchini, 1237

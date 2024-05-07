@@ -49,6 +49,7 @@ class SparseLoss(nn.Module):
         sample_NRMSE = sample_RMSE / sample_range
         # We don't normalize the rmse by the mean of the targets, as the targets are not necessarily positive,
         # so the mean might be zero
+        # in the case of conv activations, which are inputted 
         # we average the NRMSE over all dimensions --> shape: (1)
         nrmse = torch.mean(sample_NRMSE)
         rmse = torch.mean(sample_RMSE)

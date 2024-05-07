@@ -43,8 +43,9 @@ class Evaluation:
         df['perc_dead_units_rank'] = df['perc_dead_units'].rank(ascending=True).astype(int)
         df['sparsity_rank'] = df['rel_sparsity'].rank(ascending=False).astype(int)
         df['loss_diff_rank'] = df['loss_diff'].rank(ascending=True).astype(int)
+        df['mis_rank'] = df['median_mis'].rank(ascending=False).astype(int) 
 
-        df['average_ranking'] = df[['var_expl_rank', 'l1_rank', 'rec_loss_rank', 'perc_dead_units_rank', 'sparsity_rank', 'loss_diff_rank']].mean(axis=1)
+        df['average_ranking'] = df[['var_expl_rank', 'l1_rank', 'rec_loss_rank', 'perc_dead_units_rank', 'sparsity_rank', 'loss_diff_rank', 'mis_rank']].mean(axis=1)
         df['final_ranking'] = df['average_ranking'].rank(ascending=True).astype(int)
         df = df.sort_values(by='final_ranking')
 

@@ -17,6 +17,14 @@ from lucent.optvis import render
 import lucent.optvis.param as lucentparam
 import pandas as pd
 import webdataset as wds
+from lucent.modelzoo import inceptionv1
+import glob
+import re
+import logging
+import socket
+from datetime import datetime, timedelta
+from torch.autograd.profiler import record_function
+import gc
 
 from dataloaders.tiny_imagenet import *
 from dataloaders.tiny_imagenet import _add_channels
@@ -27,6 +35,8 @@ from models.sae_mlp import SaeMLP
 from losses.sparse_loss import SparseLoss
 from supplementary.dataset_stats import print_dataset_stats
 from dataloaders.imagenet import *
+from dataloaders.old_imagenet_classnames import imagenet_classnames
+from machine_interpretability.stimuli_generation import mis_utils, sg_utils
 
 def get_optimizer(optimizer_name, model, learning_rate):
     if optimizer_name == 'adam':
@@ -98,6 +108,7 @@ def save_model_weights(model,
     torch.save(model.state_dict(), file_path)
     print(f"Successfully stored model weights in {file_path}")
 
+
 def load_pretrained_model(model_name, 
                         img_size, 
                         folder_path,
@@ -107,7 +118,7 @@ def load_pretrained_model(model_name,
                         params=None,
                         execution_location=None):  
     model = load_model(model_name, img_size=img_size, num_classes=num_classes, expansion_factor=sae_expansion_factor)
-    if model_name != "resnet18" and model_name != "resnet50":
+    if model_name != "resnet18" and model_name != "resnet50" and model_name != "inceptionv1":
         # we load the pre-trained resnet models in load_model directly	
         file_path = get_file_path(folder_path, layer_name, params, 'model_weights.pth')
         state_dict = torch.load(file_path)
@@ -178,6 +189,11 @@ def load_model(model_name, img_size=None, num_classes=None, expansion_factor=Non
 
         return model_ft
     
+    elif model_name == 'inceptionv1':
+        # https://github.com/greentfrapp/lucent/blob/dev/lucent/modelzoo/inceptionv1/InceptionV1.py
+        # https://github.com/greentfrapp/lucent/tree/dev 
+        return inceptionv1(pretrained=True)
+    
     elif model_name == 'custom_mlp_1':
         return CustomMLP1(img_size, num_classes)
     elif model_name == 'custom_mlp_2':
@@ -206,6 +222,23 @@ def load_model(model_name, img_size=None, num_classes=None, expansion_factor=Non
         return SaeMLP(img_size, expansion_factor)
     else:
         raise ValueError(f"Unsupported model: {model_name}")
+
+
+#def normalize(x):
+#    return x * 255 - 117
+
+def imagenet_transform():
+    normalize = lambda x: x * 255 - 117
+    img_size = 229 
+    transform = transforms.Compose(
+        [
+            transforms.Resize(256),
+            transforms.CenterCrop(img_size),
+            transforms.ToTensor(),
+            normalize,
+        ]
+    )
+    return transform
 
 def load_data(directory_path, dataset_name, batch_size):
     # shuffling the data during training has some advantages, during evaluation it's not necessary
@@ -317,9 +350,7 @@ def load_data(directory_path, dataset_name, batch_size):
         category_names = train_dataset.classes
 
     elif dataset_name == 'imagenet':    
-        # Roland's version
-        '''
-        datadir = ""
+        ''' # Roland's original code suggestion
         dataset = (
             wds.WebDataset(datadir)
             .shuffle(True)
@@ -335,6 +366,111 @@ def load_data(directory_path, dataset_name, batch_size):
             num_workers=8,
         )
         '''
+
+        '''
+        SPLITTING THE TRAIN DATA INTO TRAIN AND VAL
+        # Use glob to find files matching the pattern
+        train_files = glob.glob(os.path.join(datadir, "imagenet-train-*"))
+        #val_files = glob.glob(os.path.join(datadir, "imagenet-val-*"))
+
+        # For training we use the first 141 folders: 000000 to 000140
+        # For evaluation we use the folders 000141 to 000146
+        
+        # Define a regular expression patterns to match "imagenet-train-000x" where x is from 000 to 140
+        pattern1 = r"imagenet-train-0000([0-9]{1,2})" # Matches numbers from 000000 to 000099, equivalent to 0000[0-9][0-9]
+        pattern2 = r"imagenet-train-0001[0-3][0-9]" # Matches numbers from 000100 to 000139
+        pattern3 = r"imagenet-train-000140"
+        train_pattern = re.compile(rf"{pattern1}|{pattern2}|{pattern3}") # Combine the regex patterns 
+        
+        # We do the same for x from 141 to 146
+        val_pattern = re.compile(r"imagenet-train-00014[1-6]") # Matches numbers from 000141 to 000146
+
+        # Filter the list of folder names based on the regex pattern
+        train_train_files = [folder for folder in train_files if train_pattern.search(folder)]
+        train_val_files = [folder for folder in train_files if val_pattern.search(folder)]
+        '''
+
+        '''
+        # On shuffling a web dataset
+
+        .shuffle(n): described here: https://webdataset.github.io/webdataset/gettingstarted/ 
+
+        Two further helpful resources:
+        https://github.com/webdataset/webdataset/issues/62 
+        https://github.com/webdataset/webdataset/issues/71 
+        '''
+
+        if directory_path.startswith('/lustre'):
+            num_workers = 8
+            condor_scratch_dir = os.getenv('_CONDOR_SCRATCH_DIR')
+            if os.path.join(condor_scratch_dir, "ImageNet2012-webdataset") in os.listdir(condor_scratch_dir):
+                datadir = os.path.join(condor_scratch_dir, "ImageNet2012-webdataset")
+                # print(f"_CONDOR_SCRATCH_DIR is set to: {condor_scratch_dir}")
+                #print("Condor scratch directory contents:", os.listdir(condor_scratch_dir))
+                #print("Subdirectories of ImageNet2012-webdataset:", os.listdir(os.path.join(condor_scratch_dir, "ImageNet2012-webdataset")))
+            else:
+                datadir = "/fast/rzimmermann/ImageNet2012-webdataset"
+  
+            train_files = glob.glob(os.path.join(datadir, "imagenet-train-*"))
+            # reduce size for now
+            pattern = re.compile(r"imagenet-train-00001[0-9]")
+            # Filter the list of folder names based on the regex pattern
+            train_files = [folder for folder in train_files if pattern.search(folder)]
+
+            val_files = glob.glob(os.path.join(datadir, "imagenet-val-*"))
+
+
+            # Get a list of all files in the directory
+            #all_files = os.listdir(datadir)
+            # Filter to get only the files starting with "imagenet-train-"
+            #train_files = [os.path.join(datadir, f) for f in all_files if f.startswith("imagenet-train-")]
+            # Sort the list to maintain consistent order
+            #train_files.sort()
+            #print("Training files:", train_files)
+
+            train_dataset = (
+                wds.WebDataset(train_files, shardshuffle=True) # shuffle different shards (tar folders)
+                .shuffle(2000) # just trying this number here let's see if it works, check if overfitting or cyclic up and down of train loss...
+                .decode("pil") 
+                .to_tuple("jpeg.jpg;png.png jpeg.cls __key__")
+                .map_tuple(imagenet_transform(), lambda x: x, lambda x: x)
+                .batched(batch_size, partial=False)
+            )
+            val_dataset = (
+                wds.WebDataset(val_files, shardshuffle=False) # don't shuffle different shards/tar folder
+                #.shuffle(2000) 
+                .decode("pil")
+                .to_tuple("jpeg.jpg;png.png jpeg.cls __key__")
+                .map_tuple(imagenet_transform(), lambda x: x, lambda x: x)
+                .batched(batch_size, partial=False)
+            )
+            train_dataloader = wds.WebLoader(
+                train_dataset,
+                batch_size=None,
+                shuffle=False, # no batching and shuffling done in dataloader but in dataset directly
+                num_workers=num_workers,
+            )
+            val_dataloader = wds.WebLoader(
+                val_dataset,
+                batch_size=None,
+                shuffle=False,
+                num_workers=num_workers,
+            )
+
+
+        elif directory_path.startswith('C:'):
+            # for testing purposes we use a small local part of Imagenet
+            # we do not use a webdataset here, because this lead to some issues
+            datadir = 'C:\\Users\\Jasper\\Downloads\\Master thesis\\Imagenet one folder\\imagenet-unpacked-train-000146'
+            image_dataset = datasets.ImageFolder(root=datadir, transform=imagenet_transform())
+            train_dataloader = DataLoader(image_dataset, batch_size=batch_size, shuffle=False)
+            val_dataloader = train_dataloader
+        else:
+            raise ValueError(f"Unexpected directory path {directory_path}") 
+        
+        print("Data directory ", datadir)
+         
+        category_names = imagenet_classnames
 
         '''         
         # Define transformations to be applied to the images
@@ -382,7 +518,7 @@ def load_data(directory_path, dataset_name, batch_size):
     
     img_size = get_img_size(dataset_name)
 
-    return train_dataloader, val_dataloader, category_names, img_size
+    return train_dataloader, train_dataloader, category_names, img_size # train_dataloader, val_dataloader
 
     
 def store_feature_maps(activations, folder_path, params=None):
@@ -439,7 +575,7 @@ def get_module_names(model):
     layer_names = list(filter(None, layer_names)) # remove emtpy strings
     return layer_names
 
-def get_classifications(output, category_names=None):
+def get_classifications(output, category_names, imagenet):
     # if output is already a prob distribution (f.e. if last layer of network is softmax)
     # then we don't apply softmax. Applying softmax twice would be wrong.
     if torch.allclose(output.sum(dim=1), torch.tensor(1.0), atol=1e-3) and (output.min().item() >= 0) and (output.max().item() <= 1):
@@ -447,15 +583,21 @@ def get_classifications(output, category_names=None):
     else:
         prob = F.softmax(output, dim=1)
     scores, class_ids = prob.max(dim=1)
+
+    if imagenet:
+        class_ids -= 1 # imagenet class ids start at 1, we want them to start at 0 to look up the names in a list (whose index starts at 0)
+
     if category_names is not None:
         category_list = [category_names[index] for index in class_ids]
     else:
         category_list = None
+
     return scores, category_list, class_ids
 
 def show_classification_with_images(dataloader,
                                     class_names, 
                                     wandb_status,
+                                    directory_path,
                                     folder_path=None,
                                     layer_names=None,
                                     model=None,
@@ -473,13 +615,7 @@ def show_classification_with_images(dataloader,
     # for showing all images in the batch use len(predicted_classes)
 
     for batch in dataloader:
-        if isinstance(batch, (list, tuple)) and len(batch) == 2:
-            input_images, target_ids = batch
-        elif isinstance(batch, dict) and len(batch) == 2 and list(batch.keys())[0] == "image" and list(batch.keys())[1] == "label":
-            # this format holds for the tiny imagenet dataset
-            input_images, target_ids = batch["image"], batch["label"]
-        else:
-            raise ValueError("Unexpected data format from dataloader")
+        input_images, target_ids, _ = process_batch(batch)
         break # we only need the first batch
 
     input_images, target_ids = input_images[:n], target_ids[:n] # only show the first 10 images
@@ -488,10 +624,17 @@ def show_classification_with_images(dataloader,
     if model is not None:
         output = model(input_images)
         output = F.softmax(output, dim=1)
+
+    if "tiny_imagenet" not in folder_path and "imagenet" in folder_path: # if we only do: "imagenet" in folder_path, this also includes "tiny_imagenet"
+        imagenet = True
+        target_ids -= 1 # imagenet class ids start at 1, we want them to start at 0 to look up the names in a list (whose index starts at 0)
+    else:
+        imagenet = False
     
-    scores, predicted_classes, _ = get_classifications(output, class_names)
+    scores, predicted_classes, _ = get_classifications(output, class_names, imagenet)
+
     if output_2 is not None:
-        scores_2, predicted_classes_2, _ = get_classifications(output_2, class_names)
+        scores_2, predicted_classes_2, _ = get_classifications(output_2, class_names, imagenet)
         file_path = get_file_path(folder_path, layer_names, params, 'classif_visual_original_modified.png')
     
     fig, axes = plt.subplots(1, n + 1, figsize=(20, 3))
@@ -504,10 +647,9 @@ def show_classification_with_images(dataloader,
     for i in range(n):
         if "tiny_imagenet" in folder_path:
             # input_images[i].shape) --> torch.Size([3, 64, 64])
-            img = input_images[i]
+            img = input_images[i].cpu().numpy()
             #img = _add_channels(img) 
             # we don't need to unnormalize the image
-            img = img.cpu().numpy()
             img = img.astype(int)
             axes[i + 1].imshow(np.transpose(img, (1, 2, 0)))
         elif "mnist" in folder_path:
@@ -517,12 +659,16 @@ def show_classification_with_images(dataloader,
             #img = np.clip(img, 0, 1)
             img = input_images[i].cpu().numpy()
             axes[i+1].imshow(img.squeeze(), cmap='gray')
+        elif "tiny_imagenet" not in folder_path and "imagenet" in folder_path:
+            img = input_images[i].cpu().numpy()
+            img = (img + 117) / 255 # unnormalize image
+            axes[i+1].imshow(np.transpose(img, (1, 2, 0)))
         else:
             # for all other datasets, the following seems to work
             img = input_images[i] / 2 + 0.5 # unnormalize the image
             img = img.cpu().numpy()
             axes[i + 1].imshow(np.transpose(img, (1, 2, 0)))
-
+        
         if output_2 is not None:
             title = f'{class_names[target_ids[i]]}\n{predicted_classes[i]} ({100*scores[i].item():.1f}%)\n{predicted_classes_2[i]} ({100*scores_2[i].item():.1f}%)'
         else:
@@ -776,7 +922,8 @@ def store_sae_eval_results(folder_path,
                             sparsity,
                             var_expl,
                             perc_dead_units,
-                            loss_diff):
+                            loss_diff,
+                            median_mis=None):
                             #sparsity_1=None):
     # params doesn't contain lambda_sparse, expansion factor, learning rate etc. because we 
     # want a uniform file name for all different values
@@ -797,7 +944,8 @@ def store_sae_eval_results(folder_path,
                "rel_sparsity",
                "var_expl",
                "perc_dead_units",
-               "loss_diff"]#, "rel_sparsity_1"]
+               "loss_diff",
+               "median_mis"]#, "rel_sparsity_1"]
     
     if file_exists:
         df = pd.read_csv(file_path)
@@ -824,7 +972,8 @@ def store_sae_eval_results(folder_path,
                             columns[9]: sparsity,
                             columns[10]: var_expl,
                             columns[11]: perc_dead_units,
-                            columns[12]: loss_diff})
+                            columns[12]: loss_diff,
+                            columns[13]: median_mis})
     else:
         # Read the existing CSV file
         with open(file_path, 'r', newline='') as csvfile:
@@ -851,25 +1000,27 @@ def store_sae_eval_results(folder_path,
                         row["var_expl"] = str(var_expl)
                         row["perc_dead_units"] = str(perc_dead_units)
                         row["loss_diff"] = str(loss_diff)
+                        row["median_mis"] = str(median_mis)
                         #if sparsity_1 is not None:
                         #    row["rel_sparsity_1"] = str(sparsity_1)
                         break
             else:
                 # If the combination doesn't exist, add a new row
                 rows.append({"lambda_sparse": str(lambda_sparse), 
-                             "expansion_factor": str(expansion_factor), 
-                                "batch_size": str(batch_size),
-                                "optimizer_name": str(optimizer_name),
-                                "learning_rate": str(learning_rate),
-                             "rec_loss": str(rec_loss), 
-                             "l1_loss": str(scaled_l1_loss),
-                             "nrmse_loss": str(nrmse_loss),
-                             "rmse_loss": str(rmse_loss),
-                             "rel_sparsity": str(sparsity),
+                            "expansion_factor": str(expansion_factor), 
+                            "batch_size": str(batch_size),
+                            "optimizer_name": str(optimizer_name),
+                            "learning_rate": str(learning_rate),
+                            "rec_loss": str(rec_loss), 
+                            "l1_loss": str(scaled_l1_loss),
+                            "nrmse_loss": str(nrmse_loss),
+                            "rmse_loss": str(rmse_loss),
+                            "rel_sparsity": str(sparsity),
                             "var_expl": str(var_expl),
                             "perc_dead_units": str(perc_dead_units),
-                            "loss_diff": str(loss_diff)})
-                             #"rel_sparsity_1": str(sparsity_1)})
+                            "loss_diff": str(loss_diff),
+                            "median_mis": str(median_mis)})
+                            #"rel_sparsity_1": str(sparsity_1)})
 
         # Write the updated data back to the CSV file
         with open(file_path, 'w', newline='') as csvfile:
@@ -924,7 +1075,7 @@ def compute_number_dead_neurons(dead_neurons):
         perc_dead_neurons[key] = tensor.sum().item() / len(tensor)
     return perc_dead_neurons
 
-def print_and_log_results(train_or_eval,
+def print_and_log_results(epoch_mode,
                           model_loss,
                           loss_diff,
                           accuracy,
@@ -946,42 +1097,42 @@ def print_and_log_results(train_or_eval,
                           var_expl=None,
                           kld=None,
                           perc_same_classification=None,
-                          activation_similarity=None):
-    '''
-    A function for printing results and logging them to W&B. 
+                          activation_similarity=None,
+                          median_mis=None):
+    '''A function for printing results and logging them to W&B. 
 
     Parameters:
-    train_or_eval (str): The string 'train' or 'eval' to indicate whether
+    epoch_mode (str): The string 'train' or 'eval' to indicate whether
                          the results are from training or evaluation.
     use_sae (Bool): True or False
     batch (int): index of batch whose results are logged
     dead_neurons_steps (int): after how many batches/epochs we measure dead neurons
     '''
-    if train_or_eval == 'train':
+    if epoch_mode == 'train':
         epoch_or_batch = 'batch'
         step = batch
-    elif train_or_eval == 'eval':
+    elif epoch_mode == 'eval':
         epoch_or_batch = 'epoch'
         step = epoch
     else:
-        raise ValueError("train_or_eval needs to be 'train' or 'eval'.")
+        raise ValueError("epoch_mode needs to be 'train' or 'eval'.")
 
     # we don't print anything during training because there we deal with results batch-wise
     # printing for every batch would be too much, instead, if specified, these things will be logged to W&B
-    if train_or_eval == 'eval':
+    if epoch_mode == 'eval':
         print(f"Model loss: {model_loss:.4f} | Model accuracy: {accuracy:.4f}")
         if use_sae:
             print(f"KLD: {kld:.4f} | Perc same classifications: {perc_same_classification:.4f}")
             print(f"Loss difference: {loss_diff:.4f}")
     if wandb_status:
-        wandb.log({f"{train_or_eval}/model loss": model_loss, f"{train_or_eval}/model accuracy": accuracy, f"{epoch_or_batch}": step}, commit=False)
+        wandb.log({f"{epoch_mode}/model loss": model_loss, f"{epoch_mode}/model accuracy": accuracy, f"{epoch_or_batch}": step}, commit=False)
         if use_sae:
-            wandb.log({f"{train_or_eval}/KLD": kld, 
-                       f"{train_or_eval}/Perc same classifications": perc_same_classification, 
-                       f"{train_or_eval}/Loss difference": loss_diff,
+            wandb.log({f"{epoch_mode}/KLD": kld, 
+                       f"{epoch_mode}/Perc same classifications": perc_same_classification, 
+                       f"{epoch_mode}/Loss difference": loss_diff,
                        f"{epoch_or_batch}": step}, commit=False)
             # wandb doesn't accept tuples as keys, so we convert them to strings
-            perc_dead_neurons_wandb = {f"{train_or_eval}/Perc_of_dead_neurons_on_{train_or_eval}_data/{k[0]}_{k[1]}": v for k, v in perc_dead_neurons.items()}
+            perc_dead_neurons_wandb = {f"{epoch_mode}/Perc_of_dead_neurons_on_{epoch_mode}_data/{k[0]}_{k[1]}": v for k, v in perc_dead_neurons.items()}
             # merge two dictionaries and log them to W&B
             wandb.log({**perc_dead_neurons_wandb, f"{epoch_or_batch}": step}, commit=False) # overview of number of dead neurons for all layers
         
@@ -992,7 +1143,7 @@ def print_and_log_results(train_or_eval,
         model_key = name[1] # can be "original" (model), "sae" (encoder output), "modified" (model)
 
         #if name[0] in layer_names or name[0] == 'fc2':
-        if train_or_eval == 'eval':
+        if epoch_mode == 'eval':
             '''
             print("-------")
             if number_active_neurons is not None:
@@ -1009,28 +1160,33 @@ def print_and_log_results(train_or_eval,
             if use_sae and name[0] in sae_loss.keys() and model_key == 'sae':
                 print(f"SAE loss, layer {name[0]}: {sae_loss[name[0]]:.4f} | SAE rec. loss, layer {name[0]}: {sae_rec_loss[name[0]]:.4f} | SAE l1 loss, layer {name[0]}: {sae_l1_loss[name[0]]:.4f}")
         if wandb_status:                    
-            if train_or_eval == 'eval':
-                wandb.log({f"{train_or_eval}/Sparsity/{model_key}_layer_{name[0]} sparsity": sparsity_dict[name], f"{epoch_or_batch}":step}, commit=False)
+            wandb.log({f"{epoch_mode}/Sparsity/{model_key}_layer_{name[0]} sparsity": sparsity_dict[name], f"{epoch_or_batch}":step}, commit=False)
+            if epoch_mode == 'eval':
+                if median_mis != {}:
+                    wandb.log({f"{epoch_mode}/MIS/{model_key}_layer_{name[0]} mis": median_mis[name], f"{epoch_or_batch}":step}, commit=False)
             if use_sae and name[0] in sae_loss.keys():
-                wandb.log({f"{train_or_eval}/SAE_loss/layer_{name[0]} SAE loss": sae_loss[name[0]], f"{epoch_or_batch}":step}, commit=False)
-                wandb.log({f"{train_or_eval}/SAE_loss/layer_{name[0]} SAE rec. loss": sae_rec_loss[name[0]], f"{epoch_or_batch}":step}, commit=False)
-                wandb.log({f"{train_or_eval}/SAE_loss/layer_{name[0]} SAE l1 loss": sae_l1_loss[name[0]], f"{epoch_or_batch}":step}, commit=False)
-                wandb.log({f"{train_or_eval}/SAE_loss/layer_{name[0]} SAE nrmse loss": sae_nrmse_loss[name[0]], f"{epoch_or_batch}":step}, commit=False)
-                wandb.log({f"{train_or_eval}/SAE_loss/layer_{name[0]} SAE rmse loss": sae_rmse_loss[name[0]], f"{epoch_or_batch}":step}, commit=False)
-                wandb.log({f"{train_or_eval}/Variance_explained/layer_{name[0]}": var_expl[name[0]], f"{epoch_or_batch}":step}, commit=False)
+                wandb.log({f"{epoch_mode}/SAE_loss/layer_{name[0]} SAE loss": sae_loss[name[0]], f"{epoch_or_batch}":step}, commit=False)
+                wandb.log({f"{epoch_mode}/SAE_loss/layer_{name[0]} SAE rec. loss": sae_rec_loss[name[0]], f"{epoch_or_batch}":step}, commit=False)
+                wandb.log({f"{epoch_mode}/SAE_loss/layer_{name[0]} SAE l1 loss": sae_l1_loss[name[0]], f"{epoch_or_batch}":step}, commit=False)
+                wandb.log({f"{epoch_mode}/SAE_loss/layer_{name[0]} SAE nrmse loss": sae_nrmse_loss[name[0]], f"{epoch_or_batch}":step}, commit=False)
+                wandb.log({f"{epoch_mode}/SAE_loss/layer_{name[0]} SAE rmse loss": sae_rmse_loss[name[0]], f"{epoch_or_batch}":step}, commit=False)
+                wandb.log({f"{epoch_mode}/Variance_explained/layer_{name[0]}": var_expl[name[0]], f"{epoch_or_batch}":step}, commit=False)
+                
+                #aggregate_SAE_score = var_expl[name[0]]
+
              #if model_key == 'sae':
-            #wandb.log({f"{train_or_eval}/Sparsity/{model_key}_layer_{name[0]} sparsity_1": sparsity_dict_1[name], f"{epoch_or_batch}":step}, commit=False)  
+            #wandb.log({f"{epoch_mode}/Sparsity/{model_key}_layer_{name[0]} sparsity_1": sparsity_dict_1[name], f"{epoch_or_batch}":step}, commit=False)  
             # Optional metrics
             #if number_active_neurons is not None:
-                #wandb.log({f"{train_or_eval}/Activation_of_neurons/{model_key}_layer_{name[0]} activated neurons": number_active_neurons[name][0], f"{epoch_or_batch}": step}, commit=False)            
-                #wandb.log({f"{train_or_eval}/Number_of_neurons/{model_key}_layer_{name[0]}": number_active_neurons[name][1], f"{epoch_or_batch}": step}, commit=False)
-                #wandb.log({f"{train_or_eval}/Activation_of_neurons/{model_key}_layer_{name[0]} dead neurons": number_dead_neurons[name], f"{epoch_or_batch}": step}, commit=False)
+                #wandb.log({f"{epoch_mode}/Activation_of_neurons/{model_key}_layer_{name[0]} activated neurons": number_active_neurons[name][0], f"{epoch_or_batch}": step}, commit=False)            
+                #wandb.log({f"{epoch_mode}/Number_of_neurons/{model_key}_layer_{name[0]}": number_active_neurons[name][1], f"{epoch_or_batch}": step}, commit=False)
+                #wandb.log({f"{epoch_mode}/Activation_of_neurons/{model_key}_layer_{name[0]} dead neurons": number_dead_neurons[name], f"{epoch_or_batch}": step}, commit=False)
             if use_sae and activation_similarity is not None:
-                wandb.log({f"{train_or_eval}/Feature_similarity_L2loss_between_modified_and_original_model/{model_key}_layer_{name[0]} mean": activation_similarity[name[0]][0], f"{epoch_or_batch}":step}, commit=False) 
-                wandb.log({f"{train_or_eval}/Feature_similarity_L2loss_between_modified_and_original_model/{model_key}_layer_{name[0]} std": activation_similarity[name[0]][1], f"{epoch_or_batch}":step}, commit=False) 
+                wandb.log({f"{epoch_mode}/Feature_similarity_L2loss_between_modified_and_original_model/{model_key}_layer_{name[0]} mean": activation_similarity[name[0]][0], f"{epoch_or_batch}":step}, commit=False) 
+                wandb.log({f"{epoch_mode}/Feature_similarity_L2loss_between_modified_and_original_model/{model_key}_layer_{name[0]} std": activation_similarity[name[0]][1], f"{epoch_or_batch}":step}, commit=False) 
             if mean_number_active_classes_per_neuron is not None:
-                wandb.log({f"{train_or_eval}/Active_classes_per_neuron/{model_key}_layer_{name[0]} mean": mean_number_active_classes_per_neuron[name], f"{epoch_or_batch}":step}, commit=False)
-                wandb.log({f"{train_or_eval}/Active_classes_per_neuron/{model_key}_layer_{name[0]} std": std_number_active_classes_per_neuron[name], f"{epoch_or_batch}":step}, commit=False)
+                wandb.log({f"{epoch_mode}/Active_classes_per_neuron/{model_key}_layer_{name[0]} mean": mean_number_active_classes_per_neuron[name], f"{epoch_or_batch}":step}, commit=False)
+                wandb.log({f"{epoch_mode}/Active_classes_per_neuron/{model_key}_layer_{name[0]} std": std_number_active_classes_per_neuron[name], f"{epoch_or_batch}":step}, commit=False)
             
     # we only log results at the end of an epoch, which is when epoch is not None (eval mode) or when batch is the last batch (train mode)
     if wandb_status:
@@ -1077,7 +1233,7 @@ def feature_similarity(activations,activation_similarity,device):
         '''
     return activation_similarity
 
-def compute_sparsity(train_or_eval, 
+def compute_sparsity(epoch_mode, 
                      sae_expansion_factor, 
                      number_active_neurons, 
                      active_classes_per_neuron=None, 
@@ -1098,7 +1254,7 @@ def compute_sparsity(train_or_eval,
         # during training, we don't measure sparsity batch-wise in terms of dead neurons because the number 
         # of dead neurons monotonically decreases over batches --> thus the sparsity would change accordingly
         # making it hard to interpret
-        if train_or_eval == 'eval':
+        if epoch_mode == 'eval':
             number_used_neurons = total_neurons - number_dead_neurons[name]
             # number of active neurons should be less than or equal to the number of used neurons
             if average_activated_neurons > number_used_neurons:
@@ -1114,7 +1270,7 @@ def compute_sparsity(train_or_eval,
             # in the case, where dead neurons are measured over the same time frame as the active classes per neuron
             # (this is the case if we're in eval mode), we can check that active_classes_per_neuron is consistent with
             # the number of dead neurons. If this is the case during evaluation it like also is the case during training.
-            if train_or_eval == 'eval':
+            if epoch_mode == 'eval':
                 # First we check that the number of rows of the active_classes_per_neuron matrix
                 # is equal to the number of neurons
                 if active_classes_per_neuron[name].shape[0] != total_neurons:
@@ -1147,31 +1303,44 @@ def compute_sparsity(train_or_eval,
     return sparsity_dict, sparsity_dict_1, number_active_classes_per_neuron, mean_number_active_classes_per_neuron, std_number_active_classes_per_neuron
 
                                 
-def get_top_k_samples(top_k_samples, batch_top_k_values, batch_top_k_indices, eval_batch_idx, largest, k):
+def get_top_k_samples(top_k_samples, batch_top_k_values, batch_top_k_indices, batch_filename_indices, eval_batch_idx, largest, k):
     '''
-    top_k_samples = (previous_top_k_values of shape [k, #neurons], previous_top_k_indices of shape [k, #neurons], batch_size)
+    top_k_samples = (previous_top_k_values of shape [k, #neurons], previous_top_k_indices of shape [k, #neurons], batch_size, filename_indices)
+    --> We see that batch_size = top_k_samples[2]
     batch_top_k_values = top k values of current batch, shape [k, #neurons]
     batch_top_k_indices = top k indices of current batch, shape [k, #neurons]
+    filename_indices = indices of the filenames in the dataset corresponding to the top k images, shape [k, #neurons]
     --> Want new top k values and indices incorporating the current and previous batches
     '''
+    batch_size = top_k_samples[2]
+
     # we add batch_idx*batch_size to every entry in the indices matrix to get the 
     # index of the corresponding image in the dataset. For example, if the index in the
     # batch is 2 and the batch index is 4 and batch size is 64, then the index of this 
     # image in the dataset is 4*64 + 2= 258
-    # the batch size is the first dimension of 
-    batch_top_k_indices += (eval_batch_idx - 1) * top_k_samples[2]
+    batch_top_k_indices += (eval_batch_idx - 1) * batch_size
     # we merge the previous top k values and the current top k values --> shape: [2*k, #neurons]
     # then we find the top k values within this matrix
     top_k_values_merged = torch.cat((top_k_samples[0], batch_top_k_values), dim=0)
-    # we also merge the indices
+    # we also merge the indices and the filename indices
     top_k_indices_merged = torch.cat((top_k_samples[1], batch_top_k_indices), dim=0)
-    # we find the top k values and indices of the merged top k values
-    top_k_values_merged_new, top_k_indices_merged_new = torch.topk(top_k_values_merged, k=k, dim=0, largest=largest)
-    # but top_k_indices_merged_new contains the indices of the top values within the top_k_values_merged
-    # matrix, but we need to find the corresponding indices in top_k_indices_merged
-    selected_indices = torch.gather(top_k_indices_merged, 0, top_k_indices_merged_new)
-    # we store the newly found top values and indices
-    return (top_k_values_merged_new, selected_indices, top_k_samples[2])
+    top_k_filename_indices_merged = torch.cat((top_k_samples[3], batch_filename_indices), dim=0)
+
+    if top_k_values_merged.shape[0] < k:
+        # f.e. if k = 200, but batch_size = 64, then after 2 batches, the top k values matrix has only 128 elements
+        # and even after 3 batches, it has only 192 elements. Thus, we don't remove any values yet.
+        top_k_values_merged_new = top_k_values_merged
+        selected_indices = top_k_indices_merged
+    else:
+        # we find the top k values and indices of the merged top k values
+        top_k_values_merged_new, top_k_indices_merged_new = torch.topk(top_k_values_merged, k=k, dim=0, largest=largest)
+        # but top_k_indices_merged_new contains the indices of the top values within the top_k_values_merged
+        # matrix, but we need to find the corresponding indices in top_k_indices_merged
+        selected_indices = torch.gather(top_k_indices_merged, 0, top_k_indices_merged_new)
+        top_k_filename_indices_merged = torch.gather(top_k_filename_indices_merged, 0, top_k_indices_merged_new)
+
+    return (top_k_values_merged_new, selected_indices, batch_size, top_k_filename_indices_merged)
+
 
 def rows_cols(i):
     '''
@@ -1324,16 +1493,16 @@ def show_top_k_samples(val_dataloader,
 
 def process_sae_layers_list(sae_layers, original_model, training):
     '''
-    Turns the string 'fc1_fc2__fc3_fc4' into the list ['fc1_fc2_fc3', 'fc1_fc2_fc3_fc4']
+    Turns the string 'fc1&fc2&&fc3&fc4' into the list ['fc1&fc2&fc3', 'fc1&fc2&fc3&fc4']
     --> For each element of the list (separated by underscores), the code will train an SAE on the last element of the list
         (if training = "True" and original_model = "False") and use pretrained SAEs on the preceding layers --> here:
-        fc1_fc2_fc3 --> Train SAE on fc3 and use pretrained SAEs on fc1, and fc1_fc2 (i.e. on fc2 but given that SAE on fc1 is already trained)
-        fc1_fc2_fc3_fc4 --> Train SAE on fc4 and use pretrained SAEs on fc1, fc1_fc2, fc1_fc2_fc3 
+        fc1&fc2&fc3 --> Train SAE on fc3 and use pretrained SAEs on fc1, and fc1_fc2 (i.e. on fc2 but given that SAE on fc1 is already trained)
+        fc1&fc2&fc3&fc4 --> Train SAE on fc4 and use pretrained SAEs on fc1, fc1&fc2, fc1&fc2&fc3 
     '''
-    pretrained_sae_layers_string, train_sae_layers_string = sae_layers.split("__")
+    pretrained_sae_layers_string, train_sae_layers_string = sae_layers.split("&&")
     # Split the sub_string into a list based on '_'
-    #pretrained_sae_layers_list = pretrained_sae_layers_string.split("_")
-    train_sae_layers_list = train_sae_layers_string.split("_")
+    #pretrained_sae_layers_list = pretrained_sae_layers_string.split("&")
+    train_sae_layers_list = train_sae_layers_string.split("&")
 
     if train_sae_layers_list != [""] and eval(original_model):
         raise ValueError(f"We use the original model but layers for training SAEs are provided: {train_sae_layers_list}")
@@ -1348,7 +1517,7 @@ def process_sae_layers_list(sae_layers, original_model, training):
             if pretrained_sae_layers_string == "":
                 name = train_sae_layers_list[i]
             else:
-                name = pretrained_sae_layers_string + "_" + train_sae_layers_list[i]
+                name = pretrained_sae_layers_string + "&" + train_sae_layers_list[i]
             sae_layers_list.append(name)
             pretrained_sae_layers_string = name
     else:
@@ -1473,7 +1642,7 @@ def plot_lucent_explanations(model, layer_names, params, folder_path, wandb_stat
 def update_histogram(histogram_info, name, model_key, output, device, output_2=None):
     # we unpack the values contained in the dictionary
     histogram_matrix = histogram_info[(name,model_key)][0]
-    histogram_matrix = histogram_matrix.to(device)
+    #histogram_matrix = histogram_matrix.to(device)
     top_values = histogram_info[(name,model_key)][1]
     small_values = histogram_info[(name,model_key)][2]
     num_bins = histogram_matrix.shape[0]
@@ -1489,7 +1658,7 @@ def update_histogram(histogram_info, name, model_key, output, device, output_2=N
 
     # we only consider the first n units
     activations = activations[:,:num_units]
-    activations = activations.to(device)
+    #activations = activations.to(device)
     
     # we compute the histogram of the activations
     for unit in range(activations.size(1)):
@@ -1567,19 +1736,154 @@ def variance_explained(output, decoder_output):
     
     return 1 - mod_var/var
 
-def measure_inactive_units(output, expansion_factor=1):
+def measure_inactive_units(output, expansion_factor):
     bool_output = output == 0 # --> True if 0, False otherwise
     bool_output = bool_output.bool()
 
+    # For each sample in the batch, we compute whether a unit is inactive or active
+    # the tensor sample_inactive_units has shape [BS, #units]
+    # - conv case: unit = channel --> [BS, C]; MLP case: unit = neuron --> [BS, #neurons]
     if len(output.shape) == 4:
         # output has shape [BS, C, H, W]
-        # if for a specific B and C, all values are 0, then the corresponding channel is inactive
-        # for some reason dim = (2,3) doesn't work so we do it sequentially
-        index_inactive_units = torch.all(torch.all(bool_output, dim=3), dim=2) 
+        # a channel is inactive if all pixels are zero
+        sample_inactive_units = torch.all(torch.all(bool_output, dim=3), dim=2) # for some reason dim = (2,3) doesn't work so we do it sequentially
     elif len(output.shape) == 2:
-        index_inactive_units = bool_output
-
-    sample_sparsity = torch.sum(bool_output, dim = 1) / (bool_output.size(1) / expansion_factor)
-    batch_sparsity = torch.mean(sample_sparsity).item()
+        # output has shape [BS, #neurons] already
+        sample_inactive_units = bool_output
+    else:
+        raise ValueError(f"Output has unexpected shape {len(output.shape)}.")
+    number_of_units = sample_inactive_units.size(1)
     
-    return index_inactive_units, batch_sparsity
+    # if a unit is inactive (True) across the batch (dim=0), then the unit is dead (across this batch)    
+    batch_dead_units = torch.all(sample_inactive_units, dim=0)
+    # shape: [#units]
+
+    # sparsity is computed sample wise
+    # --> we count the number of inactive channels of a sample, i.e., across the units (dim=1) 
+    number_inactive_units_per_sample = torch.sum(sample_inactive_units, dim=1) # shape: [BS]
+    number_active_units_per_sample = number_of_units - number_inactive_units_per_sample
+    sparsity_per_sample = number_active_units_per_sample / (number_of_units / expansion_factor) # shape: [BS]
+    # now we compute the average sparsity across the batch
+    batch_sparsity = torch.mean(sparsity_per_sample).item()
+       
+    return batch_dead_units, batch_sparsity
+
+# adapted from: https://github.com/zimmerrol/machine-interpretability/blob/c271c7a526c857ff91d7634da8b5abaadd62cf19/stimuli_generation/sg_utils.py#L701
+def get_label_translator(directory_path):
+    """
+    old labels:
+        https://raw.githubusercontent.com/rgeirhos/lucent/dev/lucent/modelzoo/misc/old_imagenet_labels.txt
+    new labels:
+        https://raw.githubusercontent.com/conan7882/GoogLeNet-Inception/master/data/imageNetLabel.txt
+    """
+    if directory_path.startswith('/lustre'):
+        old_labels_path = os.path.join(directory_path, 'dataloaders/old_imagenet_labels.txt')
+        new_labels_path = os.path.join(directory_path, 'dataloaders/imagenet_labels.txt')
+    elif directory_path.startswith('C:'):
+        old_labels_path = os.path.join(directory_path, 'dataloaders\\old_imagenet_labels.txt')
+        new_labels_path = os.path.join(directory_path, 'dataloaders\\imagenet_labels.txt')
+    else:
+        raise ValueError(f"Unexpected directory path: {directory_path}")
+
+    with open(old_labels_path, "r", encoding="utf-8") as fhandle:
+        old_imagenet_labels_data = fhandle.read()
+    with open(new_labels_path, "r", encoding="utf-8") as fhandle:
+        new_imagenet_labels_data = fhandle.read()
+
+    # maps a class index to wordnet-id in old convention
+    old_imagenet_labels_map = {}
+    #old_imagenet_cid_to_wid = {}
+    for cid, l in enumerate(old_imagenet_labels_data.strip().split("\n")):
+        wid = l.split(" ")[0].strip()
+        old_imagenet_labels_map[wid] = cid
+        #old_imagenet_cid_to_wid[cid] = wid
+
+    # maps a class index to wordnet-id in new convention
+    new_imagenet_labels_map = {}
+    for cid, l in enumerate(new_imagenet_labels_data.strip().split("\n")):
+        wid = l.split(" ")[0].strip()
+        new_imagenet_labels_map[cid] = wid
+
+    def remap_torch_to_tf_labels(y):
+        """Map PyTorch-style ImageNet labels to old convention used by GoogLeNet/InceptionV1."""
+        res = []
+        for yi in y.cpu().numpy():
+            zi = None
+            wid = new_imagenet_labels_map[yi]
+            if wid in old_imagenet_labels_map:
+                zi = old_imagenet_labels_map[wid]
+                res.append(zi)
+
+            else:
+                raise ValueError(f"Unknown class {yi}/{wid}.")
+
+        return torch.tensor(res).to(y.device) + 1
+    
+    return remap_torch_to_tf_labels
+
+
+def process_batch(batch, 
+                  directory_path=None,
+                  epoch_mode=None, 
+                  filename_to_idx=None):
+    if isinstance(batch, (list, tuple)) and len(batch) == 2:
+        inputs, targets = batch
+        # dummy filenames, just to return something, but we don't use them as we only
+        # use the imagenet filenames for computing the MIS
+        filename_indices = torch.arange(len(inputs))
+    elif isinstance(batch, dict) and len(batch) == 2 and list(batch.keys())[0] == "image" and list(batch.keys())[1] == "label":
+        # this format holds for the tiny imagenet dataset
+        inputs, targets = batch["image"], batch["label"]
+        filename_indices = torch.arange(len(inputs))
+    elif isinstance(batch, list) and len(batch) == 3:
+        # this format holds for imagenet
+        inputs = batch[0] # shape is [batch_size, 3, 229, 229]
+        targets = batch[1] # tensor of indices
+        filenames = batch[2] # list of filenames
+
+        '''
+        if epoch_mode is not None:
+            if epoch_mode == "mis":
+                # Get the indices of the filenames in the text file
+                filename_indices = [filename_to_idx.get(s, -1) for s in filenames]
+                # convert to tensor
+                filename_indices = torch.tensor(filename_indices, dtype=torch.long)
+                # torch.all(targets == filename_indices)) --> False for every batch --> we should use filename_indices 
+                # Instead of computing these filename_indices, we could perhaps also use the target/class indices, but we later translate them
+                # to match the target index convention used by Inception. Thus, it would make things more complicated.
+            else:
+                filename_indices = None
+        else: 
+            filename_indices = None # np.arange(len(inputs))
+        '''
+
+        filename_indices = torch.arange(len(inputs))
+
+        # write indices to a txt file
+        '''
+        with open('/lustre/home/jtoussaint/master_thesis/dataloaders/imagenet_train_val_indices.txt', 'a') as file:
+            # Write each index on a new line
+            for label in batch[1]:
+                file.write(str(label.item()) + '\n')
+        '''
+
+        # we write the imagenet filenames to a txt file
+        # we use filenames for computing the MIS. We only compute MIS for imagenet.
+        # this txt file has to be created only once, hence it is commented here
+        '''
+        with open('/lustre/home/jtoussaint/master_thesis/dataloaders/imagenet_train_train_filenames.txt', 'a') as file:
+            # Write each filename on a new line
+            for filename in batch[2]: # batch[2] is a list of filenames
+                file.write(filename + '\n')  # Add newline after each filename
+        '''
+    else:
+        raise ValueError(f"Unexpected data format from dataloader: {type(batch)} with length {len(batch)}, in particular: {batch}")
+    return inputs, targets, filename_indices
+
+def get_string_to_idx_dict(filename):
+    with open(filename, "r") as f:
+        lines = f.readlines()
+    lines = [line.strip() for line in lines] # Clean up newlines at the end of each line
+    string_to_index = {string: idx for idx, string in enumerate(lines)}
+    index_to_string = {idx: string for string, idx in string_to_index.items()}
+    return string_to_index, index_to_string

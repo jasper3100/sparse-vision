@@ -1,22 +1,28 @@
 from utils import *
 
 # SPECIFY DESIRED MODEL HERE
-model_name = 'resnet18'
+model_name = 'inceptionv1'
 
 model = load_model(model_name)#, 32, 10)
 
 # print all layers
-for name, module in model.named_modules():
-    print(name)
+#for name, module in model.named_modules():
+#    print(name)
 # All "." in the name refer to submodules
 
 print("-------------------")
 
 # print only the parent modules
+i = 0
 for name, module in model.named_children():
     print(name)
+    i += 1
+print(i)
 
 # I just train my first SAE on the following layer layer1.0.conv1
+
+m = getattr(model, "mixed3b_3x3_pre_relu_conv")
+print(m)
 
 
 '''

@@ -1,0 +1,998 @@
+Afghan hound, 3.70%
+African chameleon, 3.78%
+African crocodile, 3.54%
+African elephant, 3.55%
+African grey, 3.77%
+African hunting dog, 3.70%
+Airedale, 3.62%
+American Staffordshire terrier, 3.47%
+American alligator, 3.85%
+American black bear, 3.78%
+American chameleon, 3.70%
+American coot, 3.85%
+American egret, 3.78%
+American lobster, 3.63%
+Angora, 3.62%
+Appenzeller, 3.86%
+Arabian camel, 3.54%
+Arctic fox, 3.78%
+Australian terrier, 3.78%
+Band Aid, 3.54%
+Bedlington terrier, 3.91%
+Bernese mountain dog, 3.70%
+Blenheim spaniel, 3.62%
+Border collie, 3.47%
+Border terrier, 3.78%
+Boston bull, 3.78%
+Bouvier des Flandres, 3.63%
+Brabancon griffon, 4.49%
+Brittany spaniel, 3.78%
+CD player, 3.55%
+Cardigan, 3.62%
+Chesapeake Bay retriever, 3.62%
+Chihuahua, 3.47%
+Christmas stocking, 3.71%
+Crock Pot, 4.14%
+Dandie Dinmont, 4.24%
+Doberman, 3.62%
+Dungeness crab, 3.62%
+Dutch oven, 3.70%
+Egyptian cat, 3.78%
+English foxhound, 6.38%
+English setter, 3.47%
+English springer, 3.69%
+EntleBucher, 3.78%
+Eskimo dog, 3.62%
+European fire salamander, 3.70%
+European gallinule, 3.62%
+French bulldog, 3.86%
+French horn, 3.70%
+French loaf, 3.54%
+German shepherd, 3.70%
+German short-haired pointer, 3.70%
+Gila monster, 3.62%
+Gordon setter, 3.69%
+Granny Smith, 3.77%
+Great Dane, 3.55%
+Great Pyrenees, 3.77%
+Greater Swiss Mountain dog, 3.70%
+Ibizan hound, 3.70%
+Indian cobra, 3.86%
+Indian elephant, 3.70%
+Irish setter, 3.70%
+Irish terrier, 3.78%
+Irish water spaniel, 4.97%
+Irish wolfhound, 3.70%
+Italian greyhound, 3.55%
+Japanese spaniel, 6.36%
+Kerry blue terrier, 3.94%
+Komodo dragon, 3.70%
+Labrador retriever, 3.70%
+Lakeland terrier, 3.54%
+Leonberg, 3.70%
+Lhasa, 3.70%
+Loafer, 4.14%
+Madagascar cat, 3.62%
+Maltese dog, 3.86%
+Mexican hairless, 6.49%
+Model T, 3.78%
+Newfoundland, 3.78%
+Norfolk terrier, 3.47%
+Norwegian elkhound, 3.70%
+Norwich terrier, 3.71%
+Old English sheepdog, 3.55%
+Pekinese, 3.54%
+Pembroke, 3.78%
+Persian cat, 3.78%
+Petri dish, 4.90%
+Polaroid camera, 3.70%
+Pomeranian, 3.70%
+Rhodesian ridgeback, 3.70%
+Rottweiler, 3.62%
+Saint Bernard, 3.86%
+Saluki, 3.54%
+Samoyed, 3.70%
+Scotch terrier, 3.78%
+Scottish deerhound, 3.85%
+Sealyham terrier, 5.25%
+Shetland sheepdog, 3.78%
+Shih-Tzu, 3.62%
+Siamese cat, 3.69%
+Siberian husky, 3.71%
+Staffordshire bullterrier, 3.78%
+Sussex spaniel, 3.85%
+Tibetan mastiff, 3.62%
+Tibetan terrier, 3.78%
+Walker hound, 4.69%
+Weimaraner, 3.86%
+Welsh springer spaniel, 3.70%
+West Highland white terrier, 3.62%
+Windsor tie, 3.97%
+Yorkshire terrier, 3.77%
+abacus, 3.78%
+abaya, 3.69%
+academic gown, 3.62%
+accordion, 3.78%
+acorn, 3.70%
+acorn squash, 3.70%
+acoustic guitar, 3.77%
+admiral, 3.77%
+affenpinscher, 4.83%
+agama, 3.62%
+agaric, 3.85%
+aircraft carrier, 3.70%
+airliner, 3.70%
+airship, 3.62%
+albatross, 3.85%
+alligator lizard, 3.70%
+alp, 3.70%
+altar, 3.62%
+ambulance, 3.47%
+amphibian, 3.70%
+analog clock, 3.72%
+anemone fish, 3.70%
+ant, 3.70%
+apiary, 3.86%
+apron, 3.77%
+armadillo, 3.77%
+artichoke, 3.85%
+ashcan, 3.77%
+assault rifle, 3.54%
+axolotl, 3.54%
+baboon, 3.77%
+backpack, 3.86%
+badger, 3.85%
+bagel, 3.85%
+bakery, 3.70%
+balance beam, 3.86%
+bald eagle, 3.63%
+balloon, 3.78%
+ballplayer, 3.70%
+ballpoint, 3.97%
+banana, 3.70%
+banded gecko, 3.69%
+banjo, 3.47%
+bannister, 3.62%
+barbell, 3.86%
+barber chair, 3.85%
+barbershop, 3.63%
+barn, 3.62%
+barn spider, 3.78%
+barometer, 3.93%
+barracouta, 3.77%
+barrel, 3.77%
+barrow, 3.70%
+baseball, 3.70%
+basenji, 3.70%
+basketball, 3.63%
+basset, 3.70%
+bassinet, 3.77%
+bassoon, 3.70%
+bath towel, 3.86%
+bathing cap, 3.70%
+bathtub, 3.78%
+beach wagon, 3.70%
+beacon, 3.70%
+beagle, 3.77%
+beaker, 3.63%
+bearskin, 4.05%
+beaver, 3.70%
+bee, 3.86%
+bee eater, 3.62%
+beer bottle, 3.77%
+beer glass, 3.70%
+bell cote, 3.62%
+bell pepper, 3.77%
+bib, 3.69%
+bicycle-built-for-two, 3.78%
+bighorn, 3.78%
+bikini, 3.77%
+binder, 3.85%
+binoculars, 3.55%
+birdhouse, 3.78%
+bison, 3.85%
+bittern, 3.54%
+black and gold garden spider, 3.62%
+black grouse, 3.70%
+black stork, 3.78%
+black swan, 3.70%
+black widow, 3.62%
+black-and-tan coonhound, 6.71%
+black-footed ferret, 3.71%
+bloodhound, 3.46%
+bluetick, 4.23%
+boa constrictor, 3.70%
+boathouse, 3.78%
+bobsled, 3.70%
+bolete, 3.70%
+bolo tie, 3.69%
+bonnet, 3.78%
+book jacket, 4.16%
+bookcase, 3.78%
+bookshop, 3.62%
+borzoi, 3.78%
+bottlecap, 3.78%
+bow, 3.86%
+bow tie, 3.70%
+box turtle, 3.85%
+boxer, 3.55%
+brain coral, 3.78%
+brambling, 3.70%
+brass, 3.55%
+brassiere, 3.86%
+breakwater, 3.54%
+breastplate, 3.70%
+briard, 3.70%
+broccoli, 3.78%
+broom, 3.85%
+brown bear, 3.70%
+bubble, 3.70%
+bucket, 3.77%
+buckeye, 3.70%
+buckle, 3.78%
+bulbul, 3.71%
+bull mastiff, 3.70%
+bullet train, 3.54%
+bulletproof vest, 4.09%
+bullfrog, 3.78%
+burrito, 3.85%
+bustard, 3.86%
+butcher shop, 3.70%
+butternut squash, 3.70%
+cab, 3.78%
+cabbage butterfly, 3.78%
+cairn, 3.62%
+caldron, 3.55%
+can opener, 3.78%
+candle, 3.54%
+cannon, 3.70%
+canoe, 3.55%
+capuchin, 3.70%
+car mirror, 3.47%
+car wheel, 3.70%
+carbonara, 3.86%
+cardigan, 3.78%
+cardoon, 4.18%
+carousel, 3.78%
+carpenter's kit, 3.62%
+carton, 3.47%
+cash machine, 3.54%
+cassette, 4.05%
+cassette player, 3.70%
+castle, 3.70%
+catamaran, 3.70%
+cauliflower, 3.86%
+cello, 3.85%
+cellular telephone, 3.70%
+centipede, 3.70%
+chain, 3.70%
+chain mail, 3.85%
+chain saw, 4.11%
+chainlink fence, 3.47%
+chambered nautilus, 3.78%
+cheeseburger, 3.79%
+cheetah, 3.63%
+chest, 3.62%
+chickadee, 3.69%
+chiffonier, 3.70%
+chime, 3.78%
+chimpanzee, 3.63%
+china cabinet, 3.78%
+chiton, 3.85%
+chocolate sauce, 3.70%
+chow, 3.77%
+church, 3.70%
+cicada, 3.55%
+cinema, 3.63%
+cleaver, 4.42%
+cliff, 3.78%
+cliff dwelling, 3.70%
+cloak, 4.77%
+clog, 3.62%
+clumber, 3.85%
+cock, 3.78%
+cocker spaniel, 3.85%
+cockroach, 3.77%
+cocktail shaker, 4.25%
+coffee mug, 3.77%
+coffeepot, 3.86%
+coho, 3.70%
+coil, 3.62%
+collie, 3.70%
+colobus, 3.70%
+combination lock, 4.13%
+comic book, 3.63%
+common iguana, 3.54%
+common newt, 3.62%
+computer keyboard, 3.77%
+conch, 3.70%
+confectionery, 3.62%
+consomme, 3.99%
+container ship, 3.77%
+convertible, 3.56%
+coral fungus, 3.63%
+coral reef, 3.70%
+corkscrew, 3.85%
+corn, 3.86%
+cornet, 3.78%
+coucal, 3.54%
+cougar, 3.85%
+cowboy boot, 3.62%
+cowboy hat, 3.77%
+coyote, 3.70%
+cradle, 3.70%
+crane, 3.66%
+crash helmet, 3.78%
+crate, 3.62%
+crayfish, 3.78%
+crib, 3.62%
+cricket, 3.78%
+croquet ball, 3.63%
+crossword puzzle, 3.78%
+crutch, 3.70%
+cucumber, 3.78%
+cuirass, 3.85%
+cup, 3.55%
+curly-coated retriever, 3.78%
+custard apple, 3.70%
+daisy, 3.54%
+dalmatian, 3.85%
+dam, 3.63%
+damselfly, 3.77%
+desk, 3.77%
+desktop computer, 3.70%
+dhole, 3.85%
+dial telephone, 3.62%
+diamondback, 3.62%
+diaper, 3.62%
+digital clock, 3.69%
+digital watch, 5.63%
+dingo, 3.39%
+dining table, 3.70%
+dishrag, 3.70%
+dishwasher, 3.78%
+disk brake, 3.78%
+dock, 4.14%
+dogsled, 3.70%
+dome, 3.70%
+doormat, 3.70%
+dough, 3.78%
+dowitcher, 3.77%
+dragonfly, 3.85%
+drake, 3.78%
+drilling platform, 3.78%
+drum, 3.77%
+drumstick, 3.63%
+dugong, 3.70%
+dumbbell, 3.70%
+dung beetle, 3.39%
+ear, 3.70%
+earthstar, 3.77%
+echidna, 3.86%
+eel, 4.22%
+eft, 3.85%
+eggnog, 4.04%
+electric fan, 3.77%
+electric guitar, 3.63%
+electric locomotive, 3.85%
+electric ray, 3.69%
+entertainment center, 3.78%
+envelope, 3.69%
+espresso, 3.78%
+espresso maker, 3.98%
+face powder, 4.17%
+feather boa, 3.86%
+fiddler crab, 3.63%
+fig, 3.62%
+file, 3.70%
+fire engine, 3.71%
+fire screen, 3.78%
+fireboat, 3.55%
+flagpole, 3.70%
+flamingo, 3.86%
+flat-coated retriever, 3.78%
+flatworm, 3.86%
+flute, 3.70%
+fly, 3.86%
+folding chair, 3.85%
+football helmet, 3.69%
+forklift, 3.70%
+fountain, 3.62%
+fountain pen, 3.62%
+four-poster, 3.78%
+fox squirrel, 3.66%
+freight car, 3.62%
+frilled lizard, 4.30%
+frying pan, 3.69%
+fur coat, 3.86%
+gar, 3.63%
+garbage truck, 3.62%
+garden spider, 3.70%
+garter snake, 3.78%
+gas pump, 3.62%
+gasmask, 3.54%
+gazelle, 3.62%
+geyser, 3.70%
+giant panda, 3.54%
+giant schnauzer, 3.78%
+gibbon, 3.55%
+go-kart, 3.70%
+goblet, 3.78%
+golden retriever, 3.78%
+goldfinch, 3.70%
+goldfish, 3.77%
+golf ball, 3.85%
+golfcart, 3.69%
+gondola, 3.78%
+gong, 3.90%
+goose, 3.54%
+gorilla, 3.70%
+gown, 3.70%
+grand piano, 3.85%
+grasshopper, 3.54%
+great grey owl, 3.69%
+great white shark, 3.77%
+green lizard, 3.69%
+green mamba, 3.70%
+green snake, 3.77%
+greenhouse, 3.70%
+grey fox, 3.85%
+grey whale, 4.09%
+grille, 3.86%
+grocery store, 3.70%
+groenendael, 3.54%
+groom, 3.70%
+ground beetle, 3.78%
+guacamole, 3.62%
+guenon, 3.70%
+guillotine, 3.66%
+guinea pig, 3.78%
+gyromitra, 3.77%
+hair slide, 3.70%
+hair spray, 5.01%
+half track, 3.63%
+hammer, 3.70%
+hammerhead, 3.62%
+hamper, 3.54%
+hamster, 3.62%
+hand blower, 3.70%
+hand-held computer, 4.56%
+handkerchief, 3.77%
+hard disc, 3.77%
+hare, 3.70%
+harmonica, 3.70%
+harp, 3.86%
+hartebeest, 3.70%
+harvester, 3.85%
+harvestman, 3.78%
+hatchet, 5.64%
+hay, 3.77%
+head cabbage, 3.71%
+hen, 3.62%
+hen-of-the-woods, 3.62%
+hermit crab, 3.78%
+hip, 3.77%
+hippopotamus, 3.77%
+hog, 3.78%
+hognose snake, 3.70%
+holster, 3.77%
+home theater, 3.54%
+honeycomb, 3.70%
+hook, 3.78%
+hoopskirt, 3.70%
+horizontal bar, 3.77%
+hornbill, 3.78%
+horned viper, 3.70%
+horse cart, 3.63%
+hot pot, 4.18%
+hotdog, 3.70%
+hourglass, 3.77%
+house finch, 3.70%
+howler monkey, 3.78%
+hummingbird, 3.77%
+hyena, 3.54%
+iPod, 3.70%
+ibex, 3.47%
+ice bear, 3.78%
+ice cream, 3.77%
+ice lolly, 3.70%
+impala, 3.70%
+indigo bunting, 3.78%
+indri, 3.85%
+iron, 3.78%
+isopod, 3.78%
+jacamar, 3.70%
+jack-o'-lantern, 3.78%
+jackfruit, 3.62%
+jaguar, 3.86%
+jay, 3.78%
+jean, 3.78%
+jeep, 3.70%
+jellyfish, 3.63%
+jersey, 3.81%
+jigsaw puzzle, 3.78%
+jinrikisha, 3.62%
+joystick, 3.77%
+junco, 3.70%
+keeshond, 3.62%
+kelpie, 3.62%
+killer whale, 3.86%
+kimono, 3.70%
+king crab, 3.70%
+king penguin, 3.77%
+king snake, 3.78%
+kit fox, 3.77%
+kite, 3.78%
+knee pad, 3.79%
+knot, 3.40%
+koala, 3.78%
+komondor, 3.78%
+kuvasz, 3.62%
+lab coat, 3.47%
+lacewing, 3.77%
+ladle, 3.77%
+ladybug, 3.70%
+lakeside, 3.85%
+lampshade, 3.78%
+langur, 3.62%
+laptop, 3.70%
+lawn mower, 3.77%
+leaf beetle, 3.70%
+leafhopper, 3.69%
+leatherback turtle, 3.71%
+lemon, 3.70%
+lens cap, 3.62%
+leopard, 3.70%
+lesser panda, 3.78%
+letter opener, 4.88%
+library, 3.70%
+lifeboat, 3.55%
+lighter, 3.70%
+limousine, 3.85%
+limpkin, 3.77%
+liner, 3.63%
+lion, 3.62%
+lionfish, 3.78%
+lipstick, 3.78%
+little blue heron, 3.85%
+llama, 3.46%
+loggerhead, 3.70%
+long-horned beetle, 3.85%
+lorikeet, 3.70%
+lotion, 3.70%
+loudspeaker, 3.71%
+loupe, 3.85%
+lumbermill, 3.62%
+lycaenid, 3.70%
+lynx, 3.63%
+macaque, 3.62%
+macaw, 3.46%
+magnetic compass, 3.98%
+magpie, 3.78%
+mailbag, 3.77%
+mailbox, 3.78%
+maillot, 3.81%
+malamute, 3.78%
+malinois, 3.69%
+manhole cover, 3.77%
+mantis, 3.70%
+maraca, 3.62%
+marimba, 3.86%
+marmoset, 3.62%
+marmot, 3.62%
+mashed potato, 3.46%
+mask, 3.70%
+matchstick, 3.70%
+maypole, 3.86%
+maze, 3.70%
+measuring cup, 3.78%
+meat loaf, 3.77%
+medicine chest, 3.71%
+meerkat, 3.70%
+megalith, 3.70%
+menu, 3.78%
+microphone, 3.70%
+microwave, 3.77%
+military uniform, 3.77%
+milk can, 4.30%
+miniature pinscher, 3.63%
+miniature poodle, 3.70%
+miniature schnauzer, 3.85%
+minibus, 3.85%
+miniskirt, 3.70%
+minivan, 3.70%
+mink, 3.70%
+missile, 3.70%
+mitten, 3.70%
+mixing bowl, 3.70%
+mobile home, 3.78%
+modem, 4.36%
+monarch, 3.54%
+monastery, 4.25%
+mongoose, 3.55%
+monitor, 3.47%
+moped, 3.70%
+mortar, 3.77%
+mortarboard, 3.70%
+mosque, 3.70%
+mosquito net, 3.77%
+motor scooter, 3.77%
+mountain bike, 3.78%
+mountain tent, 3.70%
+mouse, 3.55%
+mousetrap, 3.77%
+moving van, 4.23%
+mud turtle, 3.85%
+mushroom, 3.77%
+muzzle, 4.33%
+nail, 3.63%
+neck brace, 4.08%
+necklace, 3.85%
+nematode, 3.62%
+night snake, 3.62%
+nipple, 3.78%
+notebook, 3.77%
+obelisk, 3.55%
+oboe, 3.78%
+ocarina, 3.62%
+odometer, 3.62%
+oil filter, 4.11%
+orange, 3.54%
+orangutan, 3.70%
+organ, 3.69%
+oscilloscope, 3.77%
+ostrich, 3.62%
+otter, 3.78%
+otterhound, 6.78%
+overskirt, 4.89%
+ox, 3.77%
+oxcart, 3.70%
+oxygen mask, 3.69%
+oystercatcher, 3.62%
+packet, 3.77%
+paddle, 3.54%
+paddlewheel, 3.62%
+padlock, 3.86%
+paintbrush, 3.62%
+pajama, 3.70%
+palace, 3.85%
+panpipe, 3.86%
+paper towel, 3.85%
+papillon, 3.77%
+parachute, 3.62%
+parallel bars, 3.78%
+park bench, 3.70%
+parking meter, 3.70%
+partridge, 3.77%
+passenger car, 3.62%
+patas, 3.85%
+patio, 4.36%
+pay-phone, 3.85%
+peacock, 3.70%
+pedestal, 4.16%
+pelican, 3.78%
+pencil box, 3.70%
+pencil sharpener, 3.77%
+perfume, 3.78%
+photocopier, 3.54%
+pick, 4.07%
+pickelhaube, 3.77%
+picket fence, 3.54%
+pickup, 3.70%
+pier, 3.70%
+piggy bank, 3.70%
+pill bottle, 3.85%
+pillow, 3.47%
+pineapple, 3.70%
+ping-pong ball, 3.67%
+pinwheel, 4.30%
+pirate, 3.94%
+pitcher, 3.86%
+pizza, 3.78%
+plane, 3.46%
+planetarium, 3.71%
+plastic bag, 4.31%
+plate, 3.85%
+plate rack, 4.66%
+platypus, 3.85%
+plow, 3.54%
+plunger, 3.59%
+pole, 3.70%
+polecat, 3.86%
+police van, 3.78%
+pomegranate, 3.78%
+poncho, 3.70%
+pool table, 3.85%
+pop bottle, 3.86%
+porcupine, 3.70%
+pot, 3.62%
+potpie, 3.70%
+potter's wheel, 3.62%
+power drill, 5.30%
+prairie chicken, 3.77%
+prayer rug, 3.77%
+pretzel, 3.54%
+printer, 3.62%
+prison, 3.77%
+proboscis monkey, 3.54%
+projectile, 3.31%
+projector, 3.77%
+promontory, 3.70%
+ptarmigan, 3.77%
+puck, 3.62%
+puffer, 3.85%
+pug, 3.62%
+punching bag, 3.69%
+purse, 3.63%
+quail, 3.62%
+quill, 3.62%
+quilt, 3.70%
+racer, 3.77%
+racket, 3.85%
+radiator, 3.60%
+radio, 3.54%
+radio telescope, 3.63%
+rain barrel, 3.40%
+ram, 3.77%
+rapeseed, 3.78%
+recreational vehicle, 3.47%
+red fox, 3.70%
+red wine, 3.39%
+red wolf, 3.78%
+red-backed sandpiper, 3.70%
+red-breasted merganser, 4.30%
+redbone, 3.81%
+redshank, 3.70%
+reel, 3.86%
+reflex camera, 3.78%
+refrigerator, 3.78%
+remote control, 3.47%
+restaurant, 3.78%
+revolver, 3.78%
+rhinoceros beetle, 3.70%
+rifle, 3.78%
+ringlet, 3.77%
+ringneck snake, 3.86%
+robin, 3.85%
+rock beauty, 5.07%
+rock crab, 3.70%
+rock python, 4.58%
+rocking chair, 3.70%
+rotisserie, 3.70%
+rubber eraser, 3.70%
+ruddy turnstone, 3.63%
+ruffed grouse, 3.86%
+rugby ball, 3.77%
+rule, 3.78%
+running shoe, 3.62%
+safe, 4.67%
+safety pin, 3.90%
+saltshaker, 3.46%
+sandal, 3.70%
+sandbar, 3.70%
+sarong, 3.69%
+sax, 3.86%
+scabbard, 3.63%
+scale, 3.78%
+schipperke, 3.70%
+school bus, 3.70%
+schooner, 3.70%
+scoreboard, 3.70%
+scorpion, 3.71%
+screen, 3.95%
+screw, 3.79%
+screwdriver, 3.63%
+scuba diver, 3.62%
+sea anemone, 3.70%
+sea cucumber, 3.70%
+sea lion, 3.63%
+sea slug, 3.62%
+sea snake, 3.70%
+sea urchin, 3.54%
+seashore, 3.62%
+seat belt, 3.85%
+sewing machine, 3.70%
+shield, 3.32%
+shoe shop, 3.62%
+shoji, 3.77%
+shopping basket, 3.70%
+shopping cart, 3.69%
+shovel, 3.77%
+shower cap, 3.63%
+shower curtain, 3.78%
+siamang, 3.86%
+sidewinder, 3.62%
+silky terrier, 3.78%
+ski, 3.78%
+ski mask, 3.70%
+skunk, 3.55%
+sleeping bag, 3.85%
+slide rule, 3.88%
+sliding door, 3.78%
+slot, 3.70%
+sloth bear, 3.78%
+slug, 3.70%
+snail, 3.78%
+snorkel, 3.62%
+snow leopard, 3.77%
+snowmobile, 3.78%
+snowplow, 3.70%
+soap dispenser, 3.70%
+soccer ball, 3.78%
+sock, 3.86%
+soft-coated wheaten terrier, 3.39%
+solar dish, 3.77%
+sombrero, 3.62%
+sorrel, 3.70%
+soup bowl, 3.70%
+space bar, 4.78%
+space heater, 4.89%
+space shuttle, 3.88%
+spaghetti squash, 3.88%
+spatula, 3.77%
+speedboat, 3.70%
+spider monkey, 3.70%
+spider web, 3.85%
+spindle, 3.46%
+spiny lobster, 3.70%
+spoonbill, 3.62%
+sports car, 3.70%
+spotlight, 3.77%
+spotted salamander, 3.77%
+squirrel monkey, 3.70%
+stage, 3.62%
+standard poodle, 3.85%
+standard schnauzer, 3.85%
+starfish, 3.78%
+steam locomotive, 3.69%
+steel arch bridge, 4.25%
+steel drum, 3.70%
+stethoscope, 3.77%
+stingray, 3.62%
+stinkhorn, 3.70%
+stole, 3.86%
+stone wall, 3.70%
+stopwatch, 4.34%
+stove, 3.78%
+strainer, 3.62%
+strawberry, 3.70%
+street sign, 3.78%
+streetcar, 3.69%
+stretcher, 3.70%
+studio couch, 3.78%
+stupa, 3.70%
+sturgeon, 3.70%
+submarine, 3.54%
+suit, 3.62%
+sulphur butterfly, 3.86%
+sulphur-crested cockatoo, 3.70%
+sundial, 3.70%
+sunglass, 3.77%
+sunglasses, 3.85%
+sunscreen, 4.03%
+suspension bridge, 3.70%
+swab, 3.78%
+sweatshirt, 5.16%
+swimming trunks, 3.54%
+swing, 3.78%
+switch, 3.71%
+syringe, 3.62%
+tabby, 3.78%
+table lamp, 3.77%
+tailed frog, 3.78%
+tank, 3.78%
+tape player, 3.78%
+tarantula, 3.62%
+teapot, 3.62%
+teddy, 3.85%
+television, 3.77%
+tench, 3.86%
+tennis ball, 3.54%
+terrapin, 3.70%
+thatch, 3.70%
+theater curtain, 3.57%
+thimble, 3.70%
+three-toed sloth, 3.85%
+thresher, 3.78%
+throne, 5.03%
+thunder snake, 3.62%
+tick, 3.62%
+tiger, 3.70%
+tiger beetle, 3.70%
+tiger cat, 3.85%
+tiger shark, 3.70%
+tile roof, 3.70%
+timber wolf, 3.70%
+titi, 3.62%
+toaster, 3.54%
+tobacco shop, 3.92%
+toilet seat, 3.86%
+toilet tissue, 3.70%
+torch, 3.86%
+totem pole, 3.78%
+toucan, 3.85%
+tow truck, 3.69%
+toy poodle, 3.78%
+toy terrier, 5.82%
+toyshop, 3.62%
+tractor, 3.70%
+traffic light, 3.86%
+trailer truck, 3.70%
+tray, 3.70%
+tree frog, 3.62%
+trench coat, 4.57%
+triceratops, 3.87%
+tricycle, 3.77%
+trifle, 3.70%
+trilobite, 3.62%
+trimaran, 3.70%
+tripod, 4.32%
+triumphal arch, 3.70%
+trolleybus, 3.62%
+trombone, 3.86%
+tub, 3.77%
+turnstile, 3.85%
+tusker, 3.77%
+typewriter keyboard, 3.86%
+umbrella, 3.70%
+unicycle, 3.85%
+upright, 3.78%
+vacuum, 3.70%
+valley, 3.70%
+vase, 3.70%
+vault, 3.79%
+velvet, 4.62%
+vending machine, 3.54%
+vestment, 3.70%
+viaduct, 3.54%
+vine snake, 3.78%
+violin, 3.62%
+vizsla, 3.78%
+volcano, 3.77%
+volleyball, 3.62%
+vulture, 3.78%
+waffle iron, 4.41%
+walking stick, 3.78%
+wall clock, 3.70%
+wallaby, 3.77%
+wallet, 3.85%
+wardrobe, 3.62%
+warplane, 3.78%
+warthog, 3.85%
+washbasin, 3.62%
+washer, 3.70%
+water bottle, 3.70%
+water buffalo, 3.78%
+water jug, 3.55%
+water ouzel, 3.70%
+water snake, 3.78%
+water tower, 3.78%
+weasel, 3.62%
+web site, 3.78%
+weevil, 3.85%
+whippet, 3.71%
+whiptail, 3.70%
+whiskey jug, 4.57%
+whistle, 3.69%
+white stork, 3.77%
+white wolf, 3.62%
+wig, 3.62%
+wild boar, 3.70%
+window screen, 3.77%
+window shade, 3.77%
+wine bottle, 3.78%
+wing, 3.70%
+wire-haired fox terrier, 4.92%
+wok, 3.78%
+wolf spider, 3.78%
+wombat, 3.77%
+wood rabbit, 3.70%
+wooden spoon, 3.78%
+wool, 3.39%
+worm fence, 3.70%
+wreck, 3.86%
+yawl, 3.99%
+yellow lady's slipper, 3.77%
+yurt, 3.72%
+zebra, 3.62%
+zucchini, 3.70%

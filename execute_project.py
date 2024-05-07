@@ -174,7 +174,8 @@ class ExecuteProject:
                                 dead_neurons_steps=self.dead_neurons_steps,
                                 sae_batch_size=self.sae_batch_size,
                                 batch_size=self.batch_size,
-                                dataset_name=self.dataset_name)
+                                dataset_name=self.dataset_name,
+                                directory_path=self.directory_path)
         pipeline.instantiate_models(model_name=self.model_name, 
                                     img_size=self.img_size, 
                                     model_optimizer_name=self.model_optimizer_name,

@@ -48,13 +48,7 @@ class GetSaeInpSize:
         self.register_hooks()
         
         for batch in self.train_dataloader:
-            if isinstance(batch, (list, tuple)) and len(batch) == 2:
-                inputs, targets = batch
-            elif isinstance(batch, dict) and len(batch) == 2 and list(batch.keys())[0] == "image" and list(batch.keys())[1] == "label":
-                # this format holds for the tiny imagenet dataset
-                inputs, targets = batch["image"], batch["label"]
-            else:
-                raise ValueError("Unexpected data format from dataloader")  
+            inputs, _, _ = process_batch(batch)
             # get the first sample from the batch
             inputs = inputs[0].unsqueeze(0)   
             inputs = inputs.to(self.device)       

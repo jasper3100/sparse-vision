@@ -25,6 +25,7 @@ import socket
 from datetime import datetime, timedelta
 from torch.autograd.profiler import record_function
 import gc
+import time
 
 from dataloaders.tiny_imagenet import *
 from dataloaders.tiny_imagenet import _add_channels
@@ -38,9 +39,38 @@ from dataloaders.imagenet import *
 from dataloaders.old_imagenet_classnames import imagenet_classnames
 from machine_interpretability.stimuli_generation import mis_utils, sg_utils
 
+class ConstrainedAdam(torch.optim.Adam):
+    """
+    A variant of Adam where some of the parameters are constrained to have unit norm.
+    # from: https://github.com/saprmarks/dictionary_learning/blob/614883f9476613e7c1c48b951cd3947451e1f534/training.py
+    """
+    def __init__(self, params, constrained_params, lr):
+        super().__init__(params, lr=lr, betas=(0.9, 0.999))
+        # CAREFUL: The authors of this function set constrained_params = model.decoder.parameters()
+        # In their code, these parameters only contain the weights. But in my equivalent 
+        # implementation, I also have a decoder bias. So I use this function with
+        # constrained_params = model.decoder.weights
+        # Otherwise when trying to normalize the decoder bias I would get an error
+        # because bias = 0 initially so dividing by its norm would result in NaN
+        self.p = constrained_params
+    
+    def step(self, closure=None):
+        with torch.no_grad():
+            #for p in self.constrained_params:
+            if self.p.norm(dim=0).min() < 1e-6:
+                logging.warning(f"Constrained parameter {self.p} has a norm smaller than 1e-6")
+            normed_p = self.p / self.p.norm(dim=0, keepdim=True)
+            # project away the parallel component of the gradient
+            self.p.grad -= (self.p.grad * normed_p).sum(dim=0, keepdim=True) * normed_p
+        super().step(closure=closure) # step of Adam
+        with torch.no_grad():
+            #for p in self.constrained_params:
+            # renormalize the constrained parameters
+            self.p /= self.p.norm(dim=0, keepdim=True)
+
 def get_optimizer(optimizer_name, model, learning_rate):
     if optimizer_name == 'adam':
-        return torch.optim.Adam(model.parameters(), lr=learning_rate, betas=(0,0.9999)), None
+        return torch.optim.Adam(model.parameters(), lr=learning_rate, betas=(0.9,0.9999)), None
     elif optimizer_name == 'sgd':
         return torch.optim.SGD(model.parameters(), lr=learning_rate), None
     elif optimizer_name == 'sgd_w_scheduler':
@@ -48,14 +78,16 @@ def get_optimizer(optimizer_name, model, learning_rate):
         optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)    
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
         return optimizer, scheduler
+    elif optimizer_name == 'constrained_adam':
+        return ConstrainedAdam(model.parameters(), model.decoder.weight, lr=learning_rate), None
     else:
         raise ValueError(f"Unsupported optimizer: {optimizer_name}")
 
-def get_criterion(criterion_name, lambda_sparse=None):
+def get_criterion(criterion_name):
     if criterion_name == 'cross_entropy':
         return nn.CrossEntropyLoss()
     elif criterion_name == 'sae_loss':
-        return SparseLoss(lambda_sparse=lambda_sparse)
+        return SparseLoss()
     else:
         raise ValueError(f"Unsupported criterion: {criterion_name}")
     
@@ -71,7 +103,7 @@ def get_img_size(dataset_name):
     else:
         raise ValueError(f"Unsupported dataset: {dataset_name}")
     
-def get_file_path(folder_path=None, layer_names=None, params=None, file_name=None, params2=None):
+def get_file_path(folder_path=None, sae_layer=None, params=None, file_name=None, params2=None):
     '''
     params and params2 expect a dictionary of parameters
     '''
@@ -87,11 +119,11 @@ def get_file_path(folder_path=None, layer_names=None, params=None, file_name=Non
             if isinstance(params2, dict):
                 values_as_strings = [str(value) if value is not None else "None" for value in params2.values()]
                 params2 = "_".join(values_as_strings)
-            file_name = f'{layer_names}_{params}_{params2}_{file_name}'
+            file_name = f'{sae_layer}_{params}_{params2}_{file_name}'
         else:
-            file_name = f'{layer_names}_{params}_{file_name}'
+            file_name = f'{sae_layer}_{params}_{file_name}'
     else:
-        file_name = f'{layer_names}_{file_name}'
+        file_name = f'{sae_layer}_{file_name}'
 
     if folder_path is None:
         file_path = file_name
@@ -101,10 +133,10 @@ def get_file_path(folder_path=None, layer_names=None, params=None, file_name=Non
     
 def save_model_weights(model, 
                        folder_path, 
-                       layer_names=None, # layer_name is used for SAE models, because SAE is trained on activations of a specific layer
+                       sae_layer=None, # layer_name is used for SAE models, because SAE is trained on activations of a specific layer
                        params=None):
     os.makedirs(folder_path, exist_ok=True) # create folder if it doesn't exist
-    file_path = get_file_path(folder_path, layer_names, params, 'model_weights.pth')
+    file_path = get_file_path(folder_path, sae_layer, params, 'model_weights.pth')
     torch.save(model.state_dict(), file_path)
     print(f"Successfully stored model weights in {file_path}")
 
@@ -413,7 +445,8 @@ def load_data(directory_path, dataset_name, batch_size):
   
             train_files = glob.glob(os.path.join(datadir, "imagenet-train-*"))
             # reduce size for now
-            pattern = re.compile(r"imagenet-train-00001[0-9]")
+            #pattern = re.compile(r"imagenet-train-0000[0-2][0-9]")
+            pattern = re.compile(r"imagenet-train-00001[0-5]") # 10-15
             # Filter the list of folder names based on the regex pattern
             train_files = [folder for folder in train_files if pattern.search(folder)]
 
@@ -518,7 +551,7 @@ def load_data(directory_path, dataset_name, batch_size):
     
     img_size = get_img_size(dataset_name)
 
-    return train_dataloader, train_dataloader, category_names, img_size # train_dataloader, val_dataloader
+    return train_dataloader, val_dataloader, category_names, img_size # train_dataloader, val_dataloader
 
     
 def store_feature_maps(activations, folder_path, params=None):
@@ -532,7 +565,7 @@ def store_feature_maps(activations, folder_path, params=None):
         if activation.nelement() == 0:
             raise ValueError(f"Activation of layer {name} is empty")
         else:
-            file_path = get_file_path(folder_path, layer_names=[name], params=params, file_name='activations.h5')
+            file_path = get_file_path(folder_path, sae_layer=[name], params=params, file_name='activations.h5')
             # Store activations to an HDF5 file
             with h5py.File(file_path, 'w') as h5_file:
                 h5_file.create_dataset('data', data=activation.cpu().numpy())
@@ -544,7 +577,7 @@ def store_batch_feature_maps(activation, num_samples, name, folder_path, params=
     if activation.nelement() == 0:
         raise ValueError(f"Activation of layer {name} is empty")
     else:
-        file_path = get_file_path(folder_path, layer_names=[name], params=params, file_name='activations.h5')
+        file_path = get_file_path(folder_path, sae_layer=[name], params=params, file_name='activations.h5')
         # Store activations to an HDF5 file
         with h5py.File(file_path, 'a') as h5_file:
             # check if the dataset already exists
@@ -571,9 +604,9 @@ def get_module_names(model):
     """
     Get the names of all named modules in the model.
     """
-    layer_names = [name for name, _ in model.named_modules()]
-    layer_names = list(filter(None, layer_names)) # remove emtpy strings
-    return layer_names
+    sae_layer = [name for name, _ in model.named_modules()]
+    sae_layer = list(filter(None, sae_layer)) # remove emtpy strings
+    return sae_layer
 
 def get_classifications(output, category_names, imagenet):
     # if output is already a prob distribution (f.e. if last layer of network is softmax)
@@ -599,7 +632,7 @@ def show_classification_with_images(dataloader,
                                     wandb_status,
                                     directory_path,
                                     folder_path=None,
-                                    layer_names=None,
+                                    sae_layer=None,
                                     model=None,
                                     device=None,
                                     output=None,
@@ -609,7 +642,7 @@ def show_classification_with_images(dataloader,
     This function either works with available model output or the model can be used to generate the output.
     '''
     os.makedirs(folder_path, exist_ok=True)
-    file_path = get_file_path(folder_path, layer_names, params, 'classif_visual_original.png')
+    file_path = get_file_path(folder_path, sae_layer, params, 'classif_visual_original.png')
     
     n = 10  # show only the first n images, 
     # for showing all images in the batch use len(predicted_classes)
@@ -635,7 +668,7 @@ def show_classification_with_images(dataloader,
 
     if output_2 is not None:
         scores_2, predicted_classes_2, _ = get_classifications(output_2, class_names, imagenet)
-        file_path = get_file_path(folder_path, layer_names, params, 'classif_visual_original_modified.png')
+        file_path = get_file_path(folder_path, sae_layer, params, 'classif_visual_original_modified.png')
     
     fig, axes = plt.subplots(1, n + 1, figsize=(20, 3))
 
@@ -741,7 +774,7 @@ def log_image_table(dataloader,
         wandb.log({"original_predictions_table":table}, commit=False)
 
 def plot_active_classes_per_neuron(number_active_classes_per_neuron, 
-                                   layer_names, 
+                                   sae_layer, 
                                    num_classes,
                                    folder_path=None, 
                                    params=None, 
@@ -753,7 +786,7 @@ def plot_active_classes_per_neuron(number_active_classes_per_neuron,
     bins = np.arange(0, num_classes+1.01, 1)
 
     for name in number_active_classes_per_neuron.keys():
-        if name[0] == layer_names.split("_")[-1] or name[0] == 'fc3':
+        if name[0] == sae_layer.split("_")[-1] or name[0] == 'fc3':
             if name[0] == 'fc3':
                 row = 1
             else:
@@ -777,13 +810,13 @@ def plot_active_classes_per_neuron(number_active_classes_per_neuron,
         wandb.log({"active_classes_per_neuron":wandb.Image(plt)})
     else:
         os.makedirs(folder_path, exist_ok=True)
-        file_path = get_file_path(folder_path, layer_names, params, 'active_classes_per_neuron.png')
+        file_path = get_file_path(folder_path, sae_layer, params, 'active_classes_per_neuron.png')
         plt.savefig(file_path)
         plt.close()
         print(f"Successfully stored active classes per neuron plot in {file_path}")
 
 def plot_neuron_activation_density(active_classes_per_neuron, 
-                                   layer_names, 
+                                   sae_layer, 
                                    num_samples,
                                    folder_path=None, 
                                    params=None, 
@@ -795,7 +828,7 @@ def plot_neuron_activation_density(active_classes_per_neuron,
     bins = np.arange(0, 1.01, 0.05)
 
     for name in active_classes_per_neuron.keys():
-        if name[0] == layer_names.split("_")[-1] or name[0] == 'fc3':
+        if name[0] == sae_layer.split("_")[-1] or name[0] == 'fc3':
             if name[0] == 'fc3':
                 row = 1
             else:
@@ -823,7 +856,7 @@ def plot_neuron_activation_density(active_classes_per_neuron,
         wandb.log({"neuron_activation_density":wandb.Image(plt)})
     else:
         os.makedirs(folder_path, exist_ok=True)
-        file_path = get_file_path(folder_path, layer_names, params, 'neuron_activation_density.png')
+        file_path = get_file_path(folder_path, sae_layer, params, 'neuron_activation_density.png')
         plt.savefig(file_path)
         plt.close()
         print(f"Successfully stored neuron activation density plot in {file_path}")
@@ -896,7 +929,7 @@ def get_model_accuracy(model,
                        device, 
                        train_dataloader, 
                        original_activations_folder_path=None, 
-                       layer_names=None, 
+                       sae_layer=None, 
                        model_params=None, 
                        wandb_status=False,
                        num_batches=None):
@@ -908,8 +941,9 @@ def get_model_accuracy(model,
         wandb.log({"model_train_accuracy": accuracy})
 
 def store_sae_eval_results(folder_path, 
-                            layer_names, 
+                            sae_layer, 
                             params, 
+                            epochs,
                             lambda_sparse, 
                             expansion_factor, 
                             batch_size,
@@ -928,15 +962,15 @@ def store_sae_eval_results(folder_path,
     # params doesn't contain lambda_sparse, expansion factor, learning rate etc. because we 
     # want a uniform file name for all different values
     file_path = get_file_path(folder_path=folder_path,
-                            layer_names=layer_names,
+                            sae_layer=sae_layer,
                             params=params,
                             file_name='sae_eval_results.csv')
     file_exists = os.path.exists(file_path)
     columns = ["lambda_sparse", 
                "expansion_factor", 
                "batch_size",
-                "optimizer_name",
-                "learning_rate",
+               "optimizer_name",
+               "learning_rate",
                "rec_loss", 
                "l1_loss", 
                "nrmse_loss", 
@@ -945,7 +979,8 @@ def store_sae_eval_results(folder_path,
                "var_expl",
                "perc_dead_units",
                "loss_diff",
-               "median_mis"]#, "rel_sparsity_1"]
+               "median_mis",
+               "epochs"]#, "rel_sparsity_1"]
     
     if file_exists:
         df = pd.read_csv(file_path)
@@ -973,7 +1008,8 @@ def store_sae_eval_results(folder_path,
                             columns[10]: var_expl,
                             columns[11]: perc_dead_units,
                             columns[12]: loss_diff,
-                            columns[13]: median_mis})
+                            columns[13]: median_mis,
+                            columns[14]: epochs})
     else:
         # Read the existing CSV file
         with open(file_path, 'r', newline='') as csvfile:
@@ -986,12 +1022,13 @@ def store_sae_eval_results(folder_path,
                                       and row["batch_size"] == str(batch_size)
                                        and row["optimizer_name"] == str(optimizer_name)
                                         and row["learning_rate"] == str(learning_rate) 
-                                        for row in rows)
+                                         and row["epochs"] == str(epochs)
+                                          for row in rows)
 
             # If the combination exists, update rec_loss, l1_loss, relative sparsity
             if combination_exists:
                 for row in rows:
-                    if row["lambda_sparse"] == str(lambda_sparse) and row["expansion_factor"] == str(expansion_factor) and row["batch_size"] == str(batch_size) and row["optimizer_name"] == str(optimizer_name) and row["learning_rate"] == str(learning_rate):
+                    if row["lambda_sparse"] == str(lambda_sparse) and row["expansion_factor"] == str(expansion_factor) and row["batch_size"] == str(batch_size) and row["optimizer_name"] == str(optimizer_name) and row["learning_rate"] == str(learning_rate) and row["epochs"] == str(epochs):
                         row["rec_loss"] = str(rec_loss)
                         row["l1_loss"] = str(scaled_l1_loss)
                         row["nrmse_loss"] = str(nrmse_loss)
@@ -1019,14 +1056,15 @@ def store_sae_eval_results(folder_path,
                             "var_expl": str(var_expl),
                             "perc_dead_units": str(perc_dead_units),
                             "loss_diff": str(loss_diff),
-                            "median_mis": str(median_mis)})
+                            "median_mis": str(median_mis),
+                            "epochs": str(epochs)})
                             #"rel_sparsity_1": str(sparsity_1)})
 
         # Write the updated data back to the CSV file
         with open(file_path, 'w', newline='') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=columns)
             writer.writerows(rows)
-    print(f"Successfully stored SAE eval results with lamda_sparse and expansion_factor in {file_path}")
+    print(f"Successfully stored SAE eval results in {file_path}")
 
 def get_folder_paths(directory_path, model_name, dataset_name, sae_model_name):
     model_weights_folder_path = os.path.join(directory_path, 'model_weights', model_name, dataset_name)
@@ -1117,13 +1155,13 @@ def print_and_log_results(epoch_mode,
     else:
         raise ValueError("epoch_mode needs to be 'train' or 'eval'.")
 
-    # we don't print anything during training because there we deal with results batch-wise
-    # printing for every batch would be too much, instead, if specified, these things will be logged to W&B
-    if epoch_mode == 'eval':
+    if epoch_mode == 'eval' or (epoch_mode == 'train' and step % 100 == 0):
+        print("---------------------------------")
         print(f"Model loss: {model_loss:.4f} | Model accuracy: {accuracy:.4f}")
         if use_sae:
             print(f"KLD: {kld:.4f} | Perc same classifications: {perc_same_classification:.4f}")
             print(f"Loss difference: {loss_diff:.4f}")
+        print("Variance explained", var_expl)
     if wandb_status:
         wandb.log({f"{epoch_mode}/model loss": model_loss, f"{epoch_mode}/model accuracy": accuracy, f"{epoch_or_batch}": step}, commit=False)
         if use_sae:
@@ -1142,8 +1180,8 @@ def print_and_log_results(epoch_mode,
     # hence, it suffices to iterate over the keys of the sparsity dictionary
         model_key = name[1] # can be "original" (model), "sae" (encoder output), "modified" (model)
 
-        #if name[0] in layer_names or name[0] == 'fc2':
-        if epoch_mode == 'eval':
+        #if name[0] in sae_layer or name[0] == 'fc2':
+        if epoch_mode == 'eval' or (epoch_mode == 'train' and step % 100 == 0):
             '''
             print("-------")
             if number_active_neurons is not None:
@@ -1159,6 +1197,7 @@ def print_and_log_results(epoch_mode,
             '''
             if use_sae and name[0] in sae_loss.keys() and model_key == 'sae':
                 print(f"SAE loss, layer {name[0]}: {sae_loss[name[0]]:.4f} | SAE rec. loss, layer {name[0]}: {sae_rec_loss[name[0]]:.4f} | SAE l1 loss, layer {name[0]}: {sae_l1_loss[name[0]]:.4f}")
+            print(f"Sparsity, {model_key} layer {name[0]}: {sparsity_dict[name]:.3f}")
         if wandb_status:                    
             wandb.log({f"{epoch_mode}/Sparsity/{model_key}_layer_{name[0]} sparsity": sparsity_dict[name], f"{epoch_or_batch}":step}, commit=False)
             if epoch_mode == 'eval':
@@ -1199,10 +1238,10 @@ def feature_similarity(activations,activation_similarity,device):
     '''
     calculates the feature similarity between the modified and original for one batch
     '''
-    unique_layer_names = {key[0] for key in activations.keys()} # curly brackets denote a set --> only take unique values
+    unique_sae_layer = {key[0] for key in activations.keys()} # curly brackets denote a set --> only take unique values
     # alternatively: module_names = get_module_names(model)
 
-    for name in unique_layer_names:
+    for name in unique_sae_layer:
         # we get the activations of the specified layer
         original_activation = activations.get((name, 'original'), None).to(device)
         modified_activation = activations.get((name, 'modified'), None).to(device)
@@ -1361,7 +1400,7 @@ def show_top_k_samples(val_dataloader,
                        small_k_samples, 
                        n, 
                        folder_path=None, 
-                       layer_names=None, 
+                       sae_layer=None, 
                        params=None,
                        number_neurons=None, 
                        neuron_idx=None,
@@ -1485,7 +1524,7 @@ def show_top_k_samples(val_dataloader,
     else:
         folder_path = os.path.join(folder_path, 'visualize_top_samples')
         os.makedirs(folder_path, exist_ok=True)
-        file_path = get_file_path(folder_path, layer_names, params, f'{model_key}_{layer_name}_{number_neurons}_top_{n**2}_samples.png')
+        file_path = get_file_path(folder_path, sae_layer, params, f'{model_key}_{layer_name}_{number_neurons}_top_{n**2}_samples.png')
         plt.savefig(file_path, bbox_inches='tight', pad_inches=0.1, dpi=300)
         print(f"Successfully stored top {n**2} samples for {number_neurons} neurons in {file_path}")
     plt.close()
@@ -1524,7 +1563,7 @@ def process_sae_layers_list(sae_layers, original_model, training):
         sae_layers_list = [sae_layers]  
     return sae_layers_list
 
-def activation_histograms(activations, folder_path, layer_names, params, wandb_status, targets=None):
+def activation_histograms(activations, folder_path, sae_layer, params, wandb_status, targets=None):
     '''
     activations is a dictionary of the form {(layer_name, model_key): tensor}
     where tensor has shape [number of samples in one epoch, number of neurons in layer]
@@ -1578,7 +1617,7 @@ def activation_histograms(activations, folder_path, layer_names, params, wandb_s
             wandb.log({f"eval/{name}/{key[0]}_{key[1]}":wandb.Image(plt)})
         # store the figure also if we use the cluster because resolution with W&B might not be high enough
         os.makedirs(folder_path, exist_ok=True)
-        file_path = get_file_path(folder_path=folder_path, layer_names=layer_names, params=params, file_name=f'{name}_{key[0]}_{key[1]}.png')
+        file_path = get_file_path(folder_path=folder_path, sae_layer=sae_layer, params=params, file_name=f'{name}_{key[0]}_{key[1]}.png')
         plt.savefig(file_path, dpi=300)
         plt.close()
         print(f"Successfully stored {name} of layer {key[0]}, model {key[1]} in {file_path}")
@@ -1597,18 +1636,18 @@ def processed_optim_image(image_data, version, mean, std, first_image):
         raise ValueError("Version should be 1 or 2.")
     return image_data
 
-def plot_lucent_explanations(model, layer_names, params, folder_path, wandb_status, num_units):
+def plot_lucent_explanations(model, sae_layer, params, folder_path, wandb_status, num_units):
     folder_path = os.path.join(folder_path, 'lucent_explanations')
     os.makedirs(folder_path, exist_ok=True)
     layer_list = []
-    if layer_names == "None__": # if we use the original model
+    if sae_layer == "None__": # if we use the original model
         print("Not computing maximally activating explanations for the original model. If you want to do so, please specify layers manually in the plot_lucent_explanations function.")
     else: # if we use SAE
-        # count the number of non-empty strings in layer_names.split("_")
-        if sum([1 for name in layer_names.split("_") if name != ""]) > 1:
+        # count the number of non-empty strings in sae_layer.split("_")
+        if sum([1 for name in sae_layer.split("_") if name != ""]) > 1:
             print("Should we compute maximally activating explanations for all SAE layers? As of right now, nothing is computed")
         else:
-            for name in layer_names.split("_"):
+            for name in sae_layer.split("_"):
                 if name != "":
                     # for example name = 'layer1.0.conv1'
                     # replace '.' with '_' to get 'layer1_0_conv1'
@@ -1634,7 +1673,7 @@ def plot_lucent_explanations(model, layer_names, params, folder_path, wandb_stat
         if wandb_status:
             wandb.log({f"eval/maximally_activating_explanations/{layer_name}":wandb.Image(plt)})
         # store the figure also if we use the cluster because resolution with W&B might not be high enough
-        file_path = get_file_path(folder_path=folder_path, layer_names=layer_names, params=params, file_name=f'lucent_explanations_{layer_name}_for_{num_units}_neurons.png')
+        file_path = get_file_path(folder_path=folder_path, sae_layer=sae_layer, params=params, file_name=f'lucent_explanations_{layer_name}_for_{num_units}_neurons.png')
         plt.savefig(file_path, dpi=300)
         plt.close()
         print(f"Successfully stored maximally activating explanations of layer {layer_name} in {file_path}")
@@ -1671,7 +1710,7 @@ def update_histogram(histogram_info, name, model_key, output, device, output_2=N
     return histogram_info
 
 
-def activation_histograms_2(histogram_info, folder_path, layer_names, params, wandb_status, num_units):
+def activation_histograms_2(histogram_info, folder_path, sae_layer, params, wandb_status, num_units):
     name = "activation_histograms"
     folder_path = os.path.join(folder_path, name)
     os.makedirs(folder_path, exist_ok=True)
@@ -1695,7 +1734,7 @@ def activation_histograms_2(histogram_info, folder_path, layer_names, params, wa
         if wandb_status:
             wandb.log({f"eval/{name}/{key[0]}_{key[1]}":wandb.Image(plt)})
         # store the figure also if we use the cluster because resolution with W&B might not be high enough
-        file_path = get_file_path(folder_path=folder_path, layer_names=layer_names, params=params, file_name=f'{name}_{key[0]}_{key[1]}.png')
+        file_path = get_file_path(folder_path=folder_path, sae_layer=sae_layer, params=params, file_name=f'{name}_{key[0]}_{key[1]}.png')
         plt.savefig(file_path, dpi=300)
         plt.close()
         print(f"Successfully stored {name} of layer {key[0]}, model {key[1]} in {file_path}")
@@ -1887,3 +1926,80 @@ def get_string_to_idx_dict(filename):
     string_to_index = {string: idx for idx, string in enumerate(lines)}
     index_to_string = {idx: string for string, idx in string_to_index.items()}
     return string_to_index, index_to_string
+
+
+def compute_mis(self, evaluation_results_folder_path, params_string, model_key, layer_name, idx_to_filename, n_mis, epoch):
+    folder_path = os.path.join(evaluation_results_folder_path, 'filename_indices')
+    file_path = get_file_path(folder_path=folder_path,
+                            sae_layer=model_key + '_' + layer_name,
+                            params=params_string,
+                            file_name=f'max_min_filename_indices_epoch_{epoch}.pt')
+    data = torch.load(file_path)
+    max_filename_indices = data['max_filename_indices']
+    min_filename_indices = data['min_filename_indices']
+
+    similarity_function = "dreamsim" 
+    similarity_function_args = (
+        "/is/cluster/fast/rzimmermann/interpretability-comparison-data/dependencies/dreamsim_features_imagenet_train.pkl",
+        "/is/cluster/fast/rzimmermann/interpretability-comparison-data/dependencies/dreamsim_logistic_regression.hard_coded_sklearn.pkl" #"../../stimuli_generation/dreamsim_logistic_regression.hard_coded.pkl"
+    ) 
+
+    df = pd.DataFrame(columns=['layer_name', 'model_key', 'unit_idx', 'MIS', 'MIS_confidence'])
+
+    # we want to compute the MIS for each unit in the layer                
+    for unit_idx in range(max_filename_indices.shape[1]):
+    
+        max_filename_indices_unit = max_filename_indices[:,unit_idx]
+        min_filename_indices_unit = min_filename_indices[:,unit_idx]
+        max_filenames = [idx_to_filename[idx.item()] for idx in max_filename_indices_unit]
+        min_filenames = [idx_to_filename[idx.item()] for idx in min_filename_indices_unit]
+        '''
+        make_fair_batches says that it takes a list of filenames sorted by ascending activation score but in fact
+        if one looks at sg_utils.extract_stimuli_for_layer_units_from_dataframe line 916 & 917, we see that the input 
+        is min_exemplars = min_queries + min_refs; max_exemplars = max_refs + max_queries (i.e. the lists are added as such: [1,2] + [3,4] = [1,2,3,4])
+        But the order according to activation values is: min_refs < min_queries < max_queries < max_refs
+        So the input is not by "ascending activation score", while inside of all of these lists however, the order is indeed by 
+        ascending activation score.
+        Apart from the wrong description of make_fair_batches, the code is correct. The requirement is simply that the query images
+        come last (for min_exemplars we apply reverse=True). It might not make much of a difference though if the query images 
+        are chosen to be as such: min_queries < min_refs < max_refs < max_queries
+        '''
+        # query images come last
+        max_queries_filenames = max_filenames[:n_mis] # get first self.n_mis (# tasks) filenames 
+        max_refs_filenames = max_filenames[n_mis:] # remaining filenames
+        min_queries_filenames = min_filenames[-n_mis:] # last self.n_mis filenames
+        min_refs_filenames = min_filenames[:-n_mis] # remaining filenames
+
+        max_filenames = max_refs_filenames + max_queries_filenames
+        min_filenames = min_queries_filenames + min_refs_filenames # we apply reverse=True below                    
+        
+        max_lists = sg_utils.make_fair_batches(max_filenames, n_mis)
+        min_lists = sg_utils.make_fair_batches(min_filenames, n_mis, reverse=True)
+        # from: sg_utils.extract_stimuli_for_layer_units_from_dataframe
+        #print("max_lists:", max_lists) 
+        #print("min_lists:", min_lists)
+        batch_filenames = [maxs + mins for mins, maxs in zip(min_lists, max_lists)]
+        
+        compute_machine_interpretability_score = mis_utils.prepare_machine_interpretability_score(
+                similarity_function, similarity_function_args
+            )
+        #print("batch filenames:", batch_filenames)
+        
+        mis, mis_confidence = compute_machine_interpretability_score(batch_filenames, include_individual_scores=False) 
+        # do we need mis_confidence anywhere?
+        print(f"Unit index: {unit_idx}, MIS: {mis}, MIS confidence: {mis_confidence}")
+        df.append({'layer_name': layer_name, 'model_key': model_key, 'unit_idx': unit_idx, 'MIS': mis, 'MIS_confidence': mis_confidence}, ignore_index=True)
+
+    median_mis = np.median(df['MIS'])
+    average_mis = np.mean(df['MIS'])
+    print(f"Median MIS for layer {layer_name}: {median_mis}")
+    print(f"Average MIS for layer {layer_name}: {average_mis}")
+
+    folder_path_df = os.path.join(evaluation_results_folder_path, 'MIS')
+    if not os.path.exists(folder_path_df):
+        os.makedirs(folder_path_df)
+    file_path = get_file_path(folder_path=folder_path_df,
+                            sae_layer=model_key + '_' + layer_name,
+                            params=params_string,
+                            file_name=f'mis_epoch_{epoch}.csv')
+    df.to_csv(file_path)

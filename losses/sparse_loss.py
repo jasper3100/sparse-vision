@@ -5,9 +5,8 @@ class SparseLoss(nn.Module):
     '''
     Loss function used to train the sparse autoencoder.
     '''
-    def __init__(self, lambda_sparse):
+    def __init__(self):
         super(SparseLoss, self).__init__()
-        self.lambda_sparse = lambda_sparse
 
     def forward(self, encoded, decoded, targets):
         '''
@@ -37,6 +36,7 @@ class SparseLoss(nn.Module):
         assert decoded.shape == targets.shape
         assert len(decoded.shape) == 2
         #assert decoded.shape[0] == self.batch_size --> we don't have access to the batch_size here so we do this in model_pipeline.py
+
         # we compute for each element the squared difference --> shape: (batch_size, vector_size)
         squared_differences = torch.square(decoded - targets)
         # for each vector dimension we compute the MSE over all samples in the batch --> shape: (vector_size)

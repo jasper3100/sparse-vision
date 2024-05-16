@@ -1,1 +1,1 @@
-inceptionv1,sae_mlp,&&mixed3b_3x3_pre_relu_conv,/lustre/home/jtoussaint/master_thesis/,1,1,0.001,512,sgd_w_scheduler,1,0.001,adam,256,0.1,imagenet,False,300
+inceptionv1,None,mixed3a,/lustre/home/jtoussaint/master_thesis/,0,1,0.001,512,sgd,0,0,None,0,imagenet,True,300

@@ -8,13 +8,13 @@ class Evaluation:
     i.e., using values from all runs and collecting them.
     '''
     def __init__(self,
-                layer_names,
+                sae_layer,
                 wandb_status,
                 model_params,
                 sae_params_1,
                 evaluation_results_folder_path):
         # remove and leading or trailing underscores from layer_name and replace double underscores by single underscore
-        self.layer_names = layer_names.strip('_').replace('__', '_')
+        self.sae_layer = sae_layer.strip('_').replace('__', '_')
         self.wandb_status = wandb_status
         self.model_params = model_params
         self.sae_params_1 = sae_params_1
@@ -23,7 +23,7 @@ class Evaluation:
         sae_params_1 = {k: str(v) for k, v in self.sae_params_1.items()}
         self.params_string_1 = '_'.join(model_params.values()) + "_" + "_".join(sae_params_1.values())
         self.file_path = get_file_path(folder_path=self.evaluation_results_folder_path,
-                                    layer_names=self.layer_names,
+                                    sae_layer=self.sae_layer,
                                     params=self.params_string_1,
                                     file_name='sae_eval_results.csv')
     
@@ -50,13 +50,13 @@ class Evaluation:
         df = df.sort_values(by='final_ranking')
 
         rank_table_path = get_file_path(folder_path=self.evaluation_results_folder_path,
-                                        layer_names=self.layer_names,
+                                        sae_layer=self.sae_layer,
                                         params=self.params_string_1,
                                         file_name=f'sae_rank_table.csv')
         df.to_csv(rank_table_path, index=False)
         if self.wandb_status:
             wandb.log({f"eval/sae_eval_results/{self.params_string_1}": wandb.Table(dataframe=df)}, commit=False)
-        print(f"Successfully computed and stored SAE ranking in {self.file_path}")
+        print(f"Successfully computed and stored SAE ranking in {rank_table_path}")
 
         
     def plot_rec_loss_vs_sparsity(self, type_of_rec_loss):
@@ -166,14 +166,14 @@ class Evaluation:
             axs[1, 2].plot(x_scaling_col3(expansion_factor_group['rel_sparsity']), expansion_factor_group['l1_loss'], label=int(expansion_factor_value))
             axs[1, 2].scatter(x_scaling_col3(expansion_factor_group['rel_sparsity']), expansion_factor_group['l1_loss'], label='__nolegend__')
 
-        axs[0, 2].set_xlabel(f"Sparsity of SAE encoder output on layer {self.layer_names}")
+        axs[0, 2].set_xlabel(f"Sparsity of SAE encoder output on layer {self.sae_layer}")
         axs[0, 2].set_ylabel(loss_name)
         axs[0, 2].set_title(f"{loss_name} over sparsity")
         axs[0, 2].legend(title="Expansion Factor", loc='upper left')
         axs[0, 2].set_xticks(shifted_positions)
         axs[0, 2].set_xticklabels(labels, rotation='vertical')
 
-        axs[1, 2].set_xlabel(f"Sparsity of SAE encoder output on layer {self.layer_names}")
+        axs[1, 2].set_xlabel(f"Sparsity of SAE encoder output on layer {self.sae_layer}")
         axs[1, 2].set_ylabel("L1 Loss")
         axs[1, 2].set_title("L1 Loss over sparsity")
         axs[1, 2].legend(title="Expansion Factor", loc='upper left')
@@ -202,14 +202,14 @@ class Evaluation:
                 axs[1, 3].plot(expansion_factor_group['rel_sparsity_1'], expansion_factor_group['l1_loss'], label=int(expansion_factor_value))
                 axs[1, 3].scatter(expansion_factor_group['rel_sparsity_1'], expansion_factor_group['l1_loss'], label='__nolegend__')
 
-            axs[0, 3].set_xlabel(f"Sparsity 1 of SAE encoder output on layer {self.layer_names}")
+            axs[0, 3].set_xlabel(f"Sparsity 1 of SAE encoder output on layer {self.sae_layer}")
             axs[0, 3].set_ylabel(loss_name)
             axs[0, 3].set_title(f"{loss_name} over sparsity 1")
             axs[0, 3].legend(title="Expansion Factor", loc='upper left')
             axs[0, 3].set_xticks(shifted_positions)
             axs[0, 3].set_xticklabels(labels, rotation='vertical')
 
-            axs[1, 3].set_xlabel(f"Sparsity 1 of SAE encoder output on layer {self.layer_names}")
+            axs[1, 3].set_xlabel(f"Sparsity 1 of SAE encoder output on layer {self.sae_layer}")
             axs[1, 3].set_ylabel("L1 Loss")
             axs[1, 3].set_title("L1 Loss over sparsity 1")
             axs[1, 3].legend(title="Expansion Factor", loc='upper left')
@@ -219,7 +219,7 @@ class Evaluation:
         # Adjust layout and save the figure
         plt.tight_layout()
         png_path = get_file_path(folder_path=self.evaluation_results_folder_path,
-                                layer_names=self.layer_names,
+                                sae_layer=self.sae_layer,
                                 params=self.params_string_1,
                                 file_name=f'sae_eval_results_plot_{loss_name}.png')
         if self.wandb_status:

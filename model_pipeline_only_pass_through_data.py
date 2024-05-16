@@ -208,7 +208,7 @@ class ModelPipeline:
                 joined = '_'.join(self.pretrained_sae_layers_list[:i+1])
                 self.pretrained_saes_list.append(joined)
 
-            self.sae_criterion = get_criterion(sae_criterion_name, sae_lambda_sparse)
+            self.sae_criterion = get_criterion(sae_criterion_name)
 
             if pretrained_sae_layers_string != "":
 

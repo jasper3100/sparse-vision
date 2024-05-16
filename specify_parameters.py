@@ -1,4 +1,4 @@
-import itertools
+import itertools, functools, operator
 
 # SPECIFY PARAMETERS IN THIS DOCUMENT
 # The code will iterate over all possible combinations.
@@ -12,16 +12,9 @@ sae_model_name = ['sae_mlp'] #'sae_conv'
 # including the cluster process number. Locally, it will be specified in main.py
 
 # 0 = False, 1 = True
-training = ['1'] # training or inference
-original_model = ['0'] # use original model or not
-'''
-Examples of "sae layers" values
-'fc1&fc2&&' # original model with SAEs on fc1 and fc2
-'&&fc3' # take original model and train SAE on fc3
-'fc1&fc2&&fc3' # take original model with SAEs on fc1 and fc2, and train SAE on fc3
-'fc1&fc2&&fc3&fc4' # take original model with SAEs on fc1 and fc2, and first train SAE on fc3, then take original model with SAEs on fc1, fc2, fc3 and train SAE on fc4
-if we use the original model, sae_layers will be reset to some default value
-'''
+training = ['0'] # training or inference
+original_model = ['1'] # use original model or not
+mis = ['1'] # 0: no, 1: store values for MIS, 2: compute MIS
 
 model_criterion_name = ['cross_entropy']
 
@@ -62,7 +55,6 @@ sae_optimizer_name = ['adam']
 sae_batch_size = [64]
 sae_lambda_sparse = [1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2] # recall: 1e-3 = 0.001
 sae_expansion_factor = [2,4,8]
-activation_threshold = [0.1]
 dataset_name = ['cifar_10']
 '''
 
@@ -80,12 +72,11 @@ sae_optimizer_name = ['adam']
 sae_batch_size = [64]
 sae_lambda_sparse = [0.001] 
 sae_expansion_factor = [2]
-activation_threshold = [0.1]
 dataset_name = ['cifar_10'] # cifar_10, mnist
 '''
 
 #'''# local, MNIST
-sae_layers = ['fc1&&']
+sae_layer = ['fc1']
 model_name = ['custom_mlp_9']
 directory_path = ['C:\\Users\\Jasper\\Downloads\\Master thesis\\Code']
 wandb_status = ['0']
@@ -93,18 +84,19 @@ model_epochs = [1]
 model_learning_rate = [0.1]#,0.2]
 batch_size = [64]#,128]
 model_optimizer_name = ['sgd']
-sae_epochs = [1] 
+
+sae_epochs = [2] 
 sae_learning_rate = [0.001]
 sae_optimizer_name = ['adam']
 sae_batch_size = [64]
 sae_lambda_sparse = [1e-1] #,1e-2] 
 sae_expansion_factor = [4]#[2,4,6]#,4]
-activation_threshold = [0.1]
 dataset_name = ['mnist'] # cifar_10, mnist
+sae_checkpoint_epoch = [1] # 0 means no checkpoint
 #'''
 
 ''' cluster, MNIST
-sae_layers = ['fc1&&']
+sae_layer = ['fc1']
 model_name = ['custom_mlp_10']#custom_mlp_8', 'custom_mlp_9', 'custom_mlp_10']
 directory_path = ['/lustre/home/jtoussaint/master_thesis/']
 wandb_status = ['1']
@@ -112,19 +104,20 @@ model_epochs = [10]
 model_learning_rate = [0.1] #[0.0001] #[0.001,0.0001] # 0.1 for MLP
 batch_size = [64] #[64,128] # 64 for MLP
 model_optimizer_name = ['sgd'] #sgd for MLP
-sae_epochs = [15]
+
+sae_epochs = [2]
 sae_learning_rate = [0.001]
 sae_optimizer_name = ['adam']
 sae_batch_size = [64]
-sae_lambda_sparse = [12]#[1e-4, 1e-3, 1e-2, 1e-1] # recall: 1e-3 = 0.001
+sae_lambda_sparse = [11]#[1e-4, 1e-3, 1e-2, 1e-1] # recall: 1e-3 = 0.001
 sae_expansion_factor = [2] #[4,8,16,32]
-activation_threshold = [0.1]
 dataset_name = ['mnist'] # cifar_10, mnist
+sae_checkpoint_epoch = [1] # 0 means no checkpoint
 '''
 
 '''
 # local, Tiny ImageNet
-sae_layers = ['layer1.0.conv1&&'] 
+sae_layer = ['layer1.0.conv1'] 
 model_name = ['resnet18']
 directory_path = ['C:\\Users\\Jasper\\Downloads\\Master thesis\\Code']
 wandb_status = ['0']
@@ -138,13 +131,12 @@ sae_optimizer_name = ['adam']
 sae_batch_size = [100]
 sae_lambda_sparse = [1e-1] 
 sae_expansion_factor = [2]
-activation_threshold = [0.1]
 dataset_name = ['tiny_imagenet'] # cifar_10, mnist
 '''
 
 ''' # cluster, Tiny ImageNet
-#sae_layers = ['layer1.0.conv1&&'] 
-sae_layers = ['layer3.0.conv2&&']
+#sae_layer = ['layer1.0.conv1'] 
+sae_layer = ['layer3.0.conv2']
 model_name = ['resnet18']
 directory_path = ['/lustre/home/jtoussaint/master_thesis/']
 wandb_status = ['1']
@@ -152,19 +144,18 @@ model_epochs = [2]
 model_learning_rate = [0.001]
 batch_size = [100]
 model_optimizer_name = ['sgd_w_scheduler']
-sae_epochs = [5] 
+sae_epochs = [7] 
 sae_learning_rate = [0.001]#, 0.0001]
 sae_optimizer_name = ['adam']
 sae_batch_size = [64]
 sae_lambda_sparse = [0.1] #[0.1,0.5,2,5] # 0.1
-sae_expansion_factor = [2,4,8] # 8
-activation_threshold = [0.001]
+sae_expansion_factor = [4] # 8
 dataset_name = ['tiny_imagenet'] # cifar_10, mnist
 '''
 
 '''
 # local, ImageNet (doesnt work right now, need to fix the code)
-sae_layers = ["&&mixed3b_3x3_pre_relu_conv"]
+sae_layer = ["mixed3b_3x3_pre_relu_conv"]
 model_name = ['inceptionv1']
 directory_path = ['C:\\Users\\Jasper\\Downloads\\Master thesis\\Code']
 wandb_status = ['0']
@@ -178,28 +169,32 @@ sae_optimizer_name = ['adam']
 sae_batch_size = [20]
 sae_lambda_sparse = [1e-1] 
 sae_expansion_factor = [2]
-activation_threshold = [0.1]
 dataset_name = ['imagenet']
 '''
 
 #'''
 # cluster, ImageNet
-sae_layers = ["&&mixed3b_3x3_pre_relu_conv"]
+sae_layer = ["mixed3a"]
+#sae_layer = ["mixed3b_3x3_pre_relu_conv"]
 model_name = ['inceptionv1']
 directory_path = ['/lustre/home/jtoussaint/master_thesis/']
-wandb_status = ['1']
+wandb_status = ['0']
 model_epochs = [1] #7
 model_learning_rate = [0.001]
 batch_size = [512]
-model_optimizer_name = ['sgd_w_scheduler']
-sae_epochs = [1] 
+model_optimizer_name = ['sgd']
+
+sae_epochs = [2] #[10] #5
 sae_learning_rate = [0.001]
-sae_optimizer_name = ['adam']
+sae_optimizer_name = ['constrained_adam']
 sae_batch_size = [256]
-sae_lambda_sparse = [0.1] #[0.1, 0.5, 1,2,5,10]#[1e-1] 
-sae_expansion_factor = [2] #[2,4,8]
-activation_threshold = [0.1]
+sae_lambda_sparse = [5] #[100] #[0.1, 1, 5, 10] #[0.1, 1, 5, 10] #[100] #[0.1, 0.5, 1,2,5,10]#[1e-1] 
+sae_expansion_factor = [3] #[2,4,8,16] #[16]
 dataset_name = ['imagenet']
+sae_checkpoint_epoch = [0] #16 # 0 means no checkpoint
+# we can also do [0,3,0,1] --> sae_2 uses checkpoint at epoch 3, sae_4 uses checkpoint at epoch 1
+# order of models is according to itertools.product below: itertools.product(l1, l2,...)
+# --> (l1[0], l2[0], ...), (l1[0], l2[1], ...), (l1[0], l2[2], ...), ..., (l1[1], l2[0], ...), ...
 #'''
 
 ################################################################################################
@@ -214,7 +209,6 @@ original_model = ['True'] if original_model == ['1'] else ['False']
 # by this script, i.e., if we generate 6 combinations, 6 jobs will be run on the cluster.
 if original_model == ['True']:
     sae_model_name = ['None']
-    sae_layers = ['&&']
     sae_epochs = ['0']
     sae_learning_rate = ['0']
     sae_optimizer_name = ['None']
@@ -222,35 +216,50 @@ if original_model == ['True']:
     sae_lambda_sparse = ['0']
     sae_expansion_factor = ['1'] # we computing the sparsity we divide by this number, so it should be 1 if we don't use SAE
 
-all_combinations = itertools.product(model_name,
-                                    sae_model_name,
-                                    sae_layers,
-                                    directory_path,
-                                    wandb_status,
-                                    model_epochs,
-                                    model_learning_rate,
-                                    batch_size,
-                                    model_optimizer_name,
-                                    sae_epochs,
-                                    sae_learning_rate,
-                                    sae_optimizer_name,
-                                    sae_batch_size,
-                                    sae_lambda_sparse,
-                                    sae_expansion_factor,
-                                    activation_threshold,
-                                    dataset_name,
-                                    training,
-                                    original_model,
-                                    model_criterion_name,
-                                    sae_criterion_name,
-                                    dead_neurons_steps)
+if original_model == ['True'] and mis == ['0']:
+    # if we compute MIS (mis == ['1'] or mis == ['2']) we need the layer name
+    # we misuse the sae_layer parameter for this purpose ot refer to a layer of the original model
+    sae_layer = ['None']
+
+iters = [model_name,
+        sae_model_name,
+        sae_layer,
+        directory_path,
+        wandb_status,
+        model_epochs,
+        model_learning_rate,
+        batch_size,
+        model_optimizer_name,
+        sae_epochs,
+        sae_learning_rate,
+        sae_optimizer_name,
+        sae_batch_size,
+        sae_lambda_sparse,
+        sae_expansion_factor,
+        dataset_name,
+        training,
+        original_model,
+        model_criterion_name,
+        sae_criterion_name,
+        dead_neurons_steps,
+        mis]
+
+all_combinations = itertools.product(*iters)
+number_combinations = functools.reduce(operator.mul, map(len, iters), 1)
+
+if original_model == ['True']:
+    sae_checkpoint_epoch = ['0'] * number_combinations
+else:
+    if len(sae_checkpoint_epoch) != number_combinations:
+        raise ValueError('The number of elements in sae_checkpoint_epoch does not match the number of combinations.')
+
 # Write the combinations to a text file which will be refered to
 # by the .sh script file (if running the job on the cluster) and 
 # the main.py file (if running the job locally)
 number_combinations = 0
 with open('parameters.txt', 'w') as file:
     for combination in all_combinations:
-        line = ','.join(map(str, combination))
+        line = ','.join(map(str, combination))+','+str(sae_checkpoint_epoch[number_combinations])
         file.write(line + '\n')
         number_combinations += 1
 
@@ -259,7 +268,7 @@ print(f'{number_combinations} parameter combinations written to parameters.txt')
 # Now we create another such txt file for evaluating some results.
 all_combinations_eval = itertools.product(model_name,
                                           sae_model_name,
-                                            sae_layers, 
+                                            sae_layer, 
                                             directory_path,
                                             wandb_status,
                                             model_epochs,
@@ -270,7 +279,6 @@ all_combinations_eval = itertools.product(model_name,
                                             sae_learning_rate,
                                             sae_optimizer_name,
                                             sae_batch_size,
-                                            activation_threshold,
                                             dataset_name,
                                             original_model, 
                                             dead_neurons_steps)

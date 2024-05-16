@@ -25,8 +25,7 @@ class ModelPipeline:
                  train_dataloader,
                  val_dataloader,
                  category_names,
-                 layer_names, 
-                 activation_threshold,
+                 sae_layer, 
                  wandb_status,
                  prof=None,
                  use_sae=None,
@@ -38,21 +37,22 @@ class ModelPipeline:
                  sae_batch_size=None,
                  batch_size=None,
                  dataset_name=None,
-                 directory_path=None): 
+                 directory_path=None,
+                 mis=None): 
         self.device = device
         self.train_dataloader = train_dataloader
         self.val_dataloader = val_dataloader
         self.category_names = category_names
-        self.activation_threshold = activation_threshold
         self.wandb_status = wandb_status
         #self.prof = prof 
         self.dead_neurons_steps = dead_neurons_steps
         self.sae_batch_size = sae_batch_size
         self.use_sae = use_sae
         self.training = training
-        self.layer_names = layer_names
+        self.sae_layer = sae_layer
         self.dataset_name = dataset_name
         self.directory_path = directory_path
+        self.mis = mis
     
         if self.use_sae:
             self.used_batch_size = sae_batch_size
@@ -103,11 +103,11 @@ class ModelPipeline:
         # samples and generate the most activating image
         self.model_layer_list = []
         if self.use_sae:
-            for name in self.layer_names.split("&"):
-                if name != "":
-                    self.model_layer_list.extend([(name,'original'),(name,'modified'), (name,'sae')])
-       # else:
-       #     self.model_layer_list = [('fc1','original')]
+            #for name in self.sae_layer: #.split("&"):
+            #    if name != "":
+            self.model_layer_list.extend([(self.sae_layer,'original'),(self.sae_layer,'modified'), (self.sae_layer,'sae')])
+        #else:
+        #    self.model_layer_list = [(self.sae_layer,'original')]
 
         # we specify for how many neurons in each layer we want to do the above
         self.number_neurons = 10 # make sure that it is not more than the maximal number of neurons in the desired layers
@@ -137,7 +137,8 @@ class ModelPipeline:
                            sae_learning_rate=None,
                            sae_params=None,
                            sae_params_1=None,
-                           execution_location=None):
+                           execution_location=None,
+                           sae_checkpoint_epoch=None):
         self.model_name = model_name
         self.img_size = img_size
         self.sae_params = sae_params
@@ -148,7 +149,10 @@ class ModelPipeline:
         self.sae_criterion_name = sae_criterion_name
         self.sae_optimizer_name = sae_optimizer_name
         self.sae_learning_rate = sae_learning_rate
+        self.sae_checkpoint_epoch = sae_checkpoint_epoch
         self.model_criterion = get_criterion(model_criterion_name)
+        if self.use_sae:
+            self.sae_criterion = get_criterion(sae_criterion_name)
 
         # turn all values into string and merge them into a single string
         model_params_temp = {k: str(v) for k, v in self.model_params.items()}
@@ -157,87 +161,65 @@ class ModelPipeline:
         self.params_string = '_'.join(model_params_temp.values()) + "_" + "_".join(sae_params_temp.values())
         self.params_string_1 = '_'.join(model_params_temp.values()) + "_" + "_".join(sae_params_1_temp.values()) # used for post-hoc evaluation
 
-        if not self.use_sae and self.training: # train original model --> use fresh model
-            self.model = load_model(model_name, img_size=img_size, num_classes=self.num_classes, execution_location=execution_location)
-            self.model = self.model.to(self.device)
-            self.model_optimizer, self.optimizer_scheduler = get_optimizer(model_optimizer_name, self.model, model_learning_rate)
-            # We don't specify whether the model is in training or evaluation mode here, because we do this 
-            # in the epoch_forward_pass method where we first set it to train mode and then to eval mode to 
-            # eval on the test set (this is done for every epoch)
-        else: # inference through original model or if we use sae --> use pretrained model
-            self.model = load_pretrained_model(model_name,
-                                                img_size,
-                                                self.model_weights_folder_path,
-                                                num_classes=self.num_classes,
-                                                params=self.model_params,
-                                                execution_location=execution_location)
-            self.model = self.model.to(self.device)
-            # If we don't train the original model we only use it to perform inference,
-            # hence we do the following: We set it to eval mode (changes the behavior of 
-            # certain layers, such as dropout)
-            self.model.eval()
-            # and we freeze the model by disabling gradients
+        # for checkpointing, we consider all params apart from the number of epochs, because we will checkpoint at specific custom epochs
+        sae_params_temp.pop('sae_epochs', None)
+        self.params_string_sae_checkpoint = '_'.join(model_params_temp.values()) + "_" + "_".join(sae_params_temp.values())
+        
+        ############### LOAD BASE MODEL ##################
+        self.model = load_model(model_name, img_size=img_size, num_classes=self.num_classes)
+        self.model = self.model.to(self.device)            
+    
+        if not self.use_sae and self.training: # train original model
+            self.model_optimizer, self.optimizer_scheduler = get_optimizer(model_optimizer_name, self.model, model_learning_rate)   
+        else: # inference through original model
+            self.model.eval() # changes the behavior of certain layers, such as dropout
+            # freeze model by disabling gradients
             for param in self.model.parameters():
                 param.requires_grad = False
+            # We don't specify above that the model is in training mode, because we do this 
+            # in the epoch_forward_pass method where we first set it to train mode and then to eval mode to 
+            # eval on the test set (this is done for every epoch)
 
+        ############## LOAD SAE #######################
         if self.use_sae:
-            if self.training:
-                # split self.layer_names on the last occurence of "&"
-                if "&" in self.layer_names:
-                    pretrained_sae_layers_string, self.train_sae_layer = self.layer_names.rsplit('&', 1)
-                else:
-                    pretrained_sae_layers_string = ""
-                    self.train_sae_layer = self.layer_names
-                if pretrained_sae_layers_string == "":
-                    print("Training SAE on layer", self.train_sae_layer, "and not using any pretrained SAEs.")
-                else:
-                    print("Training SAE on layer", self.train_sae_layer, "and using pretrained SAEs on layers", pretrained_sae_layers_string)
-            else:
-                if self.layer_names.endswith("&&"):
-                    pretrained_sae_layers_string = self.layer_names[:-2]
+            self.sae_inp_size = GetSaeInpSize(self.model, self.sae_layer, self.train_dataloader, self.device, self.model_name).get_sae_inp_size()
+            self.sae_model = load_model(sae_model_name, img_size=self.sae_inp_size, expansion_factor=sae_expansion_factor)
+            if sae_checkpoint_epoch > 0:
+                file_path = get_file_path(self.sae_weights_folder_path, self.sae_layer, params=self.params_string_sae_checkpoint, file_name= f'sae_checkpoint_epoch_{sae_checkpoint_epoch}.pth')
+                checkpoint = torch.load(file_path)
+                state_dict = checkpoint['model_state_dict']
+                self.train_batch_idx = checkpoint['training_step'] # the batch_idx counts the total number of batches used during training across epochs
+                '''
+                # WHY ARE WE DOING THE BELOW???
+                if "W_enc" in state_dict:
+                    print("W_enc in state dict")
+                    # take the transpose of the weight matrix
+                    state_dict["encoder.weight"] = state_dict.pop("W_enc").T
+                if "b_enc" in state_dict:
+                    print("b_enc in state dict")
+                    state_dict["encoder.bias"] = state_dict.pop("b_enc")
+                if "W_dec" in state_dict:
+                    print("W_dec in state dict")
+                    state_dict["decoder.weight"] = state_dict.pop("W_dec").T
+                if "b_dec" in state_dict:
+                    print("b_dec in state dict")
+                    state_dict["decoder.bias"] = state_dict.pop("b_dec")
+                '''
+                self.sae_model.load_state_dict(state_dict)
+                print(f"Use SAE on layer {self.sae_layer} from epoch {sae_checkpoint_epoch}")
+            elif sae_checkpoint_epoch == 0:
+                self.train_batch_idx = 0
+            self.sae_model = self.sae_model.to(self.device)
             
-            # Split the string into a list based on '&'
-            self.pretrained_sae_layers_list = pretrained_sae_layers_string.split("&")
-
-            # since the SAE models are trained sequentially, we need to load the pretrained SAEs in the correct order
-            # f.e. if pretrained_sae_layers_list = ["layer1", "layer2", "layer3", "layer4"], then we need to load the 
-            # SAEs with names: "layer1", "layer1&layer2", "layer1&layer2&layer3", "layer1&layer2&layer3&layer4"
-            self.pretrained_saes_list = []
-            for i in range(len(self.pretrained_sae_layers_list)):
-                joined = '&'.join(self.pretrained_sae_layers_list[:i+1])
-                self.pretrained_saes_list.append(joined)
-
-            self.sae_criterion = get_criterion(sae_criterion_name, sae_lambda_sparse)
-
-            if pretrained_sae_layers_string != "":
-
-                for name in self.pretrained_sae_layers_list:
-                    setattr(self, f"sae_{name}_inp_size", GetSaeInpSize(self.model, name, self.train_dataloader, self.device, self.model_name).get_sae_inp_size())
-                # if we use pretrained SAEs, we load all of them
-                for pretrain_sae_name in self.pretrained_saes_list:
-                    # the last layer of the pretrain_sae_name is the layer on which the SAE was trained
-                    # for example, "fc1&fc2&fc3" --> pretrain_sae_layer_name = "fc3"
-                    pretrain_sae_layer_name = pretrain_sae_name.split("&")[-1]
-                    temp_sae_inp_size = getattr(self, f"sae_{pretrain_sae_layer_name}_inp_size")
-                    setattr(self, f"model_sae_{pretrain_sae_name}", load_pretrained_model(sae_model_name,
-                                                                                        temp_sae_inp_size,
-                                                                                        self.sae_weights_folder_path,
-                                                                                        sae_expansion_factor=sae_expansion_factor,
-                                                                                        layer_name=pretrain_sae_name,
-                                                                                        params=self.params_string))
-                    sae_model = getattr(self, f"model_sae_{pretrain_sae_name}")
-                    sae_model = sae_model.to(self.device)
-                    sae_model = sae_model.eval()
-                    for param in sae_model.parameters():
-                        param.requires_grad = False
-                    print("Loaded pretrained SAE model on layer", pretrain_sae_name)
-                                
-            # we instantiate a fresh SAE for the layer on which we want to train the SAE
-            if self.training:    
-                setattr(self, f"sae_{self.train_sae_layer}_inp_size", GetSaeInpSize(self.model, self.train_sae_layer, self.train_dataloader, self.device, self.model_name).get_sae_inp_size())
-                temp_sae_inp_size = getattr(self, f"sae_{self.train_sae_layer}_inp_size")
-                self.sae_model = load_model(sae_model_name, img_size=temp_sae_inp_size, expansion_factor=sae_expansion_factor).to(self.device)
+            if self.training:
                 self.sae_optimizer, _ = get_optimizer(sae_optimizer_name, self.sae_model, sae_learning_rate)
+                if sae_checkpoint_epoch > 0:
+                    self.sae_optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+                    print("Optimizer state loaded")
+            else:
+                self.sae_model.eval()
+                for param in self.sae_model.parameters():
+                    param.requires_grad = False
 
             # if we are using an SAE, we also create a copy of the original model so that we have 2 models
             # one modified model (with SAE) + one original model --> enables us to compare the outputs of those models
@@ -292,7 +274,7 @@ class ModelPipeline:
             self.batch_active_classes_per_neuron[(name,model_key)] = active_classes_per_neuron
             '''
 
-            if self.record_top_samples:
+            if self.record_top_samples:                
                 # we get the top k samples for each neuron in the current batch and the corresponding
                 # indices (in the batch) of those samples --> the two matrices below both have shape
                 # [k, #neurons] and [k, #neurons]
@@ -301,19 +283,22 @@ class ModelPipeline:
                 # will have a dimension of batch size < k. The matrix will be extended in size until it has size k, i.e., 
                 # the desired size [k, #neurons]. This is done later when the matrices of two batches are merged. 
 
-                # we use the channel average activations for getting the top k samples
+                # if we use an sae we only compute the top samples of the SAE layer and not of the original or modified layer
+                if (self.use_sae and  model_key == "sae") or not self.use_sae:
 
-                if output_2 is not None: # if we consider the SAE, then we look at the prerelu encoder output
-                    # otherwise, the smallest values will be 0 --> but activation histogram is also for prerelu
-                    # encoder output --> need smallest values prerelu!!!
-                    use_output = output_2_avg_W_H
-                else:
-                    use_output = output_avg_W_H
+                    # we use the channel average activations for getting the top k samples
 
-                self.batch_top_k_values[(name,model_key)] = torch.topk(use_output, k=self.k, dim=0)[0]
-                self.batch_top_k_indices[(name,model_key)] = torch.topk(use_output, k=self.k, dim=0)[1]
-                self.batch_small_k_values[(name,model_key)] = torch.topk(use_output, k=self.k, dim=0, largest=False)[0]
-                self.batch_small_k_indices[(name,model_key)] = torch.topk(use_output, k=self.k, dim=0, largest=False)[1]
+                    if output_2 is not None: # if we consider the SAE, then we look at the prerelu encoder output
+                        # otherwise, the smallest values will be 0 --> but activation histogram is also for prerelu
+                        # encoder output --> need smallest values prerelu!!!
+                        use_output = output_2_avg_W_H
+                    else:
+                        use_output = output_avg_W_H
+
+                    self.batch_top_k_values[(name,model_key)] = torch.topk(use_output, k=self.k, dim=0)[0]
+                    self.batch_top_k_indices[(name,model_key)] = torch.topk(use_output, k=self.k, dim=0)[1]
+                    self.batch_small_k_values[(name,model_key)] = torch.topk(use_output, k=self.k, dim=0, largest=False)[0]
+                    self.batch_small_k_indices[(name,model_key)] = torch.topk(use_output, k=self.k, dim=0, largest=False)[1]
 
 
     def hook(self, module, input, output, name, use_sae, train_sae):
@@ -329,16 +314,8 @@ class ModelPipeline:
             self.compute_and_store_batch_wise_metrics(model_key='original', output=output, name=name)
         
         # use the sae to modify the output of the specified layer of the original model
-        if use_sae and name in self.layer_names.split("&"):
-            # get the SAE model corresponding to the current layer
-            if self.training and name==self.train_sae_layer:
-                # if self.training==True --> self.train_sae_layer and self.sae_model were defined
-                sae_model = self.sae_model
-            else:
-                # if we use pretrained SAE on the given layer, we load it
-                for entry in self.pretrained_saes_list:
-                    if entry.endswith(name):
-                        sae_model = getattr(self, f"model_sae_{entry}")
+        if use_sae and name == self.sae_layer:
+            sae_model = self.sae_model
 
             # the output of the specified layer of the original model is the input of the SAE
             # if the output has 4 dimensions, we flatten it to 2 dimensions along the scheme: (BS, C, H, W) -> (BS*W*H, C)
@@ -351,7 +328,7 @@ class ModelPipeline:
                       
             sae_input = modified_output
 
-            if train_sae and name == self.train_sae_layer:
+            if train_sae and name == self.sae_layer:
                 with torch.enable_grad():  # Enable gradients
                     encoder_output, decoder_output, encoder_output_prerelu = sae_model(sae_input) 
                     if transformed:
@@ -359,11 +336,10 @@ class ModelPipeline:
                         encoder_output_prerelu = rearrange(encoder_output_prerelu, '(b h w) c -> b c h w', b=output.size(0), h=output.size(2), w=output.size(3))
                         # note that the encoder_output(_prerelu) has c*k channels, where k is the expansion factor    
                     rec_loss, l1_loss, nrmse_loss, rmse_loss = self.sae_criterion(encoder_output, decoder_output, sae_input) # the sae inputs are the targets
-                    loss = rec_loss + self.sae_lambda_sparse*l1_loss
+                    loss = rec_loss + self.sae_lambda_sparse * l1_loss
                     self.sae_optimizer.zero_grad(set_to_none=True) # sae optimizer only has gradients of SAE
                     sae_model.zero_grad(set_to_none=True)
                     loss.backward()
-                    sae_model.make_decoder_weights_and_grad_unit_norm()
                     self.sae_optimizer.step()
                     self.sae_optimizer.zero_grad(set_to_none=True)
                     sae_model.zero_grad(set_to_none=True)        
@@ -407,25 +383,6 @@ class ModelPipeline:
             # we pass the decoder_output back to the original model
             output = decoder_output
 
-            loss = None 
-            encoder_output = None
-            decoder_output = None
-            encoder_output_prerelu = None
-            sae_input = None
-
-            # below line doesn't seem to have an effect
-            del encoder_output, decoder_output, encoder_output_prerelu, sae_input, loss
-
-            #gc.collect()
-            #torch.cuda.empty_cache()
-
-            # Collect and print tensors that have gradients
-            # doesnt print anything --> because we do sae_model zero grad after training
-            # but it also means the base model doesnt have any gradients which is good
-            for name1, param1 in sae_model.named_parameters():
-                if param1.requires_grad and param1.grad is not None:
-                    print(f"Name: {name1}, Gradient: {param1.grad}")
-
         # we store quantities of the modified model, in case we passed the layer output through the SAE, 
         # then we store quantities of the sae decoder output here
         if use_sae:
@@ -444,9 +401,9 @@ class ModelPipeline:
 
     def register_hooks(self, use_sae, train_sae, model, model_copy=None):
         # we register hooks on layers of the original model
-        # split self.layer_names based on &
+        # split self.sae_layer based on &
         # for now, we only register hooks on the layer on which we train or use an SAE
-        for name in self.layer_names.split("&"):
+        for name in self.sae_layer.split("&"):
             if name != "":
                 m = None
                 #print(name)
@@ -508,6 +465,7 @@ class ModelPipeline:
                 train_sae = True
 
         elif epoch_mode == "eval" or epoch_mode == "mis":
+            train_sae = False
 
             if epoch_mode == "eval":
                 dataloader = self.val_dataloader
@@ -515,25 +473,20 @@ class ModelPipeline:
                 # we get the max and min activating images so it doesn't matter if train dataset is shuffled
                 dataloader = self.train_dataloader 
 
-            if not self.use_sae: # original model
-                # set model to eval mode and freeze parameters
-                self.model.eval()
-                for param in self.model.parameters():
+            # set model to eval mode and freeze parameters
+            self.model.eval()
+            for param in self.model.parameters():
+                param.requires_grad = False
+            if hasattr(self, 'sae_model'):
+                self.sae_model.eval()
+                for param in self.sae_model.parameters():
                     param.requires_grad = False
-                train_sae = False
-            else:
-                # set model to eval mode and freeze parameters
-                # if self.sae_model exists
-                if hasattr(self, 'sae_model'):
-                    self.sae_model.eval()
-                    for param in self.sae_model.parameters():
-                        param.requires_grad = False
-                train_sae = False
+
             if epoch == num_epochs or epoch_mode == "mis":
                 # if we are in the last epoch (and in eval mode), we record the top
                 # samples of each neuron, i.e., the samples activating each neuron the most
                 # (and the least)
-                self.record_top_samples = False #True
+                self.record_top_samples = True
 
         if self.use_sae:
             self.register_hooks(self.use_sae, train_sae, self.model, self.model_copy) # registering the hook within the batches for loop will lead to undesired behavior
@@ -646,10 +599,6 @@ class ModelPipeline:
                         outputs = self.model(inputs)
                         batch_loss = self.model_criterion(outputs, self.targets)
 
-                for name1, param1 in self.model.named_parameters():
-                    if param1.requires_grad and param1.grad is not None:
-                        print(f"Name: {name1}, Gradient: {param1.grad}")
-
                 batch_loss = batch_loss.item() # .item() automatically moves this to CPU
                 _, class_ids = torch.max(outputs, 1)
                 batch_accuracy = torch.sum(class_ids == self.targets).item() / self.targets.size(0)
@@ -751,10 +700,10 @@ class ModelPipeline:
                         # this might be one of the most basic ways possible to re-initialize dead neurons
 
                         # get the dead neurons of the SAE encoder output
-                        # (so far we assume that layer_names is a list with only one element)
+                        # (so far we assume that sae_layer is a list with only one element)
                         if self.use_sae:
                             pass
-                            #######dead_neurons_sae = self.train_dead_neurons[(self.train_sae_layer, 'sae')]
+                            #######dead_neurons_sae = self.train_dead_neurons[(self.sae_layer, 'sae')]
                             #self.sae_model.reset_encoder_weights(dead_neurons_sae=dead_neurons_sae, device=self.device, optimizer=self.sae_optimizer, batch_idx=self.train_batch_idx)
 
                         # we start measuring dead neurons from 0
@@ -769,7 +718,6 @@ class ModelPipeline:
                     model_loss += batch_loss
                     accuracy += batch_accuracy
 
-                    #''' TEMPORARY
                     for name in self.batch_sparsity.keys():
                         if name not in eval_dead_neurons:
                             # the below dictionaries have the same keys and they are also empty if activation_similarity is empty
@@ -789,7 +737,6 @@ class ModelPipeline:
                             # otherwise it is counted as "active". This can be achieved through pointwise multiplication.
                             eval_dead_neurons[name] = eval_dead_neurons[name] * self.batch_dead_units[name]
                     #print("Eval dead neurons:", eval_dead_neurons)
-                    #'''
                                     
                     if epoch == num_epochs:
                         self.targets = self.targets.cpu()
@@ -857,10 +804,6 @@ class ModelPipeline:
                                                                     largest=False,
                                                                     k=self.k)
                             #self.activations[name] = torch.cat((self.activations[name], self.batch_activations[name]), dim=0) # dim=0 is the batch dimension
-                        # move all tensors to the CPU to save GPU memory, [2] --> batch size --> int --> already on cpu                         
-                        self.top_k_samples[name] = (self.top_k_samples[name][0].cpu(), self.top_k_samples[name][1].cpu(), self.top_k_samples[name][2], self.top_k_samples[name][3].cpu())
-                        self.small_k_samples[name] = (self.small_k_samples[name][0].cpu(), self.small_k_samples[name][1].cpu(), self.small_k_samples[name][2], self.small_k_samples[name][3].cpu())
-                        print("Device batch top k values", self.batch_top_k_values[name].device)
 
                     eval_batch_idx += 1
                     #if eval_batch_idx == 5:
@@ -899,6 +842,26 @@ class ModelPipeline:
                     break
                         
         ######## BATCH LOOP END ########
+
+        # move all tensors to the CPU to save GPU memory, [2] --> batch size --> int --> already on cpu                         
+        #self.top_k_samples[name] = (self.top_k_samples[name][0].cpu(), self.top_k_samples[name][1].cpu(), self.top_k_samples[name][2], self.top_k_samples[name][3].cpu())
+        #self.small_k_samples[name] = (self.small_k_samples[name][0].cpu(), self.small_k_samples[name][1].cpu(), self.small_k_samples[name][2], self.small_k_samples[name][3].cpu())
+        #print("Device batch top k values", self.batch_top_k_values[name].device)
+
+        # we store max and min filename indices for computing the MIS later (separately)
+        if self.top_k_samples != {}:
+            folder_path = os.path.join(self.evaluation_results_folder_path, 'filename_indices')
+            if not os.path.exists(folder_path):
+                os.makedirs(folder_path)
+            for name in self.top_k_samples.keys():
+                data = {'max_filename_indices': self.top_k_samples[name][3], 'min_filename_indices': self.small_k_samples[name][3]} # shape of each tensor: [k, #neurons]
+                layer_name = name[0]
+                model_key = name[1]
+                file_path = get_file_path(folder_path=folder_path,
+                                        sae_layer=model_key + '_' + layer_name,
+                                        params=self.params_string,
+                                        file_name=f'max_min_filename_indices_epoch_{epoch}.pt')
+                torch.save(data, file_path)
 
         if not self.use_sae and epoch_mode == 'train': # train original model
             if self.optimizer_scheduler is not None:
@@ -958,19 +921,29 @@ class ModelPipeline:
                     f.write(f"{key} {value}\n")
             '''
             
-            # if we are in the last epoch, we store some quantities for access by another function
-            if epoch == num_epochs:
-                self.sparsity_dict = sparsity_dict
-                #self.sparsity_dict_1 = sparsity_dict_1
-                self.sae_rec_loss = sae_rec_loss
-                self.sae_l1_loss = sae_l1_loss
-                self.sae_nrmse_loss = sae_nrmse_loss
-                self.sae_rmse_loss = sae_rmse_loss
-                self.var_expl = var_expl
-                self.perc_dead_neurons = perc_eval_dead_neurons
-                self.loss_diff = loss_diff
-                #self.number_active_classes_per_neuron = number_active_classes_per_neuron
-                #self.active_classes_per_neuron = active_classes_per_neuron
+            if self.training:
+                # after each eval epoch during training, we store some SAE results
+                # We store the sae_rec_loss and sae_l1_loss from the last epoch
+                store_sae_eval_results(self.evaluation_results_folder_path, 
+                                    self.sae_layer, 
+                                    self.params_string_1, 
+                                    epoch,
+                                    self.sae_lambda_sparse, 
+                                    self.sae_expansion_factor,
+                                    self.sae_batch_size,
+                                    self.sae_optimizer_name,
+                                    self.sae_learning_rate,
+                                    sae_rec_loss[self.sae_layer], 
+                                    sae_l1_loss[self.sae_layer],
+                                    sae_nrmse_loss[self.sae_layer],
+                                    sae_rmse_loss[self.sae_layer], 
+                                    sparsity_dict[(self.sae_layer,'sae')],
+                                    var_expl[self.sae_layer],
+                                    perc_eval_dead_neurons[(self.sae_layer,'sae')],
+                                    loss_diff,
+                                    median_mis=0)
+                                    #self.sparsity_dict_1[(name,'sae')])
+
 
             if epoch <= num_epochs: # if we do the extra eval epoch for getting the activation histogram we don't want to print or log anything                              
                 print_and_log_results(epoch_mode, 
@@ -995,7 +968,7 @@ class ModelPipeline:
                                         kld=kld,
                                         perc_same_classification=perc_same_classification,
                                         #activation_similarity=activation_similarity)
-                                        median_mis=self.median_mis)
+                                        median_mis=0)
                 
             #'''
             if epoch > num_epochs:
@@ -1066,7 +1039,7 @@ class ModelPipeline:
                     # for some reason, it doesn't properly work when using self.model_copy 
                     # with Resnet-18 this gives an error from lucent about "There are no saved feature maps" --> maybe 
                     # using copy to get self.model_copy is somehow incompatible...(?)
-                    for name in self.layer_names.split("&"):
+                    for name in self.sae_layer.split("&"):
                         if name != "":
                             m = None
                             # separate name based on "."
@@ -1100,7 +1073,7 @@ class ModelPipeline:
 
                 '''
                 plot_lucent_explanations(self.model, 
-                                            self.layer_names, 
+                                            self.sae_layer, 
                                             self.params_string, 
                                             self.evaluation_results_folder_path, 
                                             self.wandb_status,
@@ -1114,79 +1087,12 @@ class ModelPipeline:
                                                         model_key, 
                                                         self.top_k_samples, 
                                                         self.evaluation_results_folder_path, 
-                                                        self.layer_names, 
+                                                        self.sae_layer, 
                                                         self.params_string, 
                                                         self.number_neurons, 
                                                         self.wandb_status) 
             '''   
 
-        # get the filenames of the max/min k samples
-        #'''
-        if epoch_mode == "mis":
-            similarity_function = "dreamsim" 
-            similarity_function_args = (
-                "/is/cluster/fast/rzimmermann/interpretability-comparison-data/dependencies/dreamsim_features_imagenet_train.pkl",
-                "/is/cluster/fast/rzimmermann/interpretability-comparison-data/dependencies/dreamsim_logistic_regression.hard_coded_sklearn.pkl" #"../../stimuli_generation/dreamsim_logistic_regression.hard_coded.pkl"
-            ) 
-            #print("Top k samples", self.top_k_samples)
-
-            # we iterate over the layers
-            for name, v in self.top_k_samples.items():
-                #print(name)
-                max_filename_indices = self.top_k_samples[name][3] # shape: [k, #neurons]
-                min_filename_indices = self.small_k_samples[name][3]
-
-                mis_list = [] # list of MIS values for each unit in the layer
-
-                # we want to compute the MIS for each unit in the layer                
-                for unit_idx in range(max_filename_indices.shape[1]):
-                
-                    max_filename_indices_unit = max_filename_indices[:,unit_idx]
-                    min_filename_indices_unit = min_filename_indices[:,unit_idx]
-                    max_filenames = [self.idx_to_filename[idx.item()] for idx in max_filename_indices_unit]
-                    min_filenames = [self.idx_to_filename[idx.item()] for idx in min_filename_indices_unit]
-                    '''
-                    make_fair_batches says that it takes a list of filenames sorted by ascending activation score but in fact
-                    if one looks at sg_utils.extract_stimuli_for_layer_units_from_dataframe line 916 & 917, we see that the input 
-                    is min_exemplars = min_queries + min_refs; max_exemplars = max_refs + max_queries (i.e. the lists are added as such: [1,2] + [3,4] = [1,2,3,4])
-                    But the order according to activation values is: min_refs < min_queries < max_queries < max_refs
-                    So the input is not by "ascending activation score", while inside of all of these lists however, the order is indeed by 
-                    ascending activation score.
-                    Apart from the wrong description of make_fair_batches, the code is correct. The requirement is simply that the query images
-                    come last (for min_exemplars we apply reverse=True). It might not make much of a difference though if the query images 
-                    are chosen to be as such: min_queries < min_refs < max_refs < max_queries
-                    '''
-                    # query images come last
-                    max_queries_filenames = max_filenames[:self.n_mis] # get first self.n_mis (# tasks) filenames 
-                    max_refs_filenames = max_filenames[self.n_mis:] # remaining filenames
-                    min_queries_filenames = min_filenames[-self.n_mis:] # last self.n_mis filenames
-                    min_refs_filenames = min_filenames[:-self.n_mis] # remaining filenames
-
-                    max_filenames = max_refs_filenames + max_queries_filenames
-                    min_filenames = min_queries_filenames + min_refs_filenames # we apply reverse=True below                    
-                    
-                    max_lists = sg_utils.make_fair_batches(max_filenames, self.n_mis)
-                    min_lists = sg_utils.make_fair_batches(min_filenames, self.n_mis, reverse=True)
-                    # from: sg_utils.extract_stimuli_for_layer_units_from_dataframe
-                    #print("max_lists:", max_lists) 
-                    #print("min_lists:", min_lists)
-                    batch_filenames = [maxs + mins for mins, maxs in zip(min_lists, max_lists)]
-                    
-                    compute_machine_interpretability_score = mis_utils.prepare_machine_interpretability_score(
-                            similarity_function, similarity_function_args
-                        )
-                    #print("batch filenames:", batch_filenames)
-                    
-                    mis, mis_confidence = compute_machine_interpretability_score(batch_filenames, include_individual_scores=False) 
-                    #print("MIS ", mis, mis_confidence)
-                    # do we need mis_confidence anywhere?
-                    mis_list.append(mis)
-                    # MIS is computed per unit, right?
-                
-                self.median_mis[name] = np.median(mis_list)
-                print(f"Median MIS for layer {name}: {self.median_mis[name]}")
-        #'''
-         
         # We remove the hooks after every epoch. Otherwise, we will have 2 hooks for the next epoch.
         for hook in self.hooks:
             hook.remove()
@@ -1195,162 +1101,109 @@ class ModelPipeline:
             hook.remove()
         self.hooks1 = []
 
+        if epoch_mode == "train" and self.use_sae:
+            # we create a checkpoint after every training epoch
+            checkpoint = {
+                'epoch': epoch,
+                'model_state_dict': self.sae_model.state_dict(),
+                'optimizer_state_dict': self.sae_optimizer.state_dict(),
+                'training_step': self.train_batch_idx,
+            }
+            os.makedirs(self.sae_weights_folder_path, exist_ok=True) # create folder if it doesn't exist
+            file_path = get_file_path(self.sae_weights_folder_path, self.sae_layer, self.params_string_sae_checkpoint, f'sae_checkpoint_epoch_{epoch}.pth')
+        
+            start_time = time.time()
+            torch.save(checkpoint, file_path)
+            print("Time to save SAE model weights:", time.time() - start_time)
+            print(f"Successfully stored checkpoint in {file_path}")
+
         # we empty the GPU memory to reduce the chances of getting a CUDA out of memory error
         if self.device == torch.device('cuda'):
             gc.collect()
             torch.cuda.empty_cache()
 
     def deploy_model(self, num_epochs):
-        # if we are evaluating the modified model or the original model, we only perform one epoch
-        if not self.training: 
-            num_epochs = 1
-
         if self.use_sae:
             print(f"Using SAE...")
         else:
             print("Using the original model...")
 
-        '''
-
-        for batch in self.val_dataloader:
-            inputs, targets, filename_indices = process_batch(batch)
-            inputs, self.targets, filename_indices = inputs.to(self.device), targets.to(self.device), filename_indices.to(self.device)
-            #with torch.no_grad():
-            outputs = self.model(inputs)
-            #del inputs, targets, filename_indices, outputs # doesn't help
-        torch.cuda.empty_cache() # if used within batch loop: reduces the increase in memory, but there is still an increase (but much less), and code takes longer to run; if used after all batches: doesn't help for some reason
-            # batch_loss = self.model_criterion(outputs, self.targets)
-
-        
-        for batch in self.val_dataloader:
-            inputs, targets, filename_indices = process_batch(batch)
-            inputs, self.targets, filename_indices = inputs.to(self.device), targets.to(self.device), filename_indices.to(self.device)
-            #with torch.no_grad():
-            outputs = self.model(inputs)
-            #del inputs, targets, filename_indices, outputs # doesn't help
-            #torch.cuda.empty_cache() # reduces the increase in memory, but there is still an increase
-            # batch_loss = self.model_criterion(outputs, self.targets)
-        '''
-
-        self.train_batch_idx = 0 # the batch_idx counts the total number of batches used during training across epochs
         self.train_dead_neurons = {}    
         #with torch.autograd.profiler.profile(use_cuda=True) as prof:
         #'''
+        if self.use_sae:
+            # we start at sae_checkpoint_epoch and train up to num_epochs
+            start = self.sae_checkpoint_epoch
+        else: # train original model
+            start = 0 
 
-        #'''
-        def trace_handler(prof: torch.profiler.profile):
-            # Prefix for file names.
-            TIME_FORMAT_STR: str = "%b_%d_%H_%M_%S"
-            host_name = socket.gethostname()
-            timestamp = datetime.now().strftime(TIME_FORMAT_STR)
-            file_prefix = f"{host_name}_{timestamp}"
+        if self.training:
+            for epoch in range(start, num_epochs):
+                #prof.step()
+            
+                if self.training:
+                    # before the first training epoch we do one evaluation epoch on the test dataset
+                    #'''
+                    ###if epoch==0: 
 
-            # Construct the trace file.
-            prof.export_chrome_trace(f"{file_prefix}.json.gz")
-
-            # Construct the memory timeline file.
-            prof.export_memory_timeline(f"{file_prefix}.html", device="cuda:0")
-        
-        '''
-        with torch.profiler.profile(
-            activities=[
-                torch.profiler.ProfilerActivity.CPU,
-                torch.profiler.ProfilerActivity.CUDA,
-            ],
-            schedule=torch.profiler.schedule(wait=0, warmup=0, active=6, repeat=1),
-            record_shapes=True,
-            profile_memory=True,
-            with_stack=True,
-            on_trace_ready=trace_handler,
-        ) as prof:
-        '''
-        for epoch in range(num_epochs):
-            #prof.step()
-        
-            if self.training:
-                # before the first training epoch we do one evaluation epoch on the test dataset
-                #'''
-                if epoch==0: 
-                    #print("Computing MIS")
-                    self.median_mis = {} # median mis for each layer, we initiate this quantity here because that makes the most sense
-                    #if self.dataset_name == "imagenet": # we only compute MIS for imagenet
-                    #    self.epoch("mis", epoch, num_epochs)
-
-                    print("Doing one epoch of evaluation on the test dataset...")
+                    print("Doing one epoch of EVALUATION on the test dataset...\n")
                     #with torch.autograd.profiler.profile(use_cuda=True) as prof1:
                     self.epoch("eval", epoch, num_epochs)
                     #print(prof1.key_averages().table(sort_by="cuda_time_total"))
-                #'''
-                #with torch.autograd.profiler.profile(use_cuda=True) as prof1:
-                print("Doing one epoch of training...")
-                #torch.cuda.memory._record_memory_history(max_entries=100000)
-                self.epoch("train", epoch+1, num_epochs)
-                #torch.cuda.memory._dump_snapshot(os.path.join(self.directory_path, f"memory_dump_add_memory_on_purpose.pth"))
-        
-                #print(prof1.key_averages().table(sort_by="cuda_time_total"))
-
-            #if epoch % 3 == 0: # every third train epoch
-            #print("Computing MIS")
-            # compute MIS (for now, this is done every epoch, but this will be adapted)
-            self.median_mis = {} # median mis for each layer, we initiate this quantity here because that makes the most sense
-            #if self.dataset_name == "imagenet": # we only compute MIS for imagenet
-            #    self.epoch("mis", epoch+1, num_epochs)
+                    #'''
+                    #with torch.autograd.profiler.profile(use_cuda=True) as prof1:
+                    print("Doing one epoch of TRAINING...\n")
+                    #torch.cuda.memory._record_memory_history(max_entries=100000)
+                    self.epoch("train", epoch+1, num_epochs)
+                    #torch.cuda.memory._dump_snapshot(os.path.join(self.directory_path, f"memory_dump_add_memory_on_purpose.pth"))
             
-            # during evaluation and before every epoch of training we evaluate the model on the validation dataset
-            print("Doing one epoch of evaluation on the test dataset...")
-            #print("Before eval: Memory Allocated (in bytes):", torch.cuda.memory_allocated(), "Memory Reserved (in bytes):", torch.cuda.memory_reserved())
-            #with torch.autograd.profiler.profile(use_cuda=True, profile_memory=True) as prof1:
-            self.epoch("eval", epoch+1, num_epochs)
-            ######self.prof.export_memory_timeline(f"stuff.html", device="cuda:0")
-            #print(prof1.key_averages().table(sort_by="self_cuda_memory_usage"))#sort_by="cuda_time_total"))
-        #print(prof.key_averages().table(sort_by="cuda_time_total"))
-        
-        #torch.cuda.memory._record_memory_history(enabled=None)
+                    #print(prof1.key_averages().table(sort_by="cuda_time_total"))
+                
+                # during evaluation and before every epoch of training we evaluate the model on the validation dataset
+                print("Doing one epoch of EVALUATION on the test dataset...\n")
+                #print("Before eval: Memory Allocated (in bytes):", torch.cuda.memory_allocated(), "Memory Reserved (in bytes):", torch.cuda.memory_reserved())
+                #with torch.autograd.profiler.profile(use_cuda=True, profile_memory=True) as prof1:
+                self.epoch("eval", epoch+1, num_epochs)
+                ######self.prof.export_memory_timeline(f"stuff.html", device="cuda:0")
+                #print(prof1.key_averages().table(sort_by="self_cuda_memory_usage"))#sort_by="cuda_time_total"))
+            #print(prof.key_averages().table(sort_by="cuda_time_total"))
+            
+            #torch.cuda.memory._record_memory_history(enabled=None)
+        elif not self.training and self.mis == "0":
+            self.epoch("eval", start, start+1) # the exact value of num_epochs (here start+1) doesn't matter, but we just don't want the case where epoch > num_epochs, hence we just do +1 here
+        elif not self.training and self.mis == "1":
+            # we compute the max and min k samples and store the filename indices to be used for computing the MIS
+            self.epoch("mis", start, start+1)
+        elif not self.training and self.mis == "2":
+            # we compute the mis
+            if self.use_sae:
+                model_key = "sae"
+            else:
+                model_key = "original"
+            compute_mis(evaluation_results_folder_path=self.evaluation_results_folder_path, 
+                        params_string=self.params_string, 
+                        model_key=model_key, 
+                        layer_name=self.sae_layer, 
+                        idx_to_filename=self.idx_to_filename, 
+                        n_mis=self.n_mis, 
+                        epoch=start)
 
         print("---------------------------")
 
-        #file3 = os.path.join(self.directory_path, 'html_plot.html')
-        #prof.export_memory_timeline(file3, device="cuda:0")
-
         #'''
         if self.use_sae:
-            if self.training and self.use_sae:
-                print("SAE training completed.")
-                # store SAE model weights
-                save_model_weights(self.sae_model, self.sae_weights_folder_path, layer_names=self.layer_names, params=self.params_string)
-            else:  
-                print("Inference through the modified model completed.")
-            # We store the sae_rec_loss and sae_l1_loss from the last epoch
-            for name in self.layer_names.split("&"):
-                if name != "":
-                    if self.median_mis == {}:
-                        mis = 0 # for computing the ranking of SAEs, this means that each SAE has the same MIS rank --> doesn't matter 
-                    else:
-                        mis = self.median_mis[(name,'sae')]
-                    store_sae_eval_results(self.evaluation_results_folder_path, 
-                                        name, 
-                                        self.params_string_1, 
-                                        self.sae_lambda_sparse, 
-                                        self.sae_expansion_factor,
-                                        self.sae_batch_size,
-                                        self.sae_optimizer_name,
-                                        self.sae_learning_rate,
-                                        self.sae_rec_loss[name], 
-                                        self.sae_l1_loss[name],
-                                        self.sae_nrmse_loss[name],
-                                        self.sae_rmse_loss[name], 
-                                        self.sparsity_dict[(name,'sae')],
-                                        self.var_expl[name],
-                                        self.perc_dead_neurons[(name,'sae')],
-                                        self.loss_diff,
-                                        median_mis=mis)
-                                        #self.sparsity_dict_1[(name,'sae')])
-        elif self.training and not self.use_sae:
-            print("Training of the original model completed.")
-            # store original model weights
-            save_model_weights(self.model, self.model_weights_folder_path, params=self.model_params)
+            aux_string = "SAE"
         else:
-            print("Inference through the original model completed.")
+            aux_string = "Original model"
+
+        if self.training: 
+            print(f"Training of the {aux_string} completed.")
+        if self.mis == "0":
+            print(f"Inference through the {aux_string} model completed.")
+        if self.mis == "1":
+            print(f"{aux_string}: Storing values for computing the MIS completed.")
+        if self.mis == "2":
+            print(f"{aux_string}: Computing the MIS completed.")
         #'''
 
         # We display some sample input images with their corresponding true and predicted labels as a sanity check 
@@ -1369,14 +1222,14 @@ class ModelPipeline:
         # We display the distribution of the number of classes that each neuron is active on, for the last epoch
         if self.use_sae:
             plot_active_classes_per_neuron(self.number_active_classes_per_neuron, 
-                                        self.layer_names,
+                                        self.sae_layer,
                                         num_classes=self.num_classes,
                                         folder_path=self.evaluation_results_folder_path, 
                                         params=self.params_string, 
                                         wandb_status=self.wandb_status)
             # We display the distribution of how active the neurons are, for the last epoch
             plot_neuron_activation_density(self.active_classes_per_neuron,
-                                        self.layer_names,
+                                        self.sae_layer,
                                         self.num_train_samples,
                                         folder_path=self.evaluation_results_folder_path, 
                                         params=self.params_string, 
@@ -1392,7 +1245,7 @@ class ModelPipeline:
                             top_k_samples=self.top_k_samples, 
                             small_k_samples=self.small_k_samples,
                             folder_path=self.evaluation_results_folder_path,
-                            layer_names=self.layer_names,
+                            sae_layer=self.sae_layer,
                             params=self.params_string,
                             n=int(np.sqrt(self.k)),
                             number_neurons=self.number_neurons,
@@ -1430,7 +1283,7 @@ class ModelPipeline:
         self.epoch("eval", num_epochs + 1, num_epochs) # we do an additional round of evaluation
         activation_histograms_2(self.histogram_info, 
                               folder_path=self.evaluation_results_folder_path,
-                              layer_names=self.layer_names, 
+                              sae_layer=self.sae_layer, 
                               params=self.params_string, 
                               wandb_status=self.wandb_status, 
                               num_units=self.number_neurons)
@@ -1439,13 +1292,13 @@ class ModelPipeline:
         ''' # outdated as we don't store activations anymore
         activation_histograms(self.activations,
                               folder_path=self.evaluation_results_folder_path,
-                              layer_names=self.layer_names,
+                              sae_layer=self.sae_layer,
                               params=self.params_string,
                               wandb_status=self.wandb_status)
         # we plot the same histogram but distinguishing by classes
         activation_histograms(self.activations,
                               folder_path=self.evaluation_results_folder_path,
-                              layer_names=self.layer_names,
+                              sae_layer=self.sae_layer,
                               params=self.params_string,
                               wandb_status=self.wandb_status,
                               targets=self.targets_epoch)

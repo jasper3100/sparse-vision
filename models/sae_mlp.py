@@ -27,18 +27,20 @@ class SaeMLP(nn.Module):
         self.hidden_size = int(self.act_size*expansion_factor)
 
         self.encoder = nn.Linear(self.act_size, self.hidden_size)
-        # we take the transpose of the weight matrix since nn.Linear does x*W^T + b	
+        # nn.Linear does x*W^T + b --> x has dim. (act_size) (disregarding batch dim.), output has shape (hidden_size)
+        # --> W^T has shape (act_size, hidden_size) --> W (encoder weight) has shape (hidden_size, act_size)
         self.encoder.weight = nn.Parameter(torch.nn.init.kaiming_uniform_(torch.empty(self.hidden_size, self.act_size)))
         self.encoder.bias = nn.Parameter(torch.zeros(self.hidden_size))
         self.sae_act = nn.ReLU()
         self.decoder = nn.Linear(self.hidden_size, self.act_size)
+        self.decoder.bias = nn.Parameter(torch.zeros(self.act_size))
+        # dec_weight has shape (act_size, hidden_size) by same argument as above but all quantities reversed
         dec_weight = nn.Parameter(torch.nn.init.kaiming_uniform_(torch.empty(self.act_size, self.hidden_size)))
         # We initialize s.t. its columns (rows of the transpose) have unit norm
         # dim=0 --> across the rows --> normalize each column
         # If we consider the tranpose: dim=1 (dim=-1) --> across the columns --> normalize each row
         dec_weight.data[:] = dec_weight / dec_weight.norm(dim=0, keepdim=True)
         self.decoder.weight = dec_weight
-        self.decoder.bias = nn.Parameter(torch.zeros(self.act_size))
 
     def forward(self, x):
         if len(x.shape) == 4:
@@ -60,7 +62,13 @@ class SaeMLP(nn.Module):
         return encoder_output, decoder_output, encoder_output_prerelu
         '''
 
+    '''
     def make_decoder_weights_and_grad_unit_norm(self):
+        # WARNING THIS FUNCTION INCREASES MEMORY USAGE BY ATTACHING ADDITIONAL GRADIENTS!!!
+        # Because: grad = grad - grad_proj --> next batch: (grad - grad_proj) - grad_proj etc.
+        # so we always get one more grad_proj --> memory increase; grad_proj is always different
+        # because W_dec is updated in between
+        # USE CONSTRAINED ADAM OPTIMIZER INSTEAD!
         # see https://github.com/neelnanda-io/1L-Sparse-Autoencoder/blob/main/utils.py 
         # here we consider the transpose so we use 0 instead of -1
         W_dec = self.decoder.weight
@@ -68,13 +76,13 @@ class SaeMLP(nn.Module):
         W_dec_grad_proj = (W_dec.grad * W_dec_normed).sum(0, keepdim=True) * W_dec_normed
         W_dec.grad -= W_dec_grad_proj
         W_dec.data = W_dec_normed
-        self.decoder.weight = W_dec
+        #self.decoder.weight = W_dec
+    '''
 
     def reset_encoder_weights(self, dead_neurons_sae, device, optimizer, batch_idx):
         W_enc = self.encoder.weight
         b_enc = self.encoder.bias
         W_dec = self.decoder.weight
-        b_dec = self.decoder.bias
 
         indices_of_dead_neurons = torch.nonzero(dead_neurons_sae)
         print(indices_of_dead_neurons)

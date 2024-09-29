@@ -31,6 +31,7 @@ class ExecuteProject:
                 run_evaluation=None,
                 execution_location=None,
                 mis=None,
+                compute_ie=None,
                 sae_checkpoint_epoch=None):
         self.model_name = model_name
         self.sae_model_name = sae_model_name
@@ -60,6 +61,7 @@ class ExecuteProject:
         self.execution_location = execution_location
         self.sae_checkpoint_epoch = int(sae_checkpoint_epoch) if sae_checkpoint_epoch is not None else None
         self.mis = mis # string
+        self.compute_ie = compute_ie # string
         # WHEN ADDING A NEW PARAMETER HERE DONT FORGET TO TURN IT FROM STRING INTO THE DESIRED DATA FORMAT EVALUATE IT, i.e., int(x), float(x), eval(x), etc.
 
         if self.sae_checkpoint_epoch is not None:
@@ -123,13 +125,7 @@ class ExecuteProject:
             id = "sae_evaluation"
         else:
             raise ValueError("The combination of parameters is not supported.")
-        
-
-        if mis != "0" and self.training:
-            raise ValueError("If we do training, then nothing related to MIS should be computed.")
-        if mis != "0" and self.dataset_name != "imagenet":
-            raise ValueError("MIS can only be computed for the ImageNet dataset.")
-        
+               
 
         self.run_group_ID = id + "_" + self.dataset_name + "_" + self.run_group_ID
         if self.use_sae:
@@ -143,17 +139,9 @@ class ExecuteProject:
             self.run_ID = get_file_path(sae_layer=self.sae_layer, params=self.model_params) #, file_name=self.run_group_ID)
             self.num_epochs = self.model_epochs
 
-        print(self.run_ID)
+        print("Run ID: ", self.run_ID)
 
-        # load data loader
-        if self.use_sae:
-            used_batch_size = self.sae_batch_size
-        else:
-            used_batch_size = self.batch_size
-        self.train_dataloader, self.val_dataloader, self.category_names, self.img_size = load_data(self.directory_path, self.dataset_name, used_batch_size)
-        # num_batches can be set to a different value if we want to limit the number of batches (which can be used wherever desired)
-
-        if self.wandb_status and mis != "1": # if mis=1, we just store some values to disk
+        if self.wandb_status and mis != "1" and compute_ie != "1": # if mis=1 or compute_ie=1, we just store some values to disk
             print("Logging to W&B")
             wandb.login()
             wandb.init(project="master-thesis",
@@ -186,6 +174,7 @@ class ExecuteProject:
                                 "sae_criterion_name": self.sae_criterion_name,
                                 "dead_neurons_steps": self.dead_neurons_steps,
                                 "mis": self.mis,
+                                "compute_ie": self.compute_ie,
                                 "sae_checkpoint_epoch": self.sae_checkpoint_epoch})
             # we proceeed according to: https://docs.wandb.ai/guides/technical-faq/metrics-and-performance
             wandb.define_metric("batch")
@@ -197,9 +186,6 @@ class ExecuteProject:
 
     def model_pipeline(self):
         pipeline = ModelPipeline(device=self.device,
-                                train_dataloader=self.train_dataloader,
-                                val_dataloader=self.val_dataloader,
-                                category_names=self.category_names,
                                 sae_layer=self.sae_layer, 
                                 wandb_status=self.wandb_status,
                                 prof=None,
@@ -213,9 +199,9 @@ class ExecuteProject:
                                 batch_size=self.batch_size,
                                 dataset_name=self.dataset_name,
                                 directory_path=self.directory_path,
-                                mis=self.mis)
+                                mis=self.mis,
+                                compute_ie=self.compute_ie)
         pipeline.instantiate_models(model_name=self.model_name, 
-                                    img_size=self.img_size, 
                                     model_optimizer_name=self.model_optimizer_name,
                                     model_criterion_name=self.model_criterion_name,
                                     model_learning_rate=self.model_learning_rate,
@@ -237,11 +223,13 @@ class ExecuteProject:
                                 wandb_status=self.wandb_status,
                                 model_params=self.model_params,
                                 sae_params_1=self.sae_params_1,
-                                evaluation_results_folder_path=self.evaluation_results_folder_path)
+                                evaluation_results_folder_path=self.evaluation_results_folder_path,
+                                sae_checkpoint_epoch=self.sae_checkpoint_epoch)
         #evaluation.plot_rec_loss_vs_sparsity(type_of_rec_loss="mse")
         #evaluation.plot_rec_loss_vs_sparsity(type_of_rec_loss="rmse")
-        #evaluation.plot_rec_loss_vs_sparsity(type_of_rec_loss="nrmse")
-        evaluation.compute_sae_ranking()
+        # evaluation.plot_rec_loss_vs_sparsity(type_of_rec_loss="nrmse")
+        evaluation.plot_rec_loss_vs_sparsity_all_epochs(type_of_rec_loss="nrmse")
+        #evaluation.compute_sae_ranking()
 
         if self.wandb_status:
             wandb.log({}, commit=True) # commit the logs from before

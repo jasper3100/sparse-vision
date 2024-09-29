@@ -1,0 +1,53 @@
+The following discussion applies to all layers of GoogLeNet, not just mixed3a.
+
+For computing the IE we need to compute some gradients. In particular, when using the chain rule (see Appendix A of Marks et al. paper), 
+we need the gradient of the loss with respect to x, where x is the output of a layer, say of mxied3a. 
+
+In layer mixed3a, the following layers have gradients:
+(which can be checked as such print("Gradients of mixed3a_1x1:", hasattr(self.model.mixed3a_1x1, 'weight'))
+)
+mixed3a_1x1_pre_relu_conv
+mixed3a_3x3_pre_relu_conv
+mixed3a_5x5_pre_relu_conv
+mixed3a_3x3_bottleneck_pre_relu_conv
+mixed3a_5x5_bottleneck_pre_relu_conv
+mixed3a_pool_reduce_pre_relu_conv
+
+Those layers do not have gradients:
+mixed3a (it is a concatenation layer and thus doesn't have weights)
+mixed3a_1x1 (a ReLU layer -> doesn't have weights)
+mixed3a_3x3
+mixed3a_5x5
+mixed3a_pool_reduce
+mixed3a_3x3_bottleneck
+mixed3a_5x5_bottleneck
+mixed3a_pool
+
+Mixed 3a concatenates the outputs of the following layers:
+mixed3a_1x1, mixed3a_3x3, mixed3a_5x5, mixed3a_pool_reduce 
+The corresponding layers with gradients are: mixed3a_1x1_pre_relu_conv, mixed3a_3x3_pre_relu_conv, mixed3a_5x5_pre_relu_conv, mixed3a_pool_reduce_pre_relu_conv
+
+But getting the gradient of the output of x is not straightforward. The gradients/weights of the layers mentioned above have shape [out_channels, in_channels, height, width].
+- mixed3a_1x1_pre_relu_conv: torch.Size([64, 192, 1, 1])
+- mixed3a_3x3_pre_relu_conv: torch.Size([128, 96, 3, 3])
+
+But the gradient of the loss wrt to x has shape [C, W, H], here [256, 28, 28]. Deriving the gradient of the loss wrt to x from the gradients of the
+weights of the layers mentioned above is not straightforward.
+
+Hence, instead, I apply a backward hook to capture the gradient of the loss wrt x directly.
+
+'''                
+layer_names = ["mixed3a_1x1_pre_relu_conv", "mixed3a_3x3_pre_relu_conv", "mixed3a_5x5_pre_relu_conv", "mixed3a_pool_reduce_pre_relu_conv"] #, "mixed3a_3x3", "mixed3a_5x5", "mixed3a_pool_reduce"] #["mixed3a", "mixed3b", "mixed4a", "mixed4b", "mixed4c", "mixed4d", "mixed4e", "mixed5a", "mixed5b"]
+folder_path = os.path.join(self.evaluation_results_folder_path, "gradients")
+if not os.path.exists(folder_path):
+    os.makedirs(folder_path)
+for layer_name in layer_names:
+    print(layer_name)
+    layer = getattr(self.model, layer_name)
+    # we store the gradients of the weights of the specified layer
+    file_path = get_file_path(folder_path, layer_name, params=self.params_string_sae_checkpoint, file_name=f'grad_{layer_name}_epoch_{epoch}.npy')
+    print(layer.weight.grad.shape)
+    #np.save(file_path, layer.weight.grad.cpu().numpy())
+    #self.model.mixed3a.weight.grad
+raise ValueError("Stop here")
+'''

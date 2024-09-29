@@ -1,7 +1,4 @@
-import torch.nn as nn
-import torch
-import torch.nn.functional as F
-from einops import rearrange
+from utils import *
 
 class SaeMLP(nn.Module):
     def __init__(self, img_size, expansion_factor):
@@ -27,7 +24,7 @@ class SaeMLP(nn.Module):
         self.hidden_size = int(self.act_size*expansion_factor)
 
         self.encoder = nn.Linear(self.act_size, self.hidden_size)
-        # nn.Linear does x*W^T + b --> x has dim. (act_size) (disregarding batch dim.), output has shape (hidden_size)
+        # nn.Linear does x*W^T + b --> x has dim. (Batch dim, act_size), output has shape (batch dim, hidden_size)
         # --> W^T has shape (act_size, hidden_size) --> W (encoder weight) has shape (hidden_size, act_size)
         self.encoder.weight = nn.Parameter(torch.nn.init.kaiming_uniform_(torch.empty(self.hidden_size, self.act_size)))
         self.encoder.bias = nn.Parameter(torch.zeros(self.hidden_size))
@@ -79,41 +76,71 @@ class SaeMLP(nn.Module):
         #self.decoder.weight = W_dec
     '''
 
-    def reset_encoder_weights(self, dead_neurons_sae, device, optimizer, batch_idx):
+    def reset_encoder_weights(self, dead_neurons_sae, device, optimizer, epoch, train_batch_idx, epoch_batch_idx, file_path):
         W_enc = self.encoder.weight
         b_enc = self.encoder.bias
         W_dec = self.decoder.weight
+        #print(W_dec.grad) --> None
 
         indices_of_dead_neurons = torch.nonzero(dead_neurons_sae)
-        print(indices_of_dead_neurons)
-        print(indices_of_dead_neurons.shape)
+        #print(indices_of_dead_neurons)
+        #print(indices_of_dead_neurons.shape)
         # --> shape (n,1) where n>=0 is number of dead neurons 
         if len(indices_of_dead_neurons.shape) != 2:
-            raise ValueError(f"Batch index {batch_idx}: The indices_of_dead_neurons tensor has unexpected shape.")
+            raise ValueError(f"Epoch {epoch}, train batch index {train_batch_idx}, epoch batch index {epoch_batch_idx}: The indices_of_dead_neurons tensor has unexpected shape.")
         
-        if indices_of_dead_neurons.shape[0] == 0 or indices_of_dead_neurons.shape[1] == 0:
+        elif indices_of_dead_neurons.shape[0] == 0 or indices_of_dead_neurons.shape[1] == 0:
             # there are no dead neurons so we don't need to re-initialize anything
-            print(f"Batch index {batch_idx}: No dead neurons in the SAE --> no re-initialization necessary")
+            print(f"Epoch {epoch}, train batch index {train_batch_idx}, epoch batch index {epoch_batch_idx}: No dead neurons in the SAE --> no re-initialization necessary")
 
         elif indices_of_dead_neurons.shape[1] == 1:
             indices_of_dead_neurons = torch.squeeze(indices_of_dead_neurons, dim=-1)
             # --> shape (n)
+                        
+            with open(file_path, 'w') as file:
+                for element in indices_of_dead_neurons: # save each element on a new line
+                    file.write(str(element.item()) + '\n')
+
             # Reset the encoding weights and biases leading to the dead neurons and those going out of them
             # in the decoder, using He/Kaiming initialization
             new_W_enc = (torch.nn.init.kaiming_uniform_(torch.zeros_like(W_enc)))
             new_W_dec = (torch.nn.init.kaiming_uniform_(torch.zeros_like(W_dec)))
             new_b_enc = (torch.zeros_like(b_enc))
+
+            # compute the average L2 norm of the weights in the non-dead neurons to scale the new weights accordingly
+            # in particular, we take the average L2 norm of all weights going into non-dead SAE features and those going out of them
+            # because those are the weights we re-initialize --> calculate L2 over the input dimension of a layer (i.e. dimension of model layer) -> dim=1
+            indices_of_non_dead_neurons = torch.nonzero(~dead_neurons_sae)
+            indices_of_non_dead_neurons = torch.squeeze(indices_of_non_dead_neurons, dim=-1)
+            L2_W_enc = torch.norm(W_enc[indices_of_non_dead_neurons, :], p=2, dim=1) # dim: [hidden_size], i.e. we have the average
+            # L2 norm of the weights going into each SAE feature
+            average_L2_W_enc = torch.mean(L2_W_enc).item()
+            L2_W_dec = torch.norm(W_dec[:, indices_of_non_dead_neurons], p=2, dim=1) # dim: [act_size] --> should be [hidden_size] no???
+            average_L2_W_dec = torch.mean(L2_W_dec).item()
+            # for the bias, for each entry, the L2 norm is just the absolute value
+            L2_b_enc = torch.mean(torch.abs(b_enc[indices_of_non_dead_neurons])).item()
+
+            #'''
+            # Normalize each row to have the desired L2 norm
+            W_enc_row_norms = torch.norm(new_W_enc, p=2, dim=1, keepdim=True)  # Calculate L2 norm of each row
+            new_W_enc = new_W_enc / W_enc_row_norms * average_L2_W_enc  # Normalize each row
+            W_dec_row_norms = torch.norm(new_W_dec, p=2, dim=1, keepdim=True)  # Calculate L2 norm of each row
+            new_W_dec = new_W_dec / W_dec_row_norms * average_L2_W_dec  # Normalize each row
+            # we set each bias value to the average L2 norm of the bias of the non-dead neurons
+            new_b_enc = torch.full_like(new_b_enc, L2_b_enc) 
+            #'''
+
             W_enc.data[indices_of_dead_neurons, :] = new_W_enc[indices_of_dead_neurons, :]
             W_dec.data[:, indices_of_dead_neurons] = new_W_dec[:, indices_of_dead_neurons]
             b_enc.data[indices_of_dead_neurons] = new_b_enc[indices_of_dead_neurons]
 
-            self.encoder.weight = W_enc
-            self.decoder.weight = W_dec
-            self.encoder.bias = b_enc
+            # we make sure that the decoder weights have norm one as in the first initialization
+            W_dec.data[:] = W_dec.data / W_dec.data.norm(dim=0, keepdim=True) 
+            # W_dec has requires_grad=True, W_dec.data doesn't have it...
             
             ########## START RESET OPTIMIZER PARAMETERS ##########
             # Reset the optimizer state for the specified indices; Adam --> reset the moving averages
-            if optimizer.__class__.__name__ != 'Adam':
+            if optimizer.__class__.__name__ != 'Adam' and optimizer.__class__.__name__ != 'ConstrainedAdam':
                 raise ValueError(f"The optimizer {optimizer.__class__.__name__} is not supported for re-initializing dead neurons.")
             
             # what do we do about step of Adam??? because step matters and should not be universal acrosss all weigths...
@@ -125,6 +152,7 @@ class SaeMLP(nn.Module):
                 #[256, 512] (weight matrix in decoder), [256] (bias term in decoder)
 
                 if torch.equal(p, W_enc):
+                    print("Found encoder weight tensor in optimizer params")
                     # we reset the moving averages for the weights of the dead neurons to zero
                     # optimizer.state[encoder_weight_matrix] -> error, because this matrix has no requires_grad=True
                     # in constrast to p
@@ -138,22 +166,22 @@ class SaeMLP(nn.Module):
                     # but since the initial value is zero, the moving average would be zero
                     # A neuron being dead from the start is particularly likely to happen if we measure dead neurons very early during training, f.e.
                     # after 10 batches.
-                else:
-                    print("Did not find weight matrix in optimizer params")
-
-                if torch.equal(p, b_enc):
-                    #print("Found bias tensor in optimizer params")
+                elif torch.equal(p, b_enc):
+                    print("Found encoder bias tensor in optimizer params")
                     optimizer.state[p]['exp_avg'][indices_of_dead_neurons] = torch.zeros_like(b_enc)[indices_of_dead_neurons]   
                     optimizer.state[p]['exp_avg_sq'][indices_of_dead_neurons] = torch.zeros_like(b_enc)[indices_of_dead_neurons]  
-
-                if torch.equal(p, W_dec):
+                elif torch.equal(p, W_dec):
+                    print("Found decoder weight tensor in optimizer params")
                     optimizer.state[p]['exp_avg'][:, indices_of_dead_neurons] = torch.zeros_like(W_dec)[:,indices_of_dead_neurons]
-                    optimizer.state[p]['exp_avg_sq'][:, indices_of_dead_neurons] = torch.zeros_like(W_dec)[:,indices_of_dead_neurons]             
+                    optimizer.state[p]['exp_avg_sq'][:, indices_of_dead_neurons] = torch.zeros_like(W_dec)[:,indices_of_dead_neurons]  
+                #else:
+                    #print("Optimizer param doesn't correspond to encoder weight, encoder bias or decoder weight.")
+           
             ########## END RESET OPTIMIZER PARAMETERS ##########
 
-            print(f"Batch index {batch_idx}: Re-initialized {len(indices_of_dead_neurons)} dead neurons in the SAE and reset optimizer parameters.")
+            print(f"Epoch {epoch}, train batch index {train_batch_idx}, epoch batch index {epoch_batch_idx}: Re-initialized {len(indices_of_dead_neurons)} dead neurons in the SAE and reset optimizer parameters.")
         else:
-            raise ValueError("The indices_of_dead_neurons tensor has unexpected value in second dimension.")
+            raise ValueError(f"Epoch {epoch}, train batch index {train_batch_idx}, epoch batch index {epoch_batch_idx}: The indices_of_dead_neurons tensor has unexpected value in second dimension.")
 
 
     def intervene_on_decoder_weights(self, unit_index, value):

@@ -8,13 +8,14 @@ class GetSaeInpSize:
     but perfoming this action (get sae input size) there adds too many complications to 
     the workflow.
     '''
-    def __init__(self, model, layer_name, train_dataloader, device, model_name):
+    def __init__(self, model, layer_name, train_dataloader, device, model_name, directory_path):
         self.model = model
         self.layer_name = layer_name
         self.train_dataloader = train_dataloader
         self.hooks = []
         self.device = device
         self.model_name = model_name
+        self.directory_path = directory_path
 
     def hook(self, module, input, output, name):
         if name == self.layer_name:
@@ -48,7 +49,7 @@ class GetSaeInpSize:
         self.register_hooks()
         
         for batch in self.train_dataloader:
-            inputs, _, _ = process_batch(batch)
+            inputs, _, _ = process_batch(batch, directory_path=self.directory_path)
             # get the first sample from the batch
             inputs = inputs[0].unsqueeze(0)   
             inputs = inputs.to(self.device)       

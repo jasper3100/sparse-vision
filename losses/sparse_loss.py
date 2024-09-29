@@ -1,6 +1,25 @@
 import torch
 import torch.nn as nn
 
+def compute_rmse_nrmse(decoded, targets): 
+    # we compute for each element the squared difference --> shape: (batch_size, vector_size)
+    squared_differences = torch.square(decoded - targets)
+    # for each vector dimension we compute the MSE over all samples in the batch --> shape: (vector_size)
+    sample_MSE = torch.mean(squared_differences, dim=0)
+    # we compute the difference of max and min for each dimension of the true data --> shape: (vector_size)
+    # torch.max returns (max values, indices) --> we only want the values so we use [0]
+    sample_range = torch.max(targets, dim=0)[0] - torch.min(targets, dim=0)[0]
+    # we compute for each dimension, the NRMSE --> shape: (vector_size)
+    sample_RMSE = torch.sqrt(sample_MSE) 
+    sample_NRMSE = sample_RMSE / sample_range
+    # We don't normalize the rmse by the mean of the targets, as the targets are not necessarily positive,
+    # so the mean might be zero
+    # in the case of conv activations, which are inputted 
+    # we average the NRMSE over all dimensions --> shape: (1)
+    nrmse = torch.mean(sample_NRMSE)
+    rmse = torch.mean(sample_RMSE)
+    return rmse, nrmse
+
 class SparseLoss(nn.Module):
     '''
     Loss function used to train the sparse autoencoder.
@@ -37,21 +56,21 @@ class SparseLoss(nn.Module):
         assert len(decoded.shape) == 2
         #assert decoded.shape[0] == self.batch_size --> we don't have access to the batch_size here so we do this in model_pipeline.py
 
-        # we compute for each element the squared difference --> shape: (batch_size, vector_size)
-        squared_differences = torch.square(decoded - targets)
-        # for each vector dimension we compute the MSE over all samples in the batch --> shape: (vector_size)
-        sample_MSE = torch.mean(squared_differences, dim=0)
-        # we compute the difference of max and min for each dimension of the true data --> shape: (vector_size)
-        # torch.max returns (max values, indices) --> we only want the values so we use [0]
-        sample_range = torch.max(targets, dim=0)[0] - torch.min(targets, dim=0)[0]
-        # we compute for each dimension, the NRMSE --> shape: (vector_size)
-        sample_RMSE = torch.sqrt(sample_MSE) 
-        sample_NRMSE = sample_RMSE / sample_range
-        # We don't normalize the rmse by the mean of the targets, as the targets are not necessarily positive,
-        # so the mean might be zero
-        # in the case of conv activations, which are inputted 
-        # we average the NRMSE over all dimensions --> shape: (1)
-        nrmse = torch.mean(sample_NRMSE)
-        rmse = torch.mean(sample_RMSE)
+        rmse, nrmse = compute_rmse_nrmse(decoded, targets)
 
         return reconstruction_loss, l1_loss, nrmse, rmse
+    
+
+class GatedSAELoss(nn.Module):
+    def __init__(self):
+        super(GatedSAELoss, self).__init__()
+
+    def forward(self, relu_pi_gate, via_gate, decoded, targets):
+        reconstruction_loss = nn.MSELoss()(decoded, targets)
+        sparsity_loss = torch.mean(torch.abs(relu_pi_gate))
+        aux_loss = nn.MSELoss()(via_gate, targets) 
+        # via_gate is relu_pi_gate through frozen decoder
+
+        rmse, nrmse = compute_rmse_nrmse(decoded, targets)
+
+        return reconstruction_loss, sparsity_loss, nrmse, rmse, aux_loss

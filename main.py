@@ -39,6 +39,7 @@ def parse_arguments():
     parser.add_argument('--sae_checkpoint_epoch', type=int)
     parser.add_argument('--debug_on_cluster', action='store_true', help='Debugging on cluster')
     parser.add_argument('--mis', type=str)
+    parser.add_argument('--compute_ie', type=str)
     return parser.parse_args()
 
 if __name__ == '__main__':
@@ -106,23 +107,24 @@ if __name__ == '__main__':
                                                 run_group_ID=run_group_ID,
                                                 execution_location='local',
                                                 mis=parameters[21],
-                                                sae_checkpoint_epoch=parameters[22])
+                                                compute_ie=parameters[22],
+                                                sae_checkpoint_epoch=parameters[23])
                 execute_project.model_pipeline()
         #'''
                 
         # Once the model pipeline has been run for all parameter combinations,
         # we can perform evaluation using info from all runs
-        #'''
+        '''
         with open('parameters_eval.txt', 'r') as file:
             for line in file:
                 parameters_2 = [param for param in line.strip().split(',')]
                 # make sure that the directory path is a local path
                 directory_path = parameters_2[3]
                 if not args.debug_on_cluster and not directory_path.startswith('C:'):
-                    raise ValueError(f"The directory path is {parameters[3]} but it should be a local directory path.")
+                    raise ValueError(f"The directory path is {directory_path} but it should be a local directory path.")
                 elif args.debug_on_cluster and not directory_path.startswith('/lustre'):
-                    raise ValueError(f"The directory path is {parameters[3]} but it should be a cluster directory path.")
-                original_model = parameters_2[-2]
+                    raise ValueError(f"The directory path is {directory_path} but it should be a cluster directory path.")
+                original_model = parameters_2[14]
                 #sae_layer=parameters_2[2]
                 if not eval(original_model):
                     # Make sure the order of parameters coincides with the one in
@@ -143,13 +145,14 @@ if __name__ == '__main__':
                                                     sae_optimizer_name=parameters_2[11],
                                                     sae_batch_size=parameters_2[12],
                                                     dataset_name=parameters_2[13],
-                                                    original_model = parameters_2[14],
+                                                    original_model = original_model,
                                                     run_evaluation=True,
                                                     dead_neurons_steps=parameters_2[15],
                                                     run_group_ID=run_group_ID,
-                                                    execution_location='local')
+                                                    execution_location='local',
+                                                    sae_checkpoint_epoch=parameters_2[16])
                     execute_project.evaluation()
-        #'''
+        '''
 
         # if we used wandb logging, we need to finish the run 
         #if parameters[4]=='True':
@@ -191,6 +194,7 @@ if __name__ == '__main__':
                                             run_group_ID=args.run_group_ID,
                                             execution_location='cluster',
                                             mis=args.mis,
+                                            compute_ie=args.compute_ie,
                                             sae_checkpoint_epoch=args.sae_checkpoint_epoch)
             execute_project.model_pipeline()
 
@@ -221,7 +225,8 @@ if __name__ == '__main__':
                                             run_evaluation=args.run_evaluation,
                                             dead_neurons_steps=args.dead_neurons_steps,
                                             run_group_ID=args.run_group_ID,
-                                            execution_location='cluster')    
+                                            execution_location='cluster',
+                                            sae_checkpoint_epoch=args.sae_checkpoint_epoch)    
             execute_project.evaluation()
         #'''
         if args.wandb_status == 'True':

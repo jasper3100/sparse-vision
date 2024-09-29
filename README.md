@@ -3,16 +3,16 @@
 This repository contains the code used for the experiments conducted by Jasper Toussaint for his master thesis at the University of Tübingen in 2024 titled "An attempt to discover sparse feature circuits in vision models". 
 
 Most folder names are indicative of what they contain. Here are some additional elaborations:
-- `supplementary_files_1` generally contains unused and old code
+- `supplementary_files_1` generally contains unused and old code.
 - `supplementary_files_2` contains used but supplementary code, f.e., to create figures.
 - `model_pipeline.py` contains the core code. We train sparse autoencoders (SAEs) following [[1]](#1).
-- `main.py` calls `execute_project.py`, which calls `model_pipeline.py`
-- `compute_ie.py` is based on the work by [[2]](#2) but adjusted to our code
+- `main.py` calls `execute_project.py`, which calls `model_pipeline.py`.
+- `compute_ie.py` is based on the work by [[2]](#2) but adjusted to our code.
 
 ### How to use this repository?
-- set parameters in `specify_parameters.py` and run this file to generate a `.txt` file allowing to iterate over the parameter combinations
+- Set parameters in `specify_parameters.py` and run this file to generate a `.txt` file allowing to iterate over the parameter combinations.
 - _when using the code locally_: Just run `main.py`. Running the code locally might be inconvenient with several parameter combinations as the code is executed sequentially for each combination.
-- _when using the code on a computing cluster_: submit a job getting the parameters from the `.txt` file and repeatedly executing `main.py`
+- _when using the code on a computing cluster_: Submit a job getting the parameters from the `.txt` file and repeatedly executing `main.py`.
 - The filenames and locations in this codebase are hard coded and have to be adjusted for personal usage. 
 - Moreover, for using the code for computing the machine interpretability score (MIS) [[3]](#3) please ask the authors. It is not included here because at the time of writing it was not publicly accessible.
 
